@@ -1,0 +1,5 @@
+rootProject.name = 'PMP'
+
+include 'Core'
+include 'Client'
+include 'Server'
