@@ -15,10 +15,17 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package dev.blackilykat.pmp.server;
+package dev.blackilykat.pmp.messages;
 
-public class Main {
-	public static void main(String[] args) {
-		System.out.println("Hello, world!");
+/**
+ * Message to delete a playback session.
+ */
+public class PlaybackSessionDeleteMessage extends Message {
+	public static final String MESSAGE_TYPE = "PlaybackSessionDelete";
+
+	public Integer id;
+
+	public PlaybackSessionDeleteMessage(Integer id) {
+		this.id = id;
 	}
 }

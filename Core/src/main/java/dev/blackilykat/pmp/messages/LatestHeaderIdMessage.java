@@ -15,10 +15,17 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package dev.blackilykat.pmp.server;
+package dev.blackilykat.pmp.messages;
 
-public class Main {
-	public static void main(String[] args) {
-		System.out.println("Hello, world!");
+/**
+ * The last header ID. Used to ensure a client doesn't reuse the id of a previously created then deleted header.
+ */
+public class LatestHeaderIdMessage extends Message {
+	public static final String MESSAGE_TYPE = "LatestHeaderId";
+
+	public Integer id;
+
+	public LatestHeaderIdMessage(Integer id) {
+		this.id = id;
 	}
 }

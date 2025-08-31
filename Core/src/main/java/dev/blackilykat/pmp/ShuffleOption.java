@@ -15,10 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package dev.blackilykat.pmp.server;
+package dev.blackilykat.pmp;
 
-public class Main {
-	public static void main(String[] args) {
-		System.out.println("Hello, world!");
-	}
+public enum ShuffleOption {
+	ON, OFF
 }

@@ -15,10 +15,20 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package dev.blackilykat.pmp.server;
+package dev.blackilykat.pmp;
 
-public class Main {
-	public static void main(String[] args) {
-		System.out.println("Hello, world!");
+import java.util.ArrayList;
+import java.util.List;
+
+public class Filter {
+	public static final String OPTION_EVERYTHING = "__PMP_OPTION_EVERYTHING__";
+	public static final String OPTION_UNKNOWN = "__PMP_OPTION_UNKNOWN__";
+
+	public final String key;
+
+	public final List<FilterOption> option = new ArrayList<>();
+
+	public Filter(String key) {
+		this.key = key;
 	}
 }

@@ -15,10 +15,16 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package dev.blackilykat.pmp.server;
+package dev.blackilykat.pmp.util;
 
-public class Main {
-	public static void main(String[] args) {
-		System.out.println("Hello, world!");
+import java.io.Serializable;
+
+public class Pair<T, U> implements Serializable {
+	public T key;
+	public U value;
+
+	public Pair(T key, U value) {
+		this.key = key;
+		this.value = value;
 	}
 }

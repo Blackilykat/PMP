@@ -15,10 +15,19 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package dev.blackilykat.pmp.server;
+package dev.blackilykat.pmp;
 
-public class Main {
-	public static void main(String[] args) {
-		System.out.println("Hello, world!");
-	}
+public enum RepeatOption {
+	/**
+	 * Repeat this track. Takes priority over shuffle.
+	 */
+	TRACK,
+	/**
+	 * When at the end of the track list, get back to the start. Does nothing if shuffle is on.
+	 */
+	ALL,
+	/**
+	 * When at the end of the track list, stop playing.
+	 */
+	OFF
 }

@@ -15,10 +15,19 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package dev.blackilykat.pmp.server;
+package dev.blackilykat.pmp.messages;
 
-public class Main {
-	public static void main(String[] args) {
-		System.out.println("Hello, world!");
+import dev.blackilykat.pmp.PMPConnection;
+
+/**
+ * Used to indicate that a side is disconnecting from the socket. The side receiving this message can expect the side
+ * who sent it to have already disconnected from the socket.
+ * <p>
+ * This message is handled by {@link PMPConnection}.
+ */
+public class DisconnectMessage extends Message {
+	public static final String MESSAGE_TYPE = "Disconnect";
+
+	public DisconnectMessage() {
 	}
 }

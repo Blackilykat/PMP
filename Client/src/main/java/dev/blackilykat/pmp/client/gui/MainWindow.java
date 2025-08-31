@@ -15,10 +15,22 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package dev.blackilykat.pmp.server;
+package dev.blackilykat.pmp.client.gui;
 
-public class Main {
+import javafx.application.Application;
+import javafx.stage.Stage;
+
+public class MainWindow extends Application {
+
+
+	@Override
+	public void start(Stage stage) {
+		stage.setTitle("PMP");
+
+		stage.show();
+	}
+
 	public static void main(String[] args) {
-		System.out.println("Hello, world!");
+		launch(args);
 	}
 }

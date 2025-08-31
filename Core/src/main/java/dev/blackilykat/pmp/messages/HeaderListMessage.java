@@ -15,10 +15,22 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package dev.blackilykat.pmp.server;
+package dev.blackilykat.pmp.messages;
 
-public class Main {
-	public static void main(String[] args) {
-		System.out.println("Hello, world!");
+import java.util.ArrayList;
+import java.util.List;
+
+
+/**
+ * The list of track headers. These must be shared between devices to communicate how to sort the library.
+ */
+public class HeaderListMessage extends Message {
+	public static final String MESSAGE_TYPE = "HeaderList";
+
+	public List<Header> headers = new ArrayList<>();
+
+	public HeaderListMessage() {
 	}
+
+	public record Header(int id, String key, String name) {}
 }

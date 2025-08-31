@@ -15,10 +15,24 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package dev.blackilykat.pmp.server;
+package dev.blackilykat.pmp.messages;
 
-public class Main {
-	public static void main(String[] args) {
-		System.out.println("Hello, world!");
+/**
+ * The first message the server sends once a client is authenticated. Used to confirm the login and send some initial
+ * necessary pieces of information.
+ */
+public class WelcomeMessage extends Message {
+	public static final String MESSAGE_TYPE = "Welcome";
+
+	public Integer clientId;
+	public Integer latestActionId;
+	public String token;
+	public Integer deviceId;
+
+	public WelcomeMessage(Integer clientId, Integer latestActionId, String token, Integer deviceId) {
+		this.clientId = clientId;
+		this.latestActionId = latestActionId;
+		this.token = token;
+		this.deviceId = deviceId;
 	}
 }

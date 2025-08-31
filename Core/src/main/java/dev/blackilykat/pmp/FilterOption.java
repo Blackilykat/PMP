@@ -1,3 +1,4 @@
+
 /*
  * Copyright (C) 2025 Blackilykat and contributors
  *
@@ -15,10 +16,17 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package dev.blackilykat.pmp.server;
+package dev.blackilykat.pmp;
 
-public class Main {
-	public static void main(String[] args) {
-		System.out.println("Hello, world!");
+public class FilterOption {
+	public final String value;
+	public State state;
+
+	public FilterOption(String value) {
+		this.value = value;
+	}
+
+	public enum State {
+		NONE, POSITIVE, NEGATIVE
 	}
 }

@@ -15,10 +15,21 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package dev.blackilykat.pmp.server;
+package dev.blackilykat.pmp.messages;
 
-public class Main {
-	public static void main(String[] args) {
-		System.out.println("Hello, world!");
+import com.fasterxml.jackson.annotation.JsonCreator;
+
+/**
+ * Used when a client needs to receive missing actions from the server. Clients can expect the server to send all
+ * library actions from (inclusive) {@link #start} up to the latest one.
+ */
+public class LibraryActionRequestMessage extends Message {
+	public static final String MESSAGE_TYPE = "LibraryActionRequest";
+
+	public Integer start;
+
+	@JsonCreator
+	public LibraryActionRequestMessage(Integer start) {
+		this.start = start;
 	}
 }

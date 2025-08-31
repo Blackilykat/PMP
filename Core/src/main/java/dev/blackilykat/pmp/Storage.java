@@ -15,10 +15,30 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package dev.blackilykat.pmp.server;
+package dev.blackilykat.pmp;
 
-public class Main {
-	public static void main(String[] args) {
-		System.out.println("Hello, world!");
+public abstract class Storage {
+
+	private static Storage storage = null;
+
+	public int getAndIncrementCurrentActionId() {
+		int id = getCurrentActionID();
+		setCurrentActionID(id + 1);
+		return id;
+	}
+
+	public abstract int getCurrentActionID();
+
+	public abstract void setCurrentActionID(int id);
+
+	public static Storage getStorage() {
+		if(storage == null) {
+			throw new IllegalStateException("Storage was never set");
+		}
+		return storage;
+	}
+
+	public static void setStorage(Storage value) {
+		storage = value;
 	}
 }
