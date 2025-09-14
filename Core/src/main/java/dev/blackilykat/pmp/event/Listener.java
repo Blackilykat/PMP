@@ -15,20 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package dev.blackilykat.pmp.client;
+package dev.blackilykat.pmp.event;
 
-import dev.blackilykat.pmp.client.gui.MainWindow;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-public class Main {
-	public final static Logger LOGGER = LogManager.getLogger(Main.class);
-
-	public static void main(String[] args) {
-		LOGGER.info("Starting client");
-		new Thread(() -> {
-			Library.maybeInit();
-		}).start();
-		MainWindow.main(args);
-	}
+public interface Listener<T> {
+	void run(T event);
 }

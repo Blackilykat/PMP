@@ -20,7 +20,7 @@ package dev.blackilykat.pmp;
 
 public class FilterOption {
 	public final String value;
-	public State state;
+	public State state = State.NONE;
 
 	public FilterOption(String value) {
 		this.value = value;

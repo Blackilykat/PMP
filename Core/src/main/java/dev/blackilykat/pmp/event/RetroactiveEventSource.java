@@ -15,20 +15,27 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package dev.blackilykat.pmp.client;
+package dev.blackilykat.pmp.event;
 
-import dev.blackilykat.pmp.client.gui.MainWindow;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import java.util.LinkedList;
+import java.util.List;
 
-public class Main {
-	public final static Logger LOGGER = LogManager.getLogger(Main.class);
+public class RetroactiveEventSource<T> extends EventSource<T> {
+	private final List<T> pastEvents = new LinkedList<>();
 
-	public static void main(String[] args) {
-		LOGGER.info("Starting client");
-		new Thread(() -> {
-			Library.maybeInit();
-		}).start();
-		MainWindow.main(args);
+	@Override
+	public synchronized void register(Listener<T> listener) {
+		super.register(listener);
+
+		for(T event : pastEvents) {
+			listener.run(event);
+		}
+	}
+
+	@Override
+	public synchronized void call(T t) {
+		super.call(t);
+
+		pastEvents.add(t);
 	}
 }

@@ -17,20 +17,61 @@
 
 package dev.blackilykat.pmp.client.gui;
 
-import javafx.application.Application;
-import javafx.stage.Stage;
+import javax.swing.JFrame;
+import javax.swing.SpringLayout;
+import java.awt.Container;
+import java.awt.Dimension;
 
-public class MainWindow extends Application {
+public class MainWindow extends JFrame {
+	private static final Dimension MIN_SIZE = new Dimension(500, 500);
 
+	public MainWindow() {
+		super("PMP");
+		Container content = getContentPane();
+		setMinimumSize(MIN_SIZE);
+
+		Playbar playbar = new Playbar();
+		content.add(playbar);
+
+		FiltersPanel filters = new FiltersPanel();
+		content.add(filters);
+
+		TracksPanel tracks = new TracksPanel();
+		content.add(tracks);
+
+		SpringLayout layout = new SpringLayout();
+		content.setLayout(layout);
+
+		layout.putConstraint(SpringLayout.NORTH, playbar, -140, SpringLayout.SOUTH, content);
+		layout.putConstraint(SpringLayout.SOUTH, playbar, 0, SpringLayout.SOUTH, content);
+		layout.putConstraint(SpringLayout.EAST, playbar, 0, SpringLayout.EAST, content);
+		layout.putConstraint(SpringLayout.WEST, playbar, 0, SpringLayout.WEST, content);
+
+		layout.putConstraint(SpringLayout.SOUTH, filters, 0, SpringLayout.NORTH, playbar);
+		layout.putConstraint(SpringLayout.NORTH, filters, 0, SpringLayout.NORTH, content);
+		layout.putConstraint(SpringLayout.WEST, filters, 0, SpringLayout.WEST, content);
+
+		layout.putConstraint(SpringLayout.WEST, tracks, 0, SpringLayout.EAST, filters);
+		layout.putConstraint(SpringLayout.SOUTH, tracks, 0, SpringLayout.NORTH, playbar);
+		layout.putConstraint(SpringLayout.EAST, tracks, 0, SpringLayout.EAST, content);
+		layout.putConstraint(SpringLayout.NORTH, tracks, 0, SpringLayout.NORTH, content);
+
+		content.setBackground(Theme.DEFAULT.tracklistBackground);
+
+		// prevent white flash on startup
+		setBackground(Theme.DEFAULT.tracklistBackground);
+	}
 
 	@Override
-	public void start(Stage stage) {
-		stage.setTitle("PMP");
-
-		stage.show();
+	public Dimension getMinimumSize() {
+		return MIN_SIZE;
 	}
 
 	public static void main(String[] args) {
-		launch(args);
+		System.setProperty("awt.useSystemAAFontSettings", "lcd");
+		MainWindow mainWindow = new MainWindow();
+
+		mainWindow.setDefaultCloseOperation(EXIT_ON_CLOSE);
+		mainWindow.setVisible(true);
 	}
 }

@@ -1,6 +1,5 @@
 plugins {
     id 'application'
-    id 'org.openjfx.javafxplugin' version '0.1.0'
 }
 
 group = 'dev.blackilykat'
@@ -8,6 +7,10 @@ version = '1.0-SNAPSHOT'
 
 repositories {
     mavenCentral()
+
+    maven {
+        url 'https://jitpack.io'
+    }
 }
 
 dependencies {
@@ -18,11 +21,10 @@ dependencies {
     implementation 'org.apache.logging.log4j:log4j-core'
     implementation 'org.apache.logging.log4j:log4j-slf4j-impl'
     implementation 'org.slf4j:slf4j-api:1.7.36'
-}
 
-javafx {
-    version = "21.0.8"
-    modules = ['javafx.controls']
+    implementation 'com.github.weisj:jsvg:2.0.0'
+
+    implementation 'com.github.drogatkin:JustFLAC:85f0934'
 }
 
 jar {
