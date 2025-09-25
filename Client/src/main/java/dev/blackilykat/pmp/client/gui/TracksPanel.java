@@ -19,6 +19,7 @@ package dev.blackilykat.pmp.client.gui;
 
 import com.github.weisj.jsvg.view.ViewBox;
 import dev.blackilykat.pmp.client.Library;
+import dev.blackilykat.pmp.client.Player;
 import dev.blackilykat.pmp.client.Track;
 import dev.blackilykat.pmp.client.gui.util.ThemedLabel;
 import dev.blackilykat.pmp.client.gui.util.ThemedVerticalScrollPane;
@@ -42,12 +43,15 @@ import java.awt.Point;
 import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
 public class TracksPanel extends JPanel {
 	private static final Logger LOGGER = LogManager.getLogger(TracksPanel.class);
+	private static final int DOUBLE_CLICK_MS = 750;
+
 	private List<Header> headers = new ArrayList<>();
 	private HeadersPanel headersPanel = new HeadersPanel();
 	private ContentPanel contentPanel;
@@ -101,7 +105,8 @@ public class TracksPanel extends JPanel {
 						}
 					}
 
-					contentPanel.add(new TrackPanel(tracknumber, track.getTitle(), artists.toString(), duration));
+					contentPanel.add(
+							new TrackPanel(track, tracknumber, track.getTitle(), artists.toString(), duration));
 					contentPanel.revalidate();
 				}
 			});
@@ -130,8 +135,10 @@ public class TracksPanel extends JPanel {
 
 	private class TrackPanel extends JPanel {
 		private boolean playing = false;
+		private boolean clicked = false;
+		private Instant lastClick = Instant.EPOCH;
 
-		public TrackPanel(String... strings) {
+		public TrackPanel(Track track, String... strings) {
 			setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
 			if(strings.length != headers.size()) {
 				throw new IllegalArgumentException("Expected " + headers.size() + " values");
@@ -146,6 +153,29 @@ public class TracksPanel extends JPanel {
 			}
 
 			addMouseListener(new MouseAdapter() {
+				@Override
+				public void mouseClicked(MouseEvent e) {
+					Instant now = Instant.now();
+					if(now.toEpochMilli() - lastClick.toEpochMilli() < DOUBLE_CLICK_MS) {
+						Player.play(track);
+						lastClick = Instant.EPOCH;
+						return;
+					}
+					lastClick = now;
+				}
+
+				@Override
+				public void mousePressed(MouseEvent e) {
+					clicked = true;
+					repaint();
+				}
+
+				@Override
+				public void mouseReleased(MouseEvent e) {
+					clicked = false;
+					repaint();
+				}
+
 				@Override
 				public void mouseEntered(MouseEvent e) {
 					repaint();
@@ -168,7 +198,9 @@ public class TracksPanel extends JPanel {
 			Color base = Theme.selected.tracklistBackground;
 
 			Point mouse = getMousePosition();
-			if(mouse != null && contains(mouse)) {
+			if(clicked) {
+				return Theme.selected.getClicked(base);
+			} else if(mouse != null && contains(mouse)) {
 				return Theme.selected.getHovered(base);
 			}
 			return base;

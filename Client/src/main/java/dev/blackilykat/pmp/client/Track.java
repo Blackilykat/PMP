@@ -26,6 +26,7 @@ import org.kc7bfi.jflac.metadata.StreamInfo;
 import org.kc7bfi.jflac.metadata.VorbisComment;
 import org.kc7bfi.jflac.metadata.VorbisString;
 
+import javax.sound.sampled.AudioFormat;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -42,6 +43,7 @@ public class Track {
 	private static final Logger LOGGER = LogManager.getLogger(Track.class);
 	private static final byte[] checksumBuffer = new byte[1048576];
 	public List<Pair<String, String>> metadata;
+	private StreamInfo streamInfo;
 	private File file;
 	private long lastModified;
 	private long checksum;
@@ -87,6 +89,7 @@ public class Track {
 		if(commentsField != null) {
 			for(Metadata metadatum : metadata) {
 				if(metadatum instanceof StreamInfo streamInfo) {
+					this.streamInfo = streamInfo;
 					durationSeconds = streamInfo.getTotalSamples() / (double) streamInfo.getSampleRate();
 					continue;
 				}
@@ -162,5 +165,16 @@ public class Track {
 
 	public double getDurationSeconds() {
 		return durationSeconds;
+	}
+
+	public StreamInfo getStreamInfo() {
+		return streamInfo;
+	}
+
+	public AudioFormat getAudioFormat() {
+		return new AudioFormat(AudioFormat.Encoding.PCM_SIGNED, streamInfo.getSampleRate(),
+				streamInfo.getBitsPerSample(), streamInfo.getChannels(),
+				streamInfo.getBitsPerSample() * streamInfo.getChannels() / 8,
+				(float) streamInfo.getSampleRate() / streamInfo.getChannels(), false);
 	}
 }

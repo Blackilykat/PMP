@@ -19,16 +19,21 @@ package dev.blackilykat.pmp.client.gui;
 
 import com.github.weisj.jsvg.SVGDocument;
 import com.github.weisj.jsvg.view.ViewBox;
+import dev.blackilykat.pmp.client.Player;
+import dev.blackilykat.pmp.client.Track;
 import dev.blackilykat.pmp.client.gui.util.ThemedLabel;
+import dev.blackilykat.pmp.util.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JSlider;
 import javax.swing.SpringLayout;
+import javax.swing.SwingUtilities;
 import javax.swing.plaf.basic.BasicSliderUI;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -41,6 +46,11 @@ import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.RoundRectangle2D;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 public class Playbar extends JPanel {
 	private static final Logger LOGGER = LogManager.getLogger(Playbar.class);
@@ -70,8 +80,64 @@ public class Playbar extends JPanel {
 		add(shuffleButton);
 		add(previousButton);
 		add(playPauseButton);
+		playPauseButton.addActionListener(e -> {
+			Player.playPause();
+		});
 		add(nextButton);
 		add(repeatButton);
+
+		Player.EVENT_PROGRESS.register(ms -> {
+			SwingUtilities.invokeLater(() -> {
+				Track currentTrack = Player.getTrack();
+				if(currentTrack != null) {
+					double percentage = ms / (currentTrack.getDurationSeconds() * 1000);
+					track.progressValue((int) (percentage * 100_000));
+				}
+
+				currentTime.setText(secondsToString((int) (ms / 1000)));
+			});
+		});
+
+		Player.EVENT_TRACK_CHANGE.register(event -> {
+			Track track = event.track();
+			CompletableFuture<byte[]> albumArtFuture = event.picture();
+			SwingUtilities.invokeLater(() -> {
+				title.setText(track.getTitle());
+				List<String> artistList = new LinkedList<>();
+				for(Pair<String, String> metadatum : track.metadata) {
+					if(metadatum.key.equalsIgnoreCase("artist")) {
+						artistList.add(metadatum.value);
+					}
+				}
+				artists.setText(String.join(", ", artistList));
+
+				duration.setText(secondsToString((int) track.getDurationSeconds()));
+
+				albumArt.setImage(null);
+				albumArtFuture.thenAccept(data -> {
+					if(data == null) {
+						return;
+					}
+					try {
+						ByteArrayInputStream is = new ByteArrayInputStream(data);
+						Image img = ImageIO.read(is);
+						albumArt.setImage(img);
+					} catch(IOException e) {
+						LOGGER.error("Unexpected IOException", e);
+					}
+				});
+			});
+		});
+
+		Player.EVENT_PLAY_PAUSE.register(paused -> {
+			SwingUtilities.invokeLater(() -> {
+				if(paused) {
+					playPauseButton.setIcon(Theme.selected.playIcon);
+				} else {
+					playPauseButton.setIcon(Theme.selected.pauseIcon);
+				}
+			});
+		});
 
 		layout.putConstraint(SpringLayout.NORTH, playPauseButton, 20, SpringLayout.NORTH, this);
 		layout.putConstraint(SpringLayout.HORIZONTAL_CENTER, playPauseButton, 0, SpringLayout.HORIZONTAL_CENTER, this);
@@ -105,7 +171,7 @@ public class Playbar extends JPanel {
 		layout.putConstraint(SpringLayout.WEST, artists, 0, SpringLayout.WEST, title);
 		layout.putConstraint(SpringLayout.NORTH, artists, 0, SpringLayout.SOUTH, title);
 
-		artists.setFont(new Font("Source Sans Pro", Font.PLAIN, 20));
+		artists.setFont(new Font("Source Sans Pro", Font.PLAIN, 22));
 
 		layout.putConstraint(SpringLayout.WEST, currentTime, 0, SpringLayout.EAST, albumArt);
 		layout.putConstraint(SpringLayout.SOUTH, currentTime, -10, SpringLayout.SOUTH, this);
@@ -134,6 +200,12 @@ public class Playbar extends JPanel {
 	@Override
 	public Color getBackground() {
 		return Theme.selected.panelBackground;
+	}
+
+	private static String secondsToString(int seconds) {
+		int minutes = seconds / 60;
+		seconds %= 60;
+		return String.format("%d:%02d", minutes, seconds);
 	}
 
 	public static class AlbumArtDisplay extends JPanel {
@@ -192,10 +264,11 @@ public class Playbar extends JPanel {
 	}
 
 	public static class TimeSlider extends JSlider {
+		public static final int MAX_VALUE = 100_000;
 		private boolean dragging = false;
 
 		public TimeSlider() {
-			super(0, 100_000, 45_000);
+			super(0, MAX_VALUE, 45_000);
 		}
 
 		@Override
@@ -211,7 +284,16 @@ public class Playbar extends JPanel {
 		}
 
 		public void userValue(int v) {
-			LOGGER.info("User sought to {}", v);
+			Track track = Player.getTrack();
+			if(track == null) {
+				return;
+			}
+
+			long ms = (long) (v / (double) MAX_VALUE * track.getDurationSeconds() * 1000);
+
+			LOGGER.info("User sought to {}% ({}ms)", v / 1000d, ms);
+
+			Player.seek(ms);
 		}
 
 		public class TimeSliderUI extends BasicSliderUI {
@@ -281,7 +363,6 @@ public class Playbar extends JPanel {
 		protected int diameter;
 		protected SVGDocument icon;
 		private boolean clicked = false;
-
 
 		public RoundButton(int diameter, SVGDocument icon) {
 			this.diameter = diameter;
