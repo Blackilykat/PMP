@@ -17,6 +17,10 @@
 
 package dev.blackilykat.pmp.client;
 
+import dev.blackilykat.jpasimple.PASimple;
+import dev.blackilykat.jpasimple.PulseAudioException;
+import dev.blackilykat.jpasimple.SampleFormat;
+import dev.blackilykat.jpasimple.SampleSpec;
 import dev.blackilykat.pmp.event.EventSource;
 import dev.blackilykat.pmp.util.OverridingSingleThreadExecutor;
 import dev.blackilykat.pmp.util.Pair;
@@ -29,6 +33,7 @@ import org.kc7bfi.jflac.metadata.Picture;
 import org.kc7bfi.jflac.metadata.StreamInfo;
 import org.kc7bfi.jflac.util.ByteData;
 
+import javax.naming.OperationNotSupportedException;
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
@@ -59,13 +64,13 @@ public class Player {
 
 	private static final AudioFormat PLAYBACK_AUDIO_FORMAT = new AudioFormat(AudioFormat.Encoding.PCM_SIGNED, 44100,
 			16,
-			2, 4, 44100, true);
+			2, 4, 44100, false);
 
 	/**
 	 * Buffer size when playing the already loaded audio. Too high values can make pausing unresponsive. Too low values
 	 * can make audio choppy in some circumstances.
 	 */
-	private static final int PLAYBACK_BUFFER_SIZE = 17600;
+	private static final int PLAYBACK_BUFFER_SIZE = 8800;
 	/**
 	 * Buffer size when loading track from disk. Too low values can increase CPU usage. Too high values can make it
 	 * take
@@ -206,6 +211,9 @@ public class Player {
 		} catch(IOException ignored) {
 			// unreachable
 		}
+
+		final Object canLoadLock = new Object();
+
 		DECODING_EXECUTOR.submit(() -> {
 			try {
 				FLACDecoder decoder = new FLACDecoder(new FileInputStream(track.getFile()));
@@ -214,8 +222,17 @@ public class Player {
 
 					@Override
 					public void processStreamInfo(StreamInfo streamInfo) {
+						LOGGER.debug("Streaminfo: {}", streamInfo);
 						// These are inter-channel samples, meaning they're really just frames
-						pcm = new byte[(int) streamInfo.getTotalSamples() * PLAYBACK_AUDIO_FORMAT.getFrameSize()];
+						int size = (int) (streamInfo.getTotalSamples() * PLAYBACK_AUDIO_FORMAT.getFrameSize()
+								* PLAYBACK_AUDIO_FORMAT.getSampleRate() / streamInfo.getSampleRate());
+
+						size += PLAYBACK_AUDIO_FORMAT.getFrameSize() - size % PLAYBACK_AUDIO_FORMAT.getFrameSize();
+						pcm = new byte[size];
+
+						synchronized(canLoadLock) {
+							canLoadLock.notifyAll();
+						}
 					}
 
 					@Override
@@ -265,17 +282,36 @@ public class Player {
 			}
 		});
 
+
 		LOADING_EXECUTOR.submit(() -> {
-
-			AudioInputStream original = new AudioInputStream(pipeIn, track.getAudioFormat(),
-					track.getStreamInfo().getTotalSamples());
-			AudioInputStream converted = AudioSystem.getAudioInputStream(PLAYBACK_AUDIO_FORMAT, original);
-
 			try {
+				synchronized(canLoadLock) {
+					canLoadLock.wait();
+				}
+
+				AudioInputStream original = new AudioInputStream(pipeIn, track.getAudioFormat(),
+						track.getStreamInfo().getTotalSamples());
+				AudioInputStream converted = AudioSystem.getAudioInputStream(PLAYBACK_AUDIO_FORMAT, original);
 				int processed = 0;
 				byte[] buffer = new byte[LOADING_BUFFER_SIZE];
+
 				while(processed < pcm.length) {
 					int read = converted.read(buffer);
+
+					// It is unclear why, but sometimes reading from converted gives an amount of bytes different from
+					// what was calculated from streaminfo. The difference is always somewhat small, but got up to
+					// over half a second in one case. From testing, the most accurate seems to be the calculated
+					// pcm.length.
+					if(read == -1) {
+						LOGGER.debug("Stream/array disagreement (processed: {}, array size: {})", processed,
+								pcm.length);
+						break;
+					}
+
+					if(processed + read > pcm.length) {
+						LOGGER.debug("Stream/array disagreement (skipped {} bytes)", read);
+						break;
+					}
 
 					System.arraycopy(buffer, 0, pcm, processed, read);
 					processed += read;
@@ -283,6 +319,8 @@ public class Player {
 			} catch(InterruptedIOException ignored) {
 			} catch(IOException e) {
 				LOGGER.error("Unexpected IOException", e);
+			} catch(Exception e) {
+				LOGGER.error("Unexpected Exception", e);
 			}
 		});
 	}
@@ -294,16 +332,29 @@ public class Player {
 		audioThread = new Thread("Audio") {
 			@Override
 			public void run() {
-				Line.Info info = new DataLine.Info(SourceDataLine.class, PLAYBACK_AUDIO_FORMAT, PLAYBACK_BUFFER_SIZE);
-				SourceDataLine line;
+
+				SourceDataLine line = null;
+				PASimple paStream = null;
 
 				try {
-					line = (SourceDataLine) AudioSystem.getLine(info);
-					line.open(PLAYBACK_AUDIO_FORMAT, PLAYBACK_BUFFER_SIZE);
-					line.start();
-				} catch(LineUnavailableException e) {
-					LOGGER.error("Line unavailable (cannot play audio)", e);
-					return;
+					paStream = new PASimple(null, "PMP", false, null, "Playback",
+							new SampleSpec(SampleFormat.S16LE, (int) PLAYBACK_AUDIO_FORMAT.getSampleRate(),
+									(short) PLAYBACK_AUDIO_FORMAT.getChannels()), null);
+					LOGGER.info("Using PulseAudio");
+				} catch(OperationNotSupportedException ex) {
+					LOGGER.info("Using SourceDataLine");
+
+					Line.Info info = new DataLine.Info(SourceDataLine.class, PLAYBACK_AUDIO_FORMAT,
+							PLAYBACK_BUFFER_SIZE);
+
+					try {
+						line = (SourceDataLine) AudioSystem.getLine(info);
+						line.open(PLAYBACK_AUDIO_FORMAT, PLAYBACK_BUFFER_SIZE);
+						line.start();
+					} catch(LineUnavailableException e) {
+						LOGGER.error("Line unavailable (cannot play audio)", e);
+						return;
+					}
 				}
 
 				int framePosition;
@@ -354,7 +405,12 @@ public class Player {
 							}
 
 							if(framePosition + PLAYBACK_BUFFER_SIZE > pcm.length) {
-								line.write(pcm, framePosition, pcm.length - framePosition);
+								if(paStream != null) {
+									paStream.write(pcm, framePosition, pcm.length - framePosition);
+								} else {
+									assert line != null;
+									line.write(pcm, framePosition, pcm.length - framePosition);
+								}
 
 								pause();
 								break;
@@ -365,7 +421,13 @@ public class Player {
 								pcmBuffer[i] = pcm[framePosition + i];
 							}
 
-							line.write(pcmBuffer, 0, PLAYBACK_BUFFER_SIZE);
+
+							if(paStream != null) {
+								paStream.write(pcm, framePosition, PLAYBACK_BUFFER_SIZE);
+							} else {
+								assert line != null;
+								line.write(pcm, framePosition, PLAYBACK_BUFFER_SIZE);
+							}
 
 							framePosition += PLAYBACK_BUFFER_SIZE;
 						}
@@ -373,6 +435,12 @@ public class Player {
 					}
 				} catch(InterruptedException e) {
 					LOGGER.warn("Stopping audio thread due to interrupt");
+				} catch(PulseAudioException e) {
+					LOGGER.error("Unexpected PulseAudio error", e);
+				} finally {
+					if(paStream != null) {
+						paStream.close();
+					}
 				}
 			}
 		};

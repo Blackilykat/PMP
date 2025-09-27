@@ -25,10 +25,28 @@ public class Main {
 	public final static Logger LOGGER = LogManager.getLogger(Main.class);
 
 	public static void main(String[] args) {
+		logDebugSystemInfo();
 		LOGGER.info("Starting client");
 		new Thread(() -> {
 			Library.maybeInit();
 		}).start();
 		MainWindow.main(args);
+	}
+
+	private static void logDebugSystemInfo() {
+		LOGGER.debug("java.vm.vendor: {}", System.getProperty("java.vm.vendor"));
+		LOGGER.debug("java.vendor.url: {}", System.getProperty("java.vendor.url"));
+		LOGGER.debug("jdk.debug: {}", System.getProperty("jdk.debug"));
+		LOGGER.debug("java.version.date: {}", System.getProperty("java.version.date"));
+		LOGGER.debug("java.runtime.version: {}", System.getProperty("java.runtime.version"));
+		LOGGER.debug("java.vendor.version: {}", System.getProperty("java.vendor.version"));
+		LOGGER.debug("java.vm.version: {}", System.getProperty("java.vm.version"));
+		LOGGER.debug("java.vm.name: {}", System.getProperty("java.vm.name"));
+		LOGGER.debug("java.vendor.url.bug: {}", System.getProperty("java.vendor.url.bug"));
+		LOGGER.debug("java.class.version: {}", System.getProperty("java.class.version"));
+		LOGGER.debug("awt.toolkit.name: {}", System.getProperty("awt.toolkit.name"));
+		LOGGER.debug("os.name: {}", System.getProperty("os.name"));
+		LOGGER.debug("os.version: {}", System.getProperty("os.version"));
+		LOGGER.debug("os.arch: {}", System.getProperty("os.arch"));
 	}
 }
