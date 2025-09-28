@@ -139,6 +139,13 @@ public class Playbar extends JPanel {
 			});
 		});
 
+		Player.EVENT_CURRENT_TRACK_LOAD.register(event -> {
+			int loaded = event.loaded();
+			int total = event.total();
+
+			track.setLoadedPercentage((double) loaded / total);
+		});
+
 		layout.putConstraint(SpringLayout.NORTH, playPauseButton, 20, SpringLayout.NORTH, this);
 		layout.putConstraint(SpringLayout.HORIZONTAL_CENTER, playPauseButton, 0, SpringLayout.HORIZONTAL_CENTER, this);
 
@@ -186,9 +193,6 @@ public class Playbar extends JPanel {
 		layout.putConstraint(SpringLayout.WEST, track, 10, SpringLayout.EAST, currentTime);
 		layout.putConstraint(SpringLayout.EAST, track, -10, SpringLayout.WEST, duration);
 		layout.putConstraint(SpringLayout.VERTICAL_CENTER, track, 0, SpringLayout.VERTICAL_CENTER, currentTime);
-
-		track.setBackground(getBackground());
-		track.setForeground(Theme.selected.text);
 	}
 
 
@@ -267,8 +271,23 @@ public class Playbar extends JPanel {
 		public static final int MAX_VALUE = 100_000;
 		private boolean dragging = false;
 
+		private double loadedPercentage = 1.0;
+
 		public TimeSlider() {
 			super(0, MAX_VALUE, 45_000);
+		}
+
+		@Override
+		public Color getBackground() {
+			if(getParent() == null) {
+				return Theme.selected.panelBackground;
+			}
+			return getParent().getBackground();
+		}
+
+		public void setLoadedPercentage(double value) {
+			loadedPercentage = value;
+			repaint();
 		}
 
 		@Override
@@ -297,7 +316,6 @@ public class Playbar extends JPanel {
 		}
 
 		public class TimeSliderUI extends BasicSliderUI {
-
 			@Override
 			protected TrackListener createTrackListener(JSlider slider) {
 				return new TrackListener() {
@@ -345,13 +363,18 @@ public class Playbar extends JPanel {
 
 			@Override
 			public void paintTrack(Graphics g) {
-				g.setColor(TimeSlider.this.getForeground());
-				g.fillRect(trackRect.x, trackRect.y + trackRect.height / 2 - 2, trackRect.width, 4);
+				int loadedPx = (int) (trackRect.width * loadedPercentage);
+				g.setColor(Theme.selected.text);
+				g.fillRect(trackRect.x, trackRect.y + trackRect.height / 2 - 2, loadedPx, 4);
+
+				g.setColor(Theme.selected.playbarLoading);
+				g.fillRect(trackRect.x + loadedPx, trackRect.y + trackRect.height / 2 - 2, trackRect.width - loadedPx,
+						4);
 			}
 
 			@Override
 			public void paintThumb(Graphics g) {
-				g.setColor(TimeSlider.this.getForeground());
+				g.setColor(Theme.selected.text);
 				((Graphics2D) g).setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 				g.fillRoundRect(thumbRect.x, thumbRect.y, thumbRect.width, thumbRect.height, thumbRect.width,
 						thumbRect.width);

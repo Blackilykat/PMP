@@ -40,6 +40,8 @@ public class Theme {
 	public Color filterOptionBackgroundPositive = new Color(0x24432A);
 	public Color filterOptionBackgroundNegative = new Color(0x4E1C1C);
 
+	public Color playbarLoading = new Color(0x707070);
+
 	public Color scrollBarColor = new Color(0x66FFFFFF, true);
 
 	public Color hover = new Color(0x0CFFFFFF, true);

@@ -33,6 +33,8 @@ import org.kc7bfi.jflac.metadata.Picture;
 import org.kc7bfi.jflac.metadata.StreamInfo;
 import org.kc7bfi.jflac.util.ByteData;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import javax.naming.OperationNotSupportedException;
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
@@ -54,11 +56,14 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 public class Player {
 	public static final EventSource<Boolean> EVENT_PLAY_PAUSE = new EventSource<>();
 	public static final EventSource<TrackChangeEvent> EVENT_TRACK_CHANGE = new EventSource<>();
 	public static final EventSource<Long> EVENT_PROGRESS = new EventSource<>();
+	public static final EventSource<CurrentTrackLoadEvent> EVENT_CURRENT_TRACK_LOAD = new EventSource<>();
 
 	private static final Logger LOGGER = LogManager.getLogger(Player.class);
 
@@ -93,7 +98,6 @@ public class Player {
 	private static Thread audioThread = null;
 	private static Track currentTrack = null;
 	private static byte[] pcm = null;
-	private static byte[] pcmBuffer = new byte[PLAYBACK_BUFFER_SIZE];
 	/**
 	 * Timestamp used to keep track of the current playback position when playing.
 	 *
@@ -157,12 +161,26 @@ public class Player {
 		currentTrack = track;
 		LOGGER.info("Playing {}", track.getTitle());
 
-		CompletableFuture<byte[]> albumArtFuture = new CompletableFuture<>();
-		load(track, albumArtFuture);
 		shouldSeek = true;
 		setPosition(0);
 
-		play();
+		CompletableFuture<byte[]> albumArtFuture = new CompletableFuture<>();
+		CompletableFuture<byte[]> pcmDataFuture = new CompletableFuture<>();
+
+		pcmDataFuture.thenAccept(pcmData -> {
+			pcm = pcmData;
+		});
+
+		AtomicBoolean firstLoad = new AtomicBoolean(true);
+		Consumer<Integer> onPcmLoad = bytes -> {
+			if(bytes >= PLAYBACK_AUDIO_FORMAT.getSampleRate() * PLAYBACK_AUDIO_FORMAT.getChannels()
+					&& firstLoad.getAndSet(false)) {
+				play();
+			}
+			EVENT_CURRENT_TRACK_LOAD.call(new CurrentTrackLoadEvent(bytes, pcm.length));
+		};
+
+		load(track, albumArtFuture, pcmDataFuture, onPcmLoad);
 
 		EVENT_TRACK_CHANGE.call(new TrackChangeEvent(track, albumArtFuture));
 	}
@@ -200,7 +218,20 @@ public class Player {
 		return currentTrack;
 	}
 
-	private static void load(Track track, CompletableFuture<byte[]> albumArtFuture) {
+
+	/**
+	 * Loads the specified track's album art and PCM data in the playback audio format.
+	 *
+	 * @param track The track to load
+	 * @param albumArtFuture A future which will get completed once the entirety of the album art is loaded. The album
+	 * art is returned as it is found in the track's metadata.
+	 * @param pcmDataFuture A future which will get completed as soon as the PCM data array is created. It will
+	 * immediately be empty. If this is null, PCM data won't be loaded at all.
+	 * @param onPcmLoad A consumer which will be called each time a chunk of the PCM data is loaded. It accepts the
+	 * amount of bytes of the pcm data read.
+	 */
+	private static void load(@Nonnull Track track, @Nullable CompletableFuture<byte[]> albumArtFuture,
+			@Nullable CompletableFuture<byte[]> pcmDataFuture, @Nullable Consumer<Integer> onPcmLoad) {
 		maybeStart();
 
 		//noinspection resource
@@ -212,7 +243,7 @@ public class Player {
 			// unreachable
 		}
 
-		final Object canLoadLock = new Object();
+		final AtomicReference<byte[]> pcmData = new AtomicReference<>(null);
 
 		DECODING_EXECUTOR.submit(() -> {
 			try {
@@ -222,21 +253,26 @@ public class Player {
 
 					@Override
 					public void processStreamInfo(StreamInfo streamInfo) {
-						LOGGER.debug("Streaminfo: {}", streamInfo);
-						// These are inter-channel samples, meaning they're really just frames
-						int size = (int) (streamInfo.getTotalSamples() * PLAYBACK_AUDIO_FORMAT.getFrameSize()
-								* PLAYBACK_AUDIO_FORMAT.getSampleRate() / streamInfo.getSampleRate());
+						if(pcmDataFuture != null) {
+							LOGGER.debug("Streaminfo: {}", streamInfo);
+							// These are inter-channel samples, meaning they're really just frames
+							int size = (int) (streamInfo.getTotalSamples() * PLAYBACK_AUDIO_FORMAT.getFrameSize()
+									* PLAYBACK_AUDIO_FORMAT.getSampleRate() / streamInfo.getSampleRate());
 
-						size += PLAYBACK_AUDIO_FORMAT.getFrameSize() - size % PLAYBACK_AUDIO_FORMAT.getFrameSize();
-						pcm = new byte[size];
+							size -= size % PLAYBACK_AUDIO_FORMAT.getFrameSize();
 
-						synchronized(canLoadLock) {
-							canLoadLock.notifyAll();
+							synchronized(pcmData) {
+								pcmData.set(new byte[size]);
+								pcmData.notifyAll();
+							}
+
+							pcmDataFuture.complete(pcmData.get());
 						}
 					}
 
 					@Override
 					public void processPCM(ByteData byteData) {
+						assert pcmDataFuture != null;
 						try {
 							pipeOut.write(byteData.getData(), 0, byteData.getLen());
 						} catch(IOException e) {
@@ -247,6 +283,9 @@ public class Player {
 
 				try {
 					for(Metadata metadatum : decoder.readMetadata()) {
+						if(albumArtFuture == null) {
+							continue;
+						}
 						if(!(metadatum instanceof Picture picture)) {
 							continue;
 						}
@@ -256,11 +295,13 @@ public class Player {
 
 						albumArtFuture.complete(picture.getImage());
 					}
-					if(!albumArtFuture.isDone()) {
+					if(albumArtFuture != null && !albumArtFuture.isDone()) {
 						albumArtFuture.complete(null);
 					}
 
-					decoder.decodeFrames();
+					if(pcmDataFuture != null) {
+						decoder.decodeFrames();
+					}
 				} catch(RuntimeException e) {
 					if(e.getCause() instanceof InterruptedException) {
 						return;
@@ -268,7 +309,7 @@ public class Player {
 					throw e;
 				} catch(IOException e) {
 					LOGGER.error("Error ", e);
-					if(!albumArtFuture.isDone()) {
+					if(albumArtFuture != null && !albumArtFuture.isDone()) {
 						albumArtFuture.completeExceptionally(e);
 					}
 					throw new RuntimeException(e);
@@ -283,46 +324,61 @@ public class Player {
 		});
 
 
-		LOADING_EXECUTOR.submit(() -> {
-			try {
-				synchronized(canLoadLock) {
-					canLoadLock.wait();
-				}
-
-				AudioInputStream original = new AudioInputStream(pipeIn, track.getAudioFormat(),
-						track.getStreamInfo().getTotalSamples());
-				AudioInputStream converted = AudioSystem.getAudioInputStream(PLAYBACK_AUDIO_FORMAT, original);
-				int processed = 0;
-				byte[] buffer = new byte[LOADING_BUFFER_SIZE];
-
-				while(processed < pcm.length) {
-					int read = converted.read(buffer);
-
-					// It is unclear why, but sometimes reading from converted gives an amount of bytes different from
-					// what was calculated from streaminfo. The difference is always somewhat small, but got up to
-					// over half a second in one case. From testing, the most accurate seems to be the calculated
-					// pcm.length.
-					if(read == -1) {
-						LOGGER.debug("Stream/array disagreement (processed: {}, array size: {})", processed,
-								pcm.length);
-						break;
+		if(pcmDataFuture != null) {
+			LOADING_EXECUTOR.submit(() -> {
+				try {
+					synchronized(pcmData) {
+						while(pcmData.get() == null) {
+							pcmData.wait();
+						}
 					}
 
-					if(processed + read > pcm.length) {
-						LOGGER.debug("Stream/array disagreement (skipped {} bytes)", read);
-						break;
-					}
+					byte[] pcm = pcmData.get();
 
-					System.arraycopy(buffer, 0, pcm, processed, read);
-					processed += read;
+					AudioInputStream original = new AudioInputStream(pipeIn, track.getAudioFormat(),
+							track.getStreamInfo().getTotalSamples());
+					AudioInputStream converted = AudioSystem.getAudioInputStream(PLAYBACK_AUDIO_FORMAT, original);
+					int processed = 0;
+					byte[] buffer = new byte[LOADING_BUFFER_SIZE];
+
+					while(processed < pcm.length) {
+						int read = converted.read(buffer);
+
+						// It is unclear why, but sometimes reading from converted gives an amount of bytes different
+						// from
+						// what was calculated from streaminfo. The difference is always somewhat small, but got up to
+						// over half a second in one case. From testing, the most accurate seems to be the calculated
+						// pcm.length.
+						if(read == -1) {
+							LOGGER.debug("Stream/array disagreement (processed: {}, array size: {})", processed,
+									pcm.length);
+							break;
+						}
+
+						if(processed + read > pcm.length) {
+							LOGGER.debug("Stream/array disagreement (skipped {} bytes)", read);
+							break;
+						}
+
+						System.arraycopy(buffer, 0, pcm, processed, read);
+						processed += read;
+						if(onPcmLoad != null) {
+							onPcmLoad.accept(processed);
+						}
+					}
+					if(onPcmLoad != null) {
+						onPcmLoad.accept(pcm.length);
+					}
+				} catch(InterruptedIOException ignored) {
+				} catch(IOException e) {
+					LOGGER.error("Unexpected IOException", e);
+				} catch(Exception e) {
+					LOGGER.error("Unexpected Exception", e);
 				}
-			} catch(InterruptedIOException ignored) {
-			} catch(IOException e) {
-				LOGGER.error("Unexpected IOException", e);
-			} catch(Exception e) {
-				LOGGER.error("Unexpected Exception", e);
-			}
-		});
+			});
+		} else {
+			LOADING_EXECUTOR.interrupt();
+		}
 	}
 
 	private static void maybeStart() {
@@ -416,12 +472,6 @@ public class Player {
 								break;
 							}
 
-							//noinspection ManualArrayCopy
-							for(int i = 0; i < PLAYBACK_BUFFER_SIZE; i++) {
-								pcmBuffer[i] = pcm[framePosition + i];
-							}
-
-
 							if(paStream != null) {
 								paStream.write(pcm, framePosition, PLAYBACK_BUFFER_SIZE);
 							} else {
@@ -448,4 +498,6 @@ public class Player {
 	}
 
 	public record TrackChangeEvent(Track track, CompletableFuture<byte[]> picture) {}
+
+	public record CurrentTrackLoadEvent(Integer loaded, Integer total) {}
 }
