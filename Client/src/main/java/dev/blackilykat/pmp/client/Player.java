@@ -75,7 +75,7 @@ public class Player {
 	 * Buffer size when playing the already loaded audio. Too high values can make pausing unresponsive. Too low values
 	 * can make audio choppy in some circumstances.
 	 */
-	private static final int PLAYBACK_BUFFER_SIZE = 8800;
+	private static final int PLAYBACK_BUFFER_SIZE = 8192;
 	/**
 	 * Buffer size when loading track from disk. Too low values can increase CPU usage. Too high values can make it
 	 * take
@@ -424,24 +424,21 @@ public class Player {
 							}
 						}
 
-						// sample size is in bits (/ 8) and position is in milliseconds (/1000)
-						framePosition = ((int) (
-								(PLAYBACK_AUDIO_FORMAT.getFrameRate() * PLAYBACK_AUDIO_FORMAT.getSampleSizeInBits()
-										* PLAYBACK_AUDIO_FORMAT.getChannels() * getPosition()) / 8000));
-						framePosition -= framePosition % PLAYBACK_AUDIO_FORMAT.getFrameSize();
+						framePosition = msToPlaybackBytes(getPosition());
 
 						while(!paused.get() && !shouldSeek) {
+							int latency = 0;
+							if(paStream != null) {
+								latency = msToPlaybackBytes(paStream.getLatency() / 1_000);
+							}
 
 
 							int maxOffset = (int) (MAX_PLAYBACK_OFFSET_MS * PLAYBACK_AUDIO_FORMAT.getFrameRate()
 									/ 1000);
 
-							int bottomExpectedPos = ((int) (
-									(PLAYBACK_AUDIO_FORMAT.getFrameRate() * PLAYBACK_AUDIO_FORMAT.getSampleSizeInBits()
-											* PLAYBACK_AUDIO_FORMAT.getChannels() * getPosition()) / 8000));
-							bottomExpectedPos -= bottomExpectedPos % PLAYBACK_AUDIO_FORMAT.getFrameSize();
+							int bottomExpectedPos = msToPlaybackBytes(getPosition());
 
-							int topExpectedPos = bottomExpectedPos + PLAYBACK_BUFFER_SIZE;
+							int topExpectedPos = bottomExpectedPos + PLAYBACK_BUFFER_SIZE + latency;
 
 							int minPosDiff = Math.min(Math.abs(framePosition - bottomExpectedPos),
 									Math.abs(framePosition - topExpectedPos));
@@ -495,6 +492,13 @@ public class Player {
 			}
 		};
 		audioThread.start();
+	}
+
+	private static int msToPlaybackBytes(long ms) {
+		int val = ((int) ((PLAYBACK_AUDIO_FORMAT.getFrameRate() * PLAYBACK_AUDIO_FORMAT.getSampleSizeInBits()
+				* PLAYBACK_AUDIO_FORMAT.getChannels() * ms) / 8000));
+		val -= val % PLAYBACK_AUDIO_FORMAT.getFrameSize();
+		return val;
 	}
 
 	public record TrackChangeEvent(Track track, CompletableFuture<byte[]> picture) {}
