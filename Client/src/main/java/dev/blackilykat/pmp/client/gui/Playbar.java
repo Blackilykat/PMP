@@ -292,7 +292,7 @@ public class Playbar extends JPanel {
 
 		@Override
 		public void updateUI() {
-			setUI(new TimeSliderUI());
+			setUI(new TimeSliderUI(this));
 		}
 
 		public void progressValue(int v) {
@@ -316,6 +316,10 @@ public class Playbar extends JPanel {
 		}
 
 		public class TimeSliderUI extends BasicSliderUI {
+			public TimeSliderUI(TimeSlider b) {
+				super(b);
+			}
+
 			@Override
 			protected TrackListener createTrackListener(JSlider slider) {
 				return new TrackListener() {

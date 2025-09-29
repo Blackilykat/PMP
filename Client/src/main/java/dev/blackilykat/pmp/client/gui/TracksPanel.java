@@ -82,9 +82,11 @@ public class TracksPanel extends JPanel {
 		addHeader(3, "Artist", "artist", 600, false);
 		addHeader(4, "Duration", "duration", 100, true);
 
-		// TEMPORARY: deciding which tracks to display should be handled outside the gui.
-		Library.EVENT_LOADED.register(tracks -> {
+		Library.EVENT_SELECTED_TRACKS_UPDATED.register(event -> {
+			List<Track> old = event.oldSelection();
+			List<Track> tracks = event.newSelection();
 			SwingUtilities.invokeLater(() -> {
+				contentPanel.removeAll();
 				for(Track track : tracks) {
 					String tracknumber = "";
 					StringBuilder artists = new StringBuilder();
@@ -107,8 +109,9 @@ public class TracksPanel extends JPanel {
 
 					contentPanel.add(
 							new TrackPanel(track, tracknumber, track.getTitle(), artists.toString(), duration));
-					contentPanel.revalidate();
 				}
+				contentPanel.revalidate();
+				contentPanel.repaint();
 			});
 		});
 	}

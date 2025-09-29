@@ -17,6 +17,8 @@
 
 package dev.blackilykat.pmp.client;
 
+import dev.blackilykat.pmp.Filter;
+import dev.blackilykat.pmp.FilterOption;
 import dev.blackilykat.pmp.util.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -176,5 +178,28 @@ public class Track {
 				streamInfo.getBitsPerSample(), streamInfo.getChannels(),
 				streamInfo.getBitsPerSample() * streamInfo.getChannels() / 8,
 				(float) streamInfo.getSampleRate() / streamInfo.getChannels(), false);
+	}
+
+	public boolean matches(FilterOption option) {
+		String key = option.getParent().key;
+		String value = option.value;
+		if(value.equals(Filter.OPTION_EVERYTHING)) {
+			return true;
+		}
+
+		boolean hasKey = false;
+
+		for(Pair<String, String> metadatum : metadata) {
+			if(metadatum.key.equalsIgnoreCase(key)) {
+				hasKey = true;
+
+				if(metadatum.value.equalsIgnoreCase(value)) {
+					return true;
+				}
+			}
+		}
+
+
+		return !hasKey && value.equals(Filter.OPTION_UNKNOWN);
 	}
 }

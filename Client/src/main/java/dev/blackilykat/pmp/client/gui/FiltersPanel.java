@@ -19,12 +19,13 @@ package dev.blackilykat.pmp.client.gui;
 
 import dev.blackilykat.pmp.Filter;
 import dev.blackilykat.pmp.FilterOption;
+import dev.blackilykat.pmp.client.Library;
 import dev.blackilykat.pmp.client.gui.util.ThemedLabel;
 import dev.blackilykat.pmp.client.gui.util.ThemedVerticalScrollPane;
+import dev.blackilykat.pmp.event.Listener;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import javax.swing.AbstractButton;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -40,7 +41,6 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Point;
-import java.awt.Rectangle;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.Random;
@@ -72,9 +72,12 @@ public class FiltersPanel extends JPanel {
 
 		add(noFiltersPanel);
 
-		add(new FilterPanel("Hello"));
-		add(new FilterPanel("Artist"));
-		add(new FilterPanel("Album"));
+		for(Filter filter : Library.getFilters()) {
+			add(new FilterPanel(filter));
+		}
+		Library.EVENT_FILTER_ADDED.register(filter -> {
+			add(new FilterPanel(filter));
+		});
 	}
 
 	public void add(FilterPanel filterPanel) {
@@ -85,6 +88,14 @@ public class FiltersPanel extends JPanel {
 		}
 
 		super.add(filterPanel);
+
+		filterPanel.mainBox.revalidate();
+		filterPanel.name.revalidate();
+		filterPanel.content.revalidate();
+		filterPanel.revalidate();
+
+		revalidate();
+		repaint();
 	}
 
 	public void remove(FilterPanel filterPanel) {
@@ -94,6 +105,9 @@ public class FiltersPanel extends JPanel {
 			super.remove(topSpacing);
 			add(noFiltersPanel);
 		}
+
+		revalidate();
+		repaint();
 	}
 
 	@Override
@@ -111,8 +125,8 @@ public class FiltersPanel extends JPanel {
 		private JPanel mainBox;
 		private JPanel content;
 
-		public FilterPanel(String label) {
-			name = new ThemedLabel(label);
+		public FilterPanel(Filter filter) {
+			name = new ThemedLabel(filter.key);
 			name.setFont(new Font("Source Sans Pro", Font.PLAIN, 20));
 
 			JPanel nameContainer = new JPanel() {
@@ -127,7 +141,7 @@ public class FiltersPanel extends JPanel {
 
 				@Override
 				public Dimension getPreferredSize() {
-					Dimension ns = name.getSize();
+					Dimension ns = name.getPreferredSize();
 					return new Dimension(ns.width + 20, ns.height + 5);
 				}
 			};
@@ -178,16 +192,60 @@ public class FiltersPanel extends JPanel {
 			layout.putConstraint(SpringLayout.EAST, mainBox, 0, SpringLayout.EAST, this);
 			layout.putConstraint(SpringLayout.NORTH, mainBox, -1, SpringLayout.SOUTH, nameContainer);
 
-			content.add(new OptionButton(new FilterOption(Filter.OPTION_EVERYTHING)));
-			content.add(new OptionButton(new FilterOption("Value 1")));
-			content.add(new OptionButton(new FilterOption("Value 2")));
-			content.add(new OptionButton(new FilterOption("Value 3")));
-			content.add(new OptionButton(new FilterOption("Value 4")));
-			content.add(new OptionButton(new FilterOption("Value 5")));
-			content.add(new OptionButton(new FilterOption("Value 6")));
-			content.add(new OptionButton(new FilterOption("Value 7")));
-			content.add(new OptionButton(new FilterOption("Value 8")));
-			content.add(new OptionButton(new FilterOption(Filter.OPTION_UNKNOWN)));
+			for(FilterOption option : filter.getOptions()) {
+				addOption(option);
+			}
+
+			filter.eventOptionAdded.register(event -> {
+				int index = event.index();
+				FilterOption option = event.option();
+
+				addOption(index, option);
+			});
+
+			filter.eventOptionRemoved.register(event -> {
+				FilterOption option = event.option();
+
+				removeOption(option);
+			});
+		}
+
+		public void addOption(FilterOption option) {
+			OptionButton btn = new OptionButton(option);
+			btn.register();
+
+			content.add(btn);
+
+			content.revalidate();
+			content.repaint();
+		}
+
+		public void addOption(int index, FilterOption option) {
+			OptionButton btn = new OptionButton(option);
+			btn.register();
+
+			content.add(btn, index);
+
+			content.revalidate();
+			content.repaint();
+		}
+
+		public void removeOption(FilterOption option) {
+			for(Component component : content.getComponents()) {
+				if(!(component instanceof OptionButton button)) {
+					continue;
+				}
+
+				if(button.option != option) {
+					continue;
+				}
+
+				content.remove(component);
+				break;
+			}
+
+			content.revalidate();
+			content.repaint();
 		}
 
 		@Override
@@ -202,44 +260,50 @@ public class FiltersPanel extends JPanel {
 
 		public static class OptionButton extends JButton {
 			private static final Random random = new Random();
-			private FilterOption.State state;
+			private final FilterOption option;
+			private final Listener<Filter.OptionChangedStateEvent> listener;
+
 			private boolean clicked = false;
 
 			public OptionButton(FilterOption option) {
+				this.option = option;
 				super(switch(option.value) {
 					case Filter.OPTION_EVERYTHING -> "All";
 					case Filter.OPTION_UNKNOWN -> "Unknown";
 					default -> option.value;
 				});
+				listener = event -> {
+					repaint();
+				};
 
 				setBorder(BorderFactory.createEmptyBorder());
 
-				if(option.state != null) {
-					state = option.state;
-				}
-
-				state = switch(random.nextInt(3)) {
-					case 0 -> FilterOption.State.NONE;
-					case 1 -> FilterOption.State.POSITIVE;
-					default -> FilterOption.State.NEGATIVE;
-				};
-
-
-				setUI(new BasicButtonUI() {
-					@Override
-					protected void paintFocus(Graphics g, AbstractButton b, Rectangle v, Rectangle t, Rectangle i) {
-					}
-				});
+				setUI(new BasicButtonUI());
 
 				addMouseListener(new MouseAdapter() {
 					@Override
 					public void mousePressed(MouseEvent e) {
 						clicked = true;
+						repaint();
 					}
 
 					@Override
 					public void mouseReleased(MouseEvent e) {
 						clicked = false;
+
+						if(e.getButton() == MouseEvent.BUTTON1) {
+							option.setState(switch(option.getState()) {
+								case NONE, NEGATIVE -> FilterOption.State.POSITIVE;
+								case POSITIVE -> FilterOption.State.NONE;
+							});
+						} else if(e.getButton() == MouseEvent.BUTTON3) {
+							option.setState(switch(option.getState()) {
+								case NONE, POSITIVE -> FilterOption.State.NEGATIVE;
+								case NEGATIVE -> FilterOption.State.NONE;
+							});
+						}
+
+						repaint();
 					}
 				});
 
@@ -269,7 +333,7 @@ public class FiltersPanel extends JPanel {
 
 			@Override
 			public Color getBackground() {
-				Color base = switch(state) {
+				Color base = switch(option.getState()) {
 					case NONE -> Theme.selected.filterOptionBackground;
 					case POSITIVE -> Theme.selected.filterOptionBackgroundPositive;
 					case NEGATIVE -> Theme.selected.filterOptionBackgroundNegative;
@@ -289,6 +353,14 @@ public class FiltersPanel extends JPanel {
 			@Override
 			public Font getFont() {
 				return new Font("Source Sans Pro", Font.PLAIN, 18);
+			}
+
+			public void register() {
+				option.eventChangedState.register(listener);
+			}
+
+			public void unregister() {
+				option.eventChangedState.unregister(listener);
 			}
 		}
 	}

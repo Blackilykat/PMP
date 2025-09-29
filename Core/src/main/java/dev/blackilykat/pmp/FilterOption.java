@@ -18,12 +18,33 @@
 
 package dev.blackilykat.pmp;
 
+import dev.blackilykat.pmp.event.EventSource;
+
 public class FilterOption {
 	public final String value;
-	public State state = State.NONE;
+	public final EventSource<Filter.OptionChangedStateEvent> eventChangedState = new EventSource<>();
+	protected Filter parent = null;
+	private State state = State.NONE;
 
 	public FilterOption(String value) {
 		this.value = value;
+	}
+
+	public Filter getParent() {
+		return parent;
+	}
+
+	public State getState() {
+		return state;
+	}
+
+	public void setState(State state) {
+		State oldState = this.state;
+		this.state = state;
+
+		Filter.OptionChangedStateEvent evt = new Filter.OptionChangedStateEvent(parent, this, oldState, state);
+		Filter.EVENT_OPTION_CHANGED_STATE.call(evt);
+		eventChangedState.call(evt);
 	}
 
 	public enum State {
