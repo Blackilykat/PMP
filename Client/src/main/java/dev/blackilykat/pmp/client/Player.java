@@ -336,7 +336,7 @@ public class Player {
 					byte[] pcm = pcmData.get();
 
 					AudioInputStream original = new AudioInputStream(pipeIn, track.getAudioFormat(),
-							track.getStreamInfo().getTotalSamples());
+							track.getPlaybackInfo().getTotalSamples());
 					AudioInputStream converted = AudioSystem.getAudioInputStream(PLAYBACK_AUDIO_FORMAT, original);
 					int processed = 0;
 					byte[] buffer = new byte[LOADING_BUFFER_SIZE];

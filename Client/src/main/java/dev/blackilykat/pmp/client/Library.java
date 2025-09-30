@@ -184,16 +184,39 @@ public class Library {
 			throw new IllegalStateException("Library is a file");
 		}
 
+		List<Track> cache = ClientStorage.getInstance().trackCache;
+		LOGGER.debug("Cache: {}", cache);
+
 		File[] children = library.listFiles();
+		int totalCached = 0;
 		if(children != null) {
 			for(File file : children) {
-				try {
-					tracks.add(new Track(file));
-				} catch(IOException e) {
-					LOGGER.error("Error on track {}", file.getName());
+				boolean wasCached = false;
+				for(Track cached : cache) {
+					if(cached.getFile().getName().equals(file.getName())) {
+						if(file.lastModified() != cached.getLastModified()) {
+							break;
+						}
+						totalCached++;
+						wasCached = true;
+						tracks.add(cached);
+					}
+				}
+				if(!wasCached) {
+					LOGGER.warn("Track {} was not cached", file.getName());
+					try {
+						tracks.add(new Track(file));
+					} catch(IOException e) {
+						LOGGER.error("Error on track {}", file.getName());
+					}
 				}
 			}
 		}
+		LOGGER.info("{} tracks cached", totalCached);
+
+		ClientStorage.EVENT_SAVING.register(storage -> {
+			storage.trackCache = tracks;
+		});
 
 		Filter.EVENT_OPTION_CHANGED_STATE.register(evt -> {
 			collectReloads(() -> {

@@ -17,12 +17,19 @@
 
 package dev.blackilykat.pmp.client.gui;
 
+import dev.blackilykat.pmp.client.Main;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import javax.swing.JFrame;
 import javax.swing.SpringLayout;
 import java.awt.Container;
 import java.awt.Dimension;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 
 public class MainWindow extends JFrame {
+	public final static Logger LOGGER = LogManager.getLogger(MainWindow.class);
 	private static final Dimension MIN_SIZE = new Dimension(500, 500);
 
 	public MainWindow() {
@@ -71,7 +78,13 @@ public class MainWindow extends JFrame {
 		System.setProperty("awt.useSystemAAFontSettings", "lcd");
 		MainWindow mainWindow = new MainWindow();
 
-		mainWindow.setDefaultCloseOperation(EXIT_ON_CLOSE);
+		mainWindow.addWindowListener(new WindowAdapter() {
+			@Override
+			public void windowClosing(WindowEvent e) {
+				Main.shutdown();
+			}
+		});
+
 		mainWindow.setVisible(true);
 	}
 }

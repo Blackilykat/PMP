@@ -27,6 +27,10 @@ dependencies {
     implementation 'com.github.drogatkin:JustFLAC:85f0934'
 
     implementation 'dev.blackilykat:JPASimple:1.0'
+
+    implementation 'com.fasterxml.jackson.core:jackson-core:2.20.0'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.20.0'
+    implementation 'com.fasterxml.jackson.module:jackson-module-parameter-names:2.20.0'
 }
 
 jar {
@@ -38,4 +42,12 @@ jar {
     }
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     dependsOn('dependencies')
+}
+
+gradle.projectsEvaluated {
+    tasks.withType(JavaCompile).tap {
+        configureEach {
+            options.compilerArgs << "-parameters"
+        }
+    }
 }

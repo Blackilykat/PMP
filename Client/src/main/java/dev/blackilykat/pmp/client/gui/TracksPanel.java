@@ -82,37 +82,40 @@ public class TracksPanel extends JPanel {
 		addHeader(3, "Artist", "artist", 600, false);
 		addHeader(4, "Duration", "duration", 100, true);
 
+		updateTracks(Library.getSelectedTracks());
 		Library.EVENT_SELECTED_TRACKS_UPDATED.register(event -> {
-			List<Track> old = event.oldSelection();
 			List<Track> tracks = event.newSelection();
-			SwingUtilities.invokeLater(() -> {
-				contentPanel.removeAll();
-				for(Track track : tracks) {
-					String tracknumber = "";
-					StringBuilder artists = new StringBuilder();
-					String duration = ((int) track.getDurationSeconds() / 60) + ":" + String.format("%02d",
-							(int) track.getDurationSeconds() % 60);
+			updateTracks(tracks);
+		});
+	}
 
-					for(Pair<String, String> metadatum : track.metadata) {
-						if(metadatum.key.equalsIgnoreCase("tracknumber")) {
-							tracknumber = metadatum.value;
-						}
+	private void updateTracks(List<Track> tracks) {
+		SwingUtilities.invokeLater(() -> {
+			contentPanel.removeAll();
+			for(Track track : tracks) {
+				String tracknumber = "";
+				StringBuilder artists = new StringBuilder();
+				String duration = ((int) track.getDurationSeconds() / 60) + ":" + String.format("%02d",
+						(int) track.getDurationSeconds() % 60);
 
-						if(metadatum.key.equalsIgnoreCase("artist")) {
-							if(artists.isEmpty()) {
-								artists.append(metadatum.value);
-							} else {
-								artists.append(", ").append(metadatum.value);
-							}
-						}
+				for(Pair<String, String> metadatum : track.metadata) {
+					if(metadatum.key.equalsIgnoreCase("tracknumber")) {
+						tracknumber = metadatum.value;
 					}
 
-					contentPanel.add(
-							new TrackPanel(track, tracknumber, track.getTitle(), artists.toString(), duration));
+					if(metadatum.key.equalsIgnoreCase("artist")) {
+						if(artists.isEmpty()) {
+							artists.append(metadatum.value);
+						} else {
+							artists.append(", ").append(metadatum.value);
+						}
+					}
 				}
-				contentPanel.revalidate();
-				contentPanel.repaint();
-			});
+
+				contentPanel.add(new TrackPanel(track, tracknumber, track.getTitle(), artists.toString(), duration));
+			}
+			contentPanel.revalidate();
+			contentPanel.repaint();
 		});
 	}
 

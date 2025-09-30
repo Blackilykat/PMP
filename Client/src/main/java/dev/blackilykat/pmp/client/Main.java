@@ -18,19 +18,49 @@
 package dev.blackilykat.pmp.client;
 
 import dev.blackilykat.pmp.client.gui.MainWindow;
+import dev.blackilykat.pmp.event.EventSource;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-public class Main {
-	public final static Logger LOGGER = LogManager.getLogger(Main.class);
+import java.io.IOException;
 
-	public static void main(String[] args) {
+public class Main {
+	public static final Logger LOGGER = LogManager.getLogger(Main.class);
+	public static final EventSource<Void> EVENT_SHUTDOWN = new EventSource<>();
+
+	private static ScopedValue<Boolean> SHUTTING_DOWN = ScopedValue.newInstance();
+
+	static void main(String[] args) {
 		logDebugSystemInfo();
 		LOGGER.info("Starting client");
+
+		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+			shutdown();
+		}));
+
+		try {
+			ClientStorage.load();
+		} catch(IOException e) {
+			LOGGER.fatal("Failed to load storage, exiting", e);
+			System.exit(1);
+		}
+
 		new Thread(() -> {
 			Library.maybeInit();
 		}).start();
 		MainWindow.main(args);
+	}
+
+	public static void shutdown() {
+		if(SHUTTING_DOWN.orElse(false)) {
+			return;
+		}
+
+		ScopedValue.where(SHUTTING_DOWN, true).run(() -> {
+			EVENT_SHUTDOWN.call(null);
+
+			System.exit(0);
+		});
 	}
 
 	private static void logDebugSystemInfo() {

@@ -17,6 +17,8 @@
 
 package dev.blackilykat.pmp.client;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import dev.blackilykat.pmp.Filter;
 import dev.blackilykat.pmp.FilterOption;
 import dev.blackilykat.pmp.util.Pair;
@@ -45,15 +47,14 @@ public class Track {
 	private static final Logger LOGGER = LogManager.getLogger(Track.class);
 	private static final byte[] checksumBuffer = new byte[1048576];
 	public List<Pair<String, String>> metadata;
-	private StreamInfo streamInfo;
+	private PlaybackInfo playbackInfo;
 	private File file;
 	private long lastModified;
 	private long checksum;
 	private double durationSeconds;
 
 	/**
-	 * Creates a track based on a file. Reads the entirety of the file to derive its checksum and metadata. If that's
-	 * known data, use {@link #Track(File, List, long, long)}}.
+	 * Creates a track based on a file. Reads the entirety of the file to derive its checksum and metadata.
 	 *
 	 * @param file the track's file
 	 *
@@ -91,7 +92,7 @@ public class Track {
 		if(commentsField != null) {
 			for(Metadata metadatum : metadata) {
 				if(metadatum instanceof StreamInfo streamInfo) {
-					this.streamInfo = streamInfo;
+					this.playbackInfo = new PlaybackInfo(streamInfo);
 					durationSeconds = streamInfo.getTotalSamples() / (double) streamInfo.getSampleRate();
 					continue;
 				}
@@ -128,18 +129,8 @@ public class Track {
 		checksum = sum.getValue();
 	}
 
-	public Track(File file, List<Pair<String, String>> metadata, long lastModified, long checksum) {
-		if(!file.exists()) {
-			throw new IllegalArgumentException("Track doesn't exist");
-		}
-		if(file.isDirectory()) {
-			throw new IllegalArgumentException("Track is a directory");
-		}
-
-		this.file = file;
-		this.metadata = metadata;
-		this.lastModified = lastModified;
-		this.checksum = checksum;
+	@JsonCreator
+	private Track() {
 	}
 
 	public File getFile() {
@@ -154,6 +145,7 @@ public class Track {
 		return lastModified;
 	}
 
+	@JsonIgnore
 	public String getTitle() {
 		for(Pair<String, String> metadatum : metadata) {
 			// assuming there is only one title
@@ -169,15 +161,16 @@ public class Track {
 		return durationSeconds;
 	}
 
-	public StreamInfo getStreamInfo() {
-		return streamInfo;
+	public PlaybackInfo getPlaybackInfo() {
+		return playbackInfo;
 	}
 
+	@JsonIgnore
 	public AudioFormat getAudioFormat() {
-		return new AudioFormat(AudioFormat.Encoding.PCM_SIGNED, streamInfo.getSampleRate(),
-				streamInfo.getBitsPerSample(), streamInfo.getChannels(),
-				streamInfo.getBitsPerSample() * streamInfo.getChannels() / 8,
-				(float) streamInfo.getSampleRate() / streamInfo.getChannels(), false);
+		return new AudioFormat(AudioFormat.Encoding.PCM_SIGNED, playbackInfo.getSampleRate(),
+				playbackInfo.getBitsPerSample(), playbackInfo.getChannels(),
+				playbackInfo.getBitsPerSample() * playbackInfo.getChannels() / 8,
+				(float) playbackInfo.getSampleRate() / playbackInfo.getChannels(), false);
 	}
 
 	public boolean matches(FilterOption option) {
@@ -201,5 +194,73 @@ public class Track {
 
 
 		return !hasKey && value.equals(Filter.OPTION_UNKNOWN);
+	}
+
+	public static class PlaybackInfo {
+		private int minBlockSize;
+		private int maxBlockSize;
+		private int minFrameSize;
+		private int maxFrameSize;
+		private int sampleRate;
+		private int channels;
+		private int bitsPerSample;
+		private long totalSamples;
+
+		public PlaybackInfo(StreamInfo streamInfo) {
+			minBlockSize = streamInfo.getMinBlockSize();
+			maxBlockSize = streamInfo.getMaxBlockSize();
+			minFrameSize = streamInfo.getMinFrameSize();
+			maxFrameSize = streamInfo.getMaxFrameSize();
+			sampleRate = streamInfo.getSampleRate();
+			channels = streamInfo.getChannels();
+			bitsPerSample = streamInfo.getBitsPerSample();
+			totalSamples = streamInfo.getTotalSamples();
+		}
+
+		@JsonCreator
+		public PlaybackInfo(int minBlockSize, int maxBlockSize, int minFrameSize, int maxFrameSize, int sampleRate,
+				int channels, int bitsPerSample, long totalSamples) {
+			this.minBlockSize = minBlockSize;
+			this.maxBlockSize = maxBlockSize;
+			this.minFrameSize = minFrameSize;
+			this.maxFrameSize = maxFrameSize;
+			this.sampleRate = sampleRate;
+			this.channels = channels;
+			this.bitsPerSample = bitsPerSample;
+			this.totalSamples = totalSamples;
+		}
+
+
+		public int getMinBlockSize() {
+			return minBlockSize;
+		}
+
+		public int getMaxBlockSize() {
+			return maxBlockSize;
+		}
+
+		public int getMinFrameSize() {
+			return minFrameSize;
+		}
+
+		public int getMaxFrameSize() {
+			return maxFrameSize;
+		}
+
+		public int getSampleRate() {
+			return sampleRate;
+		}
+
+		public int getChannels() {
+			return channels;
+		}
+
+		public int getBitsPerSample() {
+			return bitsPerSample;
+		}
+
+		public long getTotalSamples() {
+			return totalSamples;
+		}
 	}
 }
