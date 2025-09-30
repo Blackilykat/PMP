@@ -28,14 +28,14 @@ public class Main {
 	public static final Logger LOGGER = LogManager.getLogger(Main.class);
 	public static final EventSource<Void> EVENT_SHUTDOWN = new EventSource<>();
 
-	private static ScopedValue<Boolean> SHUTTING_DOWN = ScopedValue.newInstance();
+	private static boolean shuttingDown = false;
 
 	static void main(String[] args) {
 		logDebugSystemInfo();
 		LOGGER.info("Starting client");
 
 		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-			shutdown();
+			shutdown(false);
 		}));
 
 		try {
@@ -51,16 +51,19 @@ public class Main {
 		MainWindow.main(args);
 	}
 
-	public static void shutdown() {
-		if(SHUTTING_DOWN.orElse(false)) {
+	public static void shutdown(boolean exit) {
+		if(shuttingDown) {
 			return;
 		}
+		shuttingDown = true;
 
-		ScopedValue.where(SHUTTING_DOWN, true).run(() -> {
-			EVENT_SHUTDOWN.call(null);
+		EVENT_SHUTDOWN.call(null);
 
+		LOGGER.info("Shutting down");
+
+		if(exit) {
 			System.exit(0);
-		});
+		}
 	}
 
 	private static void logDebugSystemInfo() {
