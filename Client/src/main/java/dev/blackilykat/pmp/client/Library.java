@@ -185,7 +185,6 @@ public class Library {
 		}
 
 		List<Track> cache = ClientStorage.getInstance().trackCache;
-		LOGGER.debug("Cache: {}", cache);
 
 		File[] children = library.listFiles();
 		int totalCached = 0;
