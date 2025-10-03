@@ -32,6 +32,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Library {
 	public static final RetroactiveEventSource<List<Track>> EVENT_LOADED = new RetroactiveEventSource<>();
@@ -42,9 +43,9 @@ public class Library {
 	private static final ScopedValue<Boolean> NO_RELOAD_SELECTION = ScopedValue.newInstance();
 
 	private static final Logger LOGGER = LogManager.getLogger(Library.class);
+	private static final AtomicBoolean INITIALIZED = new AtomicBoolean(false);
 
 	private static File library = null;
-	private static boolean initialized = false;
 	private static List<Track> tracks = new LinkedList<>();
 	private static List<Track> selectedTracks = new LinkedList<>();
 	private static List<Filter> filters = new LinkedList<>();
@@ -170,130 +171,132 @@ public class Library {
 	}
 
 	public static void maybeInit() {
-		if(initialized) {
-			return;
-		}
-		LOGGER.info("Initializing library");
+		synchronized(INITIALIZED) {
+			if(INITIALIZED.get()) {
+				return;
+			}
+			LOGGER.info("Initializing library");
 
-		library = new File("library");
-		if(!library.exists()) {
-			library.mkdirs();
-		}
-		if(!library.isDirectory()) {
-			LOGGER.error("Library is a file");
-			throw new IllegalStateException("Library is a file");
-		}
+			library = new File("library");
+			if(!library.exists()) {
+				library.mkdirs();
+			}
+			if(!library.isDirectory()) {
+				LOGGER.error("Library is a file");
+				throw new IllegalStateException("Library is a file");
+			}
 
-		List<Track> cache = ClientStorage.getInstance().trackCache;
+			List<Track> cache = ClientStorage.getInstance().getTrackCache();
 
-		File[] children = library.listFiles();
-		int totalCached = 0;
-		if(children != null) {
-			for(File file : children) {
-				boolean wasCached = false;
-				for(Track cached : cache) {
-					if(cached.getFile().getName().equals(file.getName())) {
-						if(file.lastModified() != cached.getLastModified()) {
-							break;
+			File[] children = library.listFiles();
+			int totalCached = 0;
+			if(children != null) {
+				for(File file : children) {
+					boolean wasCached = false;
+					for(Track cached : cache) {
+						if(cached.getFile().getName().equals(file.getName())) {
+							if(file.lastModified() != cached.getLastModified()) {
+								break;
+							}
+							totalCached++;
+							wasCached = true;
+							tracks.add(cached);
 						}
-						totalCached++;
-						wasCached = true;
-						tracks.add(cached);
 					}
-				}
-				if(!wasCached) {
-					LOGGER.warn("Track {} was not cached", file.getName());
-					try {
-						tracks.add(new Track(file));
-					} catch(IOException e) {
-						LOGGER.error("Error on track {}", file.getName());
+					if(!wasCached) {
+						LOGGER.warn("Track {} was not cached", file.getName());
+						try {
+							tracks.add(new Track(file));
+						} catch(IOException e) {
+							LOGGER.error("Error on track {}", file.getName());
+						}
 					}
 				}
 			}
-		}
-		LOGGER.info("{} tracks cached", totalCached);
+			LOGGER.info("{} tracks cached", totalCached);
 
-		ClientStorage.EVENT_SAVING.register(storage -> {
-			storage.trackCache = tracks;
-		});
+			ClientStorage.EVENT_SAVING.register(storage -> {
+				storage.setTrackCache(tracks);
+			});
 
-		Filter.EVENT_OPTION_CHANGED_STATE.register(evt -> {
-			collectReloads(() -> {
-				Filter filter = evt.filter();
-				FilterOption option = evt.option();
-				FilterOption.State oldState = evt.oldState();
-				FilterOption.State state = evt.newState();
+			Filter.EVENT_OPTION_CHANGED_STATE.register(evt -> {
+				collectReloads(() -> {
+					Filter filter = evt.filter();
+					FilterOption option = evt.option();
+					FilterOption.State oldState = evt.oldState();
+					FilterOption.State state = evt.newState();
 
-				if(filter != null) {
-					if(option.value.equals(Filter.OPTION_EVERYTHING)) {
-						if(state == FilterOption.State.POSITIVE) {
-							for(FilterOption otherOption : filter.getOptions()) {
-								if(otherOption != option && otherOption.getState() == FilterOption.State.POSITIVE) {
-									otherOption.setState(FilterOption.State.NONE);
+					if(filter != null) {
+						if(option.value.equals(Filter.OPTION_EVERYTHING)) {
+							if(state == FilterOption.State.POSITIVE) {
+								for(FilterOption otherOption : filter.getOptions()) {
+									if(otherOption != option && otherOption.getState() == FilterOption.State.POSITIVE) {
+										otherOption.setState(FilterOption.State.NONE);
+									}
 								}
-							}
-						} else if(state == FilterOption.State.NONE) {
-							boolean otherPositive = false;
+							} else if(state == FilterOption.State.NONE) {
+								boolean otherPositive = false;
 
-							for(FilterOption otherOption : filter.getOptions()) {
-								if(otherOption != option && otherOption.getState() == FilterOption.State.POSITIVE) {
-									otherPositive = true;
+								for(FilterOption otherOption : filter.getOptions()) {
+									if(otherOption != option && otherOption.getState() == FilterOption.State.POSITIVE) {
+										otherPositive = true;
+										break;
+									}
+								}
+
+								if(!otherPositive) {
+									option.setState(FilterOption.State.POSITIVE);
+								}
+							} else if(state == FilterOption.State.NEGATIVE) {
+								option.setState(oldState);
+							}
+						} else {
+							if(state == FilterOption.State.POSITIVE) {
+								for(FilterOption otherOption : filter.getOptions()) {
+									if(!otherOption.value.equals(Filter.OPTION_EVERYTHING)) {
+										continue;
+									}
+
+									if(option.getState() == FilterOption.State.POSITIVE) {
+										otherOption.setState(FilterOption.State.NONE);
+									}
 									break;
 								}
-							}
+							} else if(state == FilterOption.State.NONE) {
+								boolean anyPositive = false;
+								FilterOption everything = null;
+								for(FilterOption otherOption : filter.getOptions()) {
+									if(otherOption.value.equals(Filter.OPTION_EVERYTHING)) {
+										everything = otherOption;
+									}
 
-							if(!otherPositive) {
-								option.setState(FilterOption.State.POSITIVE);
-							}
-						} else if(state == FilterOption.State.NEGATIVE) {
-							option.setState(oldState);
-						}
-					} else {
-						if(state == FilterOption.State.POSITIVE) {
-							for(FilterOption otherOption : filter.getOptions()) {
-								if(!otherOption.value.equals(Filter.OPTION_EVERYTHING)) {
-									continue;
+									if(otherOption.getState() == FilterOption.State.POSITIVE) {
+										anyPositive = true;
+										break;
+									}
 								}
 
-								if(option.getState() == FilterOption.State.POSITIVE) {
-									otherOption.setState(FilterOption.State.NONE);
-								}
-								break;
-							}
-						} else if(state == FilterOption.State.NONE) {
-							boolean anyPositive = false;
-							FilterOption everything = null;
-							for(FilterOption otherOption : filter.getOptions()) {
-								if(otherOption.value.equals(Filter.OPTION_EVERYTHING)) {
-									everything = otherOption;
-								}
+								if(!anyPositive) {
+									assert everything != null;
 
-								if(otherOption.getState() == FilterOption.State.POSITIVE) {
-									anyPositive = true;
-									break;
+									everything.setState(FilterOption.State.POSITIVE);
 								}
-							}
-
-							if(!anyPositive) {
-								assert everything != null;
-
-								everything.setState(FilterOption.State.POSITIVE);
 							}
 						}
 					}
-				}
 
-				reloadSelection();
+					reloadSelection();
+				});
 			});
-		});
 
-		addFilter(new Filter("artist"));
-		addFilter(new Filter("album"));
+			addFilter(new Filter("artist"));
+			addFilter(new Filter("album"));
 
-		EVENT_LOADED.call(tracks);
+			EVENT_LOADED.call(tracks);
 
-		initialized = true;
-		LOGGER.info("Initialized library");
+			INITIALIZED.set(true);
+			LOGGER.info("Initialized library");
+		}
 	}
 
 	/**
