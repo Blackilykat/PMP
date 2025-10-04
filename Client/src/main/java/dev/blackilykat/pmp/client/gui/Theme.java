@@ -42,6 +42,8 @@ public class Theme {
 
 	public Color playbarLoading = new Color(0x707070);
 
+	public Color menuBarBackground = new Color(0x2f2f2f);
+
 	public Color scrollBarColor = new Color(0x66FFFFFF, true);
 
 	public Color hover = new Color(0x0CFFFFFF, true);

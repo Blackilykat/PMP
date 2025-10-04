@@ -21,10 +21,14 @@ import dev.blackilykat.pmp.client.Main;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import javax.swing.BorderFactory;
 import javax.swing.JFrame;
 import javax.swing.SpringLayout;
+import javax.swing.UIDefaults;
+import javax.swing.UIManager;
 import java.awt.Container;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 
@@ -67,6 +71,8 @@ public class MainWindow extends JFrame {
 
 		// prevent white flash on startup
 		setBackground(Theme.DEFAULT.tracklistBackground);
+
+		setJMenuBar(new PMPMenuBar());
 	}
 
 	@Override
@@ -76,6 +82,9 @@ public class MainWindow extends JFrame {
 
 	public static void main(String[] args) {
 		System.setProperty("awt.useSystemAAFontSettings", "lcd");
+
+		setLookAndFeelDefaults();
+
 		MainWindow mainWindow = new MainWindow();
 
 		mainWindow.addWindowListener(new WindowAdapter() {
@@ -85,6 +94,59 @@ public class MainWindow extends JFrame {
 			}
 		});
 
+		LOGGER.info("Look and feel defaults: {}", UIManager.getLookAndFeelDefaults());
+
 		mainWindow.setVisible(true);
+	}
+
+
+	public static void setLookAndFeelDefaults() {
+		UIDefaults defaults = UIManager.getLookAndFeelDefaults();
+		defaults.put("MenuBar.background", Theme.selected.menuBarBackground);
+		defaults.put("MenuBar.foreground", Theme.selected.text);
+		defaults.put("MenuBar.border", BorderFactory.createLineBorder(Theme.selected.menuBarBackground, 4));
+
+		defaults.put("MenuItem.background", Theme.selected.menuBarBackground);
+		defaults.put("MenuItem.foreground", Theme.selected.text);
+		defaults.put("MenuItem.selectionBackground", Theme.selected.getHovered(Theme.selected.menuBarBackground));
+		defaults.put("MenuItem.selectionForeground", Theme.selected.text);
+		defaults.put("MenuItem.font", new Font("Source Sans Pro", Font.PLAIN, 16));
+		defaults.put("MenuItem.border", BorderFactory.createEmptyBorder());
+
+		defaults.put("Menu.background", Theme.selected.menuBarBackground);
+		defaults.put("Menu.foreground", Theme.selected.text);
+		defaults.put("Menu.selectionBackground", Theme.selected.getClicked(Theme.selected.menuBarBackground));
+		defaults.put("Menu.selectionForeground", Theme.selected.text);
+		defaults.put("Menu.border", BorderFactory.createEmptyBorder());
+		defaults.put("Menu.font", new Font("Source Sans Pro", Font.PLAIN, 16));
+
+		defaults.put("PopupMenu.background", Theme.selected.menuBarBackground);
+		defaults.put("PopupMenu.border", BorderFactory.createEmptyBorder());
+
+		defaults.put("Panel.background", Theme.selected.panelBackground);
+
+		defaults.put("Label.font", new Font("Source Sans Pro", Font.PLAIN, 16));
+
+		defaults.put("Button.background", Theme.selected.buttonBackground);
+		defaults.put("Button.foreground", Theme.selected.text);
+		defaults.put("Button.select", Theme.selected.getClicked(Theme.selected.buttonBackground));
+		defaults.put("Button.focus", Theme.selected.panelBackground);
+		defaults.put("Button.border", BorderFactory.createEmptyBorder(4, 8, 4, 8));
+		defaults.put("Button.font", new Font("Source Sans Pro", Font.PLAIN, 16));
+
+		defaults.put("TextField.background", Theme.selected.buttonBackground);
+		defaults.put("TextField.foreground", Theme.selected.text);
+		defaults.put("TextField.selectionBackground", Theme.selected.text);
+		defaults.put("TextField.selectionForeground", Theme.selected.buttonBackground);
+		defaults.put("TextField.caretForeground", Theme.selected.text);
+		defaults.put("TextField.border", BorderFactory.createEmptyBorder(4, 4, 4, 4));
+		defaults.put("TextField.font", new Font("Source Sans Pro", Font.PLAIN, 16));
+
+		defaults.put("OptionPane.messageAreaBackground", Theme.selected.panelBackground);
+		defaults.put("OptionPane.buttonAreaBackground", Theme.selected.panelBackground);
+		defaults.put("OptionPane.border", BorderFactory.createEmptyBorder(10, 15, 10, 15));
+		defaults.put("OptionPane.messageForeground", Theme.selected.text);
+		defaults.put("OptionPane.foreground", Theme.selected.text);
+		defaults.put("OptionPane.background", Theme.selected.panelBackground);
 	}
 }
