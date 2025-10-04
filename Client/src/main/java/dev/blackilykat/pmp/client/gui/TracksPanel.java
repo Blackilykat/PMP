@@ -87,6 +87,17 @@ public class TracksPanel extends JPanel {
 			List<Track> tracks = event.newSelection();
 			updateTracks(tracks);
 		});
+
+		Player.EVENT_TRACK_CHANGE.register(event -> {
+			Track track = event.track();
+
+			for(Component component : contentPanel.getComponents()) {
+				if(!(component instanceof TrackPanel trackPanel)) {
+					continue;
+				}
+				trackPanel.setPlaying(trackPanel.track == track);
+			}
+		});
 	}
 
 	private void updateTracks(List<Track> tracks) {
@@ -112,7 +123,8 @@ public class TracksPanel extends JPanel {
 					}
 				}
 
-				contentPanel.add(new TrackPanel(track, tracknumber, track.getTitle(), artists.toString(), duration));
+				contentPanel.add(new TrackPanel(track, Player.getTrack() == track, tracknumber, track.getTitle(),
+						artists.toString(), duration));
 			}
 			contentPanel.revalidate();
 			contentPanel.repaint();
@@ -140,11 +152,16 @@ public class TracksPanel extends JPanel {
 	}
 
 	private class TrackPanel extends JPanel {
-		private boolean playing = false;
+		public final Track track;
+
+		private boolean playing;
 		private boolean clicked = false;
 		private Instant lastClick = Instant.EPOCH;
 
-		public TrackPanel(Track track, String... strings) {
+		public TrackPanel(Track track, boolean playing, String... strings) {
+			this.track = track;
+			this.playing = playing;
+			super();
 			setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
 			if(strings.length != headers.size()) {
 				throw new IllegalArgumentException("Expected " + headers.size() + " values");
