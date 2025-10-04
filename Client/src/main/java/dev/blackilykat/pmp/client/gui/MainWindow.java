@@ -94,8 +94,6 @@ public class MainWindow extends JFrame {
 			}
 		});
 
-		LOGGER.info("Look and feel defaults: {}", UIManager.getLookAndFeelDefaults());
-
 		mainWindow.setVisible(true);
 	}
 
