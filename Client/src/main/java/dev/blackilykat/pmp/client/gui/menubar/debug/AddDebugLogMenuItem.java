@@ -15,29 +15,26 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package dev.blackilykat.pmp.client.gui;
+package dev.blackilykat.pmp.client.gui.menubar.debug;
 
-import dev.blackilykat.pmp.client.gui.menubar.debug.AddDebugLogMenuItem;
-import dev.blackilykat.pmp.client.gui.menubar.debug.PlaybackDebugWindowMenuItem;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import javax.swing.JMenu;
-import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
 
-public class PMPMenuBar extends JMenuBar {
-	private static final Logger LOGGER = LogManager.getLogger(PMPMenuBar.class);
+public class AddDebugLogMenuItem extends JMenuItem {
+	private static final Logger LOGGER = LogManager.getLogger(AddDebugLogMenuItem.class);
 
-	public PMPMenuBar() {
-		add(menu("Debug", new AddDebugLogMenuItem(), new PlaybackDebugWindowMenuItem()));
-	}
+	public AddDebugLogMenuItem() {
+		super("Add debug log...");
 
-	private static JMenu menu(String text, JMenuItem... items) {
-		JMenu menu = new JMenu(text);
-		for(JMenuItem item : items) {
-			menu.add(item);
-		}
-		return menu;
+		addActionListener(e -> {
+			String res = JOptionPane.showInputDialog(null, "Enter the log...", "Insert debug log",
+					JOptionPane.PLAIN_MESSAGE);
+			if(res != null) {
+				LOGGER.warn("User-entered log: {}", res);
+			}
+		});
 	}
 }

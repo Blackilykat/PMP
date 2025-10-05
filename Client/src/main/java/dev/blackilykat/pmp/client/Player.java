@@ -64,6 +64,7 @@ public class Player {
 	public static final EventSource<TrackChangeEvent> EVENT_TRACK_CHANGE = new EventSource<>();
 	public static final EventSource<Long> EVENT_PROGRESS = new EventSource<>();
 	public static final EventSource<CurrentTrackLoadEvent> EVENT_CURRENT_TRACK_LOAD = new EventSource<>();
+	public static final EventSource<PlaybackDebugInfoEvent> EVENT_PLAYBACK_DEBUG_INFO = new EventSource<>();
 
 	private static final Logger LOGGER = LogManager.getLogger(Player.class);
 
@@ -446,6 +447,10 @@ public class Player {
 								minPosDiff = 0;
 							}
 
+							EVENT_PLAYBACK_DEBUG_INFO.call(
+									new PlaybackDebugInfoEvent(paStream != null, framePosition, latency, maxOffset,
+											bottomExpectedPos, topExpectedPos, PLAYBACK_BUFFER_SIZE, pcm.length));
+
 							if(minPosDiff > maxOffset) {
 								LOGGER.warn("Correcting frame position: was {}, is {}, {}ms offset", framePosition,
 										topExpectedPos, minPosDiff / PLAYBACK_AUDIO_FORMAT.getFrameRate() * 1000);
@@ -504,4 +509,7 @@ public class Player {
 	public record TrackChangeEvent(Track track, CompletableFuture<byte[]> picture) {}
 
 	public record CurrentTrackLoadEvent(Integer loaded, Integer total) {}
+
+	public record PlaybackDebugInfoEvent(boolean pulse, int framePosition, int latency, int maxOffset,
+			int bottomExpectedPos, int topExpectedPos, int bufferSize, int trackLength) {}
 }
