@@ -78,17 +78,17 @@ public class Player {
 	 */
 	private static final int PLAYBACK_BUFFER_SIZE = 8192;
 	/**
+	 * Cooldown multiplier when writing to audio lines. Cooldown is calculated using buffer size and audio format. This
+	 * multiplier is then applied to leave some wiggle room and allow the audio backend to build a small buffer.
+	 */
+	private static final double PLAYBACK_WRITE_COOLDOWN_MULTIPLIER = 0.9;
+	/**
 	 * Buffer size when loading track from disk. Too low values can increase CPU usage. Too high values can make it
 	 * take
 	 * longer to start playing.
 	 */
 	private static final int LOADING_BUFFER_SIZE =
 			(int) PLAYBACK_AUDIO_FORMAT.getSampleRate() * PLAYBACK_AUDIO_FORMAT.getChannels();
-	/**
-	 * By how much playback can be behind where it should be in ms. Too low values can make audio choppy. Too high
-	 * values can make the position shown on the playbar and the actual audio position inconsistent.
-	 */
-	private static final int MAX_PLAYBACK_OFFSET_MS = 100;
 
 	private static final OverridingSingleThreadExecutor DECODING_EXECUTOR = new OverridingSingleThreadExecutor();
 	private static final OverridingSingleThreadExecutor LOADING_EXECUTOR = new OverridingSingleThreadExecutor();
@@ -115,6 +115,8 @@ public class Player {
 	 * @see #seek(long)
 	 */
 	private static long playbackPosition = 0;
+	private static PASimple paStream = null;
+	private static SourceDataLine line = null;
 
 
 	public static void play() {
@@ -176,6 +178,15 @@ public class Player {
 		Consumer<Integer> onPcmLoad = bytes -> {
 			if(bytes >= PLAYBACK_AUDIO_FORMAT.getSampleRate() * PLAYBACK_AUDIO_FORMAT.getChannels()
 					&& firstLoad.getAndSet(false)) {
+
+				if(paStream != null) {
+					try {
+						paStream.flush();
+						paStream.drain();
+					} catch(PulseAudioException e) {
+						LOGGER.error("Failed to drain paStream", e);
+					}
+				}
 				play();
 			}
 			EVENT_CURRENT_TRACK_LOAD.call(new CurrentTrackLoadEvent(bytes, pcm.length));
@@ -389,10 +400,6 @@ public class Player {
 		audioThread = new Thread("Audio") {
 			@Override
 			public void run() {
-
-				SourceDataLine line = null;
-				PASimple paStream = null;
-
 				try {
 					paStream = new PASimple(null, "PMP", false, null, "Playback",
 							new SampleSpec(SampleFormat.S16LE, (int) PLAYBACK_AUDIO_FORMAT.getSampleRate(),
@@ -416,6 +423,15 @@ public class Player {
 
 				int framePosition;
 
+				double msPerWrite =
+						1000 / ((PLAYBACK_AUDIO_FORMAT.getFrameRate() * PLAYBACK_AUDIO_FORMAT.getChannels() * (
+								PLAYBACK_AUDIO_FORMAT.getSampleSizeInBits() / 8.0)) / PLAYBACK_BUFFER_SIZE);
+				LOGGER.debug("Ms per write: {}", msPerWrite);
+
+				long writeCooldown = (long) (msPerWrite * PLAYBACK_WRITE_COOLDOWN_MULTIPLIER);
+
+				long lastWrite = 0;
+
 				try {
 					//noinspection InfiniteLoopStatement
 					while(true) {
@@ -425,36 +441,39 @@ public class Player {
 							}
 						}
 
+						if(shouldSeek) {
+							paStream.drain();
+						}
+
 						framePosition = msToPlaybackBytes(getPosition());
 
+						double totalOffset = 0;
+						lastWrite = System.nanoTime();
 						while(!paused.get() && !shouldSeek) {
+							long now = System.nanoTime();
+							long lastWriteDiff = now - lastWrite;
+							totalOffset += msPerWrite - (lastWriteDiff / 1_000_000.0);
+							lastWrite = now;
+
 							int latency = 0;
 							if(paStream != null) {
 								latency = msToPlaybackBytes(paStream.getLatency() / 1_000);
 							}
 
 
-							int maxOffset = (int) (MAX_PLAYBACK_OFFSET_MS * PLAYBACK_AUDIO_FORMAT.getFrameRate()
-									/ 1000);
+							int expectedPos = msToPlaybackBytes(getPosition());
 
-							int bottomExpectedPos = msToPlaybackBytes(getPosition());
-
-							int topExpectedPos = bottomExpectedPos + PLAYBACK_BUFFER_SIZE + latency;
-
-							int minPosDiff = Math.min(Math.abs(framePosition - bottomExpectedPos),
-									Math.abs(framePosition - topExpectedPos));
-							if(framePosition > bottomExpectedPos && framePosition < topExpectedPos) {
-								minPosDiff = 0;
-							}
 
 							EVENT_PLAYBACK_DEBUG_INFO.call(
-									new PlaybackDebugInfoEvent(paStream != null, framePosition, latency, maxOffset,
-											bottomExpectedPos, topExpectedPos, PLAYBACK_BUFFER_SIZE, pcm.length));
+									new PlaybackDebugInfoEvent(paStream != null, latency, framePosition, expectedPos,
+											pcm.length, PLAYBACK_BUFFER_SIZE, msPerWrite, totalOffset));
 
-							if(minPosDiff > maxOffset) {
+
+							if(totalOffset < 0) {
 								LOGGER.warn("Correcting frame position: was {}, is {}, {}ms offset", framePosition,
-										topExpectedPos, minPosDiff / PLAYBACK_AUDIO_FORMAT.getFrameRate() * 1000);
-								framePosition = topExpectedPos;
+										expectedPos, -totalOffset);
+								totalOffset = 0;
+								framePosition = expectedPos;
 							}
 
 							if(framePosition > pcm.length) {
@@ -510,6 +529,6 @@ public class Player {
 
 	public record CurrentTrackLoadEvent(Integer loaded, Integer total) {}
 
-	public record PlaybackDebugInfoEvent(boolean pulse, int framePosition, int latency, int maxOffset,
-			int bottomExpectedPos, int topExpectedPos, int bufferSize, int trackLength) {}
+	public record PlaybackDebugInfoEvent(boolean pulse, int latency, int framePosition, int expectedPos,
+			int trackLength, int bufferSize, double expectedWriteTime, double totalOffset) {}
 }

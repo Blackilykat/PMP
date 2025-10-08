@@ -21,8 +21,11 @@ import dev.blackilykat.pmp.client.Player;
 import dev.blackilykat.pmp.client.gui.Theme;
 import dev.blackilykat.pmp.client.gui.util.ThemedLabel;
 import dev.blackilykat.pmp.event.Listener;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import javax.swing.BoxLayout;
+import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JMenuItem;
 import javax.swing.JPanel;
@@ -35,13 +38,12 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 
 public class PlaybackDebugWindowMenuItem extends JMenuItem {
+	private static final Logger LOGGER = LogManager.getLogger(PlaybackDebugWindowMenuItem.class);
+
 	public PlaybackDebugWindowMenuItem() {
 		super("Open playback debug window");
 
 		addActionListener(e -> {
-			// boolean pulse, int framePosition, int latency, int maxOffset, int bottomExpectedPos, int
-			// topExpectedPos, int bufferSize, int trackLength
-
 			JFrame window = new JFrame("Playback debug");
 			Container content = window.getContentPane();
 			BoxLayout layout = new BoxLayout(content, BoxLayout.PAGE_AXIS);
@@ -55,37 +57,50 @@ public class PlaybackDebugWindowMenuItem extends JMenuItem {
 			ThemedLabel latency = new ThemedLabel("Latency: ?");
 			latency.setAlignmentX(0);
 			content.add(latency);
-			ThemedLabel maxOffset = new ThemedLabel("Max offset: ?");
-			maxOffset.setAlignmentX(0);
-			content.add(maxOffset);
-			ThemedLabel bottomExpectedPos = new ThemedLabel("Bottom expected pos: ?");
-			bottomExpectedPos.setAlignmentX(0);
-			content.add(bottomExpectedPos);
-			ThemedLabel topExpectedPos = new ThemedLabel("Top expected pos: ?");
-			topExpectedPos.setAlignmentX(0);
-			content.add(topExpectedPos);
+			ThemedLabel expectedPos = new ThemedLabel("Expected pos: ?");
+			expectedPos.setAlignmentX(0);
+			content.add(expectedPos);
 			ThemedLabel bufferSize = new ThemedLabel("Buffer size: ?");
 			bufferSize.setAlignmentX(0);
 			content.add(bufferSize);
 			ThemedLabel trackLength = new ThemedLabel("Track length: ?");
 			trackLength.setAlignmentX(0);
 			content.add(trackLength);
+			ThemedLabel expectedWriteTime = new ThemedLabel("Expected write time: ?");
+			expectedWriteTime.setAlignmentX(0);
+			content.add(expectedWriteTime);
+			ThemedLabel totalOffset = new ThemedLabel("Offset: ?");
+			totalOffset.setAlignmentX(0);
+			content.add(totalOffset);
 			PositionPanel positionPanel = new PositionPanel();
 			positionPanel.setAlignmentX(0);
 			content.add(positionPanel);
+
+			JButton printButton = new JButton("Print");
+			printButton.addActionListener(ae -> {
+				LOGGER.debug("Logging playback debug info");
+				LOGGER.debug(pulse.getText());
+				LOGGER.debug(framePosition.getText());
+				LOGGER.debug(latency.getText());
+				LOGGER.debug(expectedPos.getText());
+				LOGGER.debug(bufferSize.getText());
+				LOGGER.debug(trackLength.getText());
+				LOGGER.debug(expectedWriteTime.getText());
+				LOGGER.debug(totalOffset.getText());
+			});
+			content.add(printButton);
 
 			Listener<Player.PlaybackDebugInfoEvent> listener = event -> {
 				SwingUtilities.invokeLater(() -> {
 					pulse.setText("Pulse: " + event.pulse());
 					framePosition.setText("Frame position: " + event.framePosition());
 					latency.setText("Latency: " + event.latency());
-					maxOffset.setText("Max offset: " + event.maxOffset());
-					bottomExpectedPos.setText("Bottom expected pos: " + event.bottomExpectedPos());
-					topExpectedPos.setText("Top expected pos: " + event.topExpectedPos());
+					expectedPos.setText("Expected pos: " + event.expectedPos());
 					bufferSize.setText("Buffer size: " + event.bufferSize());
 					trackLength.setText("Track length: " + event.trackLength());
-					positionPanel.update(event.framePosition(), event.bottomExpectedPos(), event.topExpectedPos(),
-							event.maxOffset());
+					positionPanel.update(event.totalOffset());
+					expectedWriteTime.setText("Expected write time: " + event.expectedWriteTime() + "ms");
+					totalOffset.setText("Offset: " + event.totalOffset() + "ms");
 				});
 			};
 
@@ -103,48 +118,30 @@ public class PlaybackDebugWindowMenuItem extends JMenuItem {
 	}
 
 	private static class PositionPanel extends JPanel {
-		private int pos = 0;
-		private int bottom = 0;
-		private int top = 0;
-		private int maxOffset = 0;
+		private final static int MAX = 1000;
+		private double offset = 0;
 
 		public PositionPanel() {
 		}
 
-		public void update(int pos, int bottom, int top, int maxOffset) {
-			this.pos = pos;
-			this.bottom = bottom;
-			this.top = top;
-			this.maxOffset = maxOffset;
+		public void update(double offset) {
+			this.offset = offset;
 			repaint();
 		}
 
 		@Override
 		public void paint(Graphics g) {
-			int lowest = bottom - maxOffset;
-			int highest = top + maxOffset;
-			if(pos < lowest || pos > highest) {
+			if(offset < 0) {
 				g.setColor(Color.RED);
 			} else {
 				g.setColor(Theme.selected.buttonBackground);
 			}
 			g.fillRect(0, 0, getWidth(), getHeight());
 
-			highest -= lowest;
-			int pos = this.pos - lowest;
-			int bottom = this.bottom - lowest;
-			int top = this.top - lowest;
+			double offsetPercent = offset / MAX;
 
-			double posPercent = (double) pos / highest;
-			double bottomPercent = (double) bottom / highest;
-			double topPercent = (double) top / highest;
-
-			g.setColor(Color.RED);
-			g.fillRect((int) (getWidth() * bottomPercent), 0, 1, getHeight());
-			g.setColor(Color.GREEN);
-			g.fillRect((int) (getWidth() * topPercent), 0, 1, getHeight());
-			g.setColor(Color.BLUE);
-			g.fillRect((int) (getWidth() * posPercent), 0, 1, getHeight());
+			g.setColor(Theme.selected.text);
+			g.fillRect((int) (getWidth() * offsetPercent), 0, 1, getHeight());
 		}
 
 		@Override
