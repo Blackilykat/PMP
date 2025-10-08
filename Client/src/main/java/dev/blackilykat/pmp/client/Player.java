@@ -476,7 +476,7 @@ public class Player {
 								framePosition = expectedPos;
 							}
 
-							if(framePosition > pcm.length) {
+							if(framePosition >= pcm.length) {
 								pause();
 								break;
 							}
