@@ -61,6 +61,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class TracksPanel extends JPanel {
 	private static final Logger LOGGER = LogManager.getLogger(TracksPanel.class);
@@ -156,10 +157,17 @@ public class TracksPanel extends JPanel {
 			}
 			headerWidths.put(header.id, width);
 		}
+
 		HeaderPanel hp = new HeaderPanel(this, header);
 		if(Library.getSortingHeader() == hp.header) {
 			hp.setSortingOrder(Library.getSortingOrder());
 		}
+
+		header.eventLabelChanged.register(label -> {
+			hp.setLabel(label);
+			updateTracks();
+		});
+
 		headersPanel.add(hp);
 
 		headersPanel.revalidate();
@@ -209,104 +217,158 @@ public class TracksPanel extends JPanel {
 		return Theme.selected.tracklistBackground;
 	}
 
-	private static JMenuItem buildAddHeaderItem() {
-		JMenuItem item = new JMenuItem("Add header...");
+
+	private static JMenuItem buildEditHeaderItem(Header header) {
+		JMenuItem item = new JMenuItem("Edit " + header.getLabel() + "...");
 		item.addActionListener(e -> {
-			JPanel panel = new JPanel();
-			SpringLayout layout = new SpringLayout();
-			panel.setLayout(layout);
 
-			ThemedLabel keyLabel = new ThemedLabel("Key:");
-			JComboBox<String> keyField = new JComboBox<>(COMMON_METADATA_KEYS_LABELS.keySet().toArray(new String[0]));
-			keyField.setUI(new BasicComboBoxUI());
-			keyField.setEditable(true);
-			JCheckBox customLabelCheckbox = new JCheckBox("Apply custom label");
+			AtomicReference<String> key = new AtomicReference<>(header.getKey());
+			AtomicReference<String> label = new AtomicReference<>(header.getLabel());
 
-			ThemedLabel labelLabel = new ThemedLabel("Label:");
-
-			JTextField labelField = new JTextField() {
-				@Override
-				public Color getForeground() {
-					if(isEditable()) {
-						return super.getForeground();
-					} else {
-						return Theme.selected.disabledText;
-					}
-				}
-
-				@Override
-				public Color getBackground() {
-					if(isEditable()) {
-						return super.getBackground();
-					} else {
-						return Theme.selected.disabledButtonBackground;
-					}
-				}
-			};
-
-			updateAddHeaderItemUI(customLabelCheckbox, keyField, labelField);
-
-			customLabelCheckbox.addActionListener(evt -> {
-				updateAddHeaderItemUI(customLabelCheckbox, keyField, labelField);
-			});
-
-			((JTextComponent) keyField.getEditor().getEditorComponent()).getDocument()
-					.addDocumentListener(new DocumentListener() {
-						@Override
-						public void insertUpdate(DocumentEvent e) {
-							update();
-						}
-
-						@Override
-						public void removeUpdate(DocumentEvent e) {
-							update();
-						}
-
-						@Override
-						public void changedUpdate(DocumentEvent e) {
-							update();
-						}
-
-						private void update() {
-							updateAddHeaderItemUI(customLabelCheckbox, keyField, labelField);
-						}
-					});
-
-			layout.putConstraint(SpringLayout.WEST, keyLabel, 0, SpringLayout.WEST, panel);
-			layout.putConstraint(SpringLayout.NORTH, keyField, 0, SpringLayout.NORTH, panel);
-			layout.putConstraint(SpringLayout.WEST, keyField, 5, SpringLayout.EAST, keyLabel);
-			layout.putConstraint(SpringLayout.VERTICAL_CENTER, keyLabel, 0, SpringLayout.VERTICAL_CENTER, keyField);
-
-			layout.putConstraint(SpringLayout.NORTH, customLabelCheckbox, 50, SpringLayout.SOUTH, keyField);
-			layout.putConstraint(SpringLayout.WEST, customLabelCheckbox, 0, SpringLayout.WEST, keyLabel);
-
-			layout.putConstraint(SpringLayout.WEST, labelLabel, 0, SpringLayout.WEST, customLabelCheckbox);
-			layout.putConstraint(SpringLayout.NORTH, labelField, 0, SpringLayout.SOUTH, customLabelCheckbox);
-			layout.putConstraint(SpringLayout.WEST, labelField, 5, SpringLayout.EAST, labelLabel);
-			layout.putConstraint(SpringLayout.EAST, labelField, 200, SpringLayout.WEST, labelField);
-			layout.putConstraint(SpringLayout.VERTICAL_CENTER, labelLabel, 0, SpringLayout.VERTICAL_CENTER,
-					labelField);
-
-			panel.add(keyLabel);
-			panel.add(keyField);
-			panel.add(customLabelCheckbox);
-			panel.add(labelLabel);
-			panel.add(labelField);
-
-			panel.setPreferredSize(new Dimension(300, 230));
-			int chosen = JOptionPane.showOptionDialog(null, panel, "Add new header", JOptionPane.OK_CANCEL_OPTION,
-					JOptionPane.PLAIN_MESSAGE, null, null, null);
-
-			if(chosen == JOptionPane.CANCEL_OPTION || chosen == JOptionPane.CLOSED_OPTION) {
+			if(!promptEditHeaderValues("Edit a header", key, label)) {
 				return;
 			}
 
-			Header header = new Header(ClientStorage.getInstance().getAndIncrementCurrentHeaderId(),
-					labelField.getText(), ((JTextComponent) keyField.getEditor().getEditorComponent()).getText());
+			LOGGER.info("Edited header {}: label {} -> {}, key {} -> {}", header.id, header.getLabel(), label.get(),
+					header.getKey(), key.get());
+
+			header.setKey(key.get());
+			header.setLabel(label.get());
+		});
+		return item;
+	}
+
+	private static JMenuItem buildAddHeaderItem() {
+		JMenuItem item = new JMenuItem("Add header...");
+		item.addActionListener(e -> {
+
+			AtomicReference<String> key = new AtomicReference<>();
+			AtomicReference<String> label = new AtomicReference<>();
+
+			if(!promptEditHeaderValues("Add a new header", key, label)) {
+				return;
+			}
+
+			Header header = new Header(ClientStorage.getInstance().getAndIncrementCurrentHeaderId(), label.get(),
+					key.get());
+
+
+			LOGGER.info("Adding header {}: label {}, key {}", header.id, label.get(), key.get());
 
 			Library.addHeader(header);
 		});
 		return item;
+	}
+
+	/**
+	 * @return false if the user has cancelled the prompt (closed the window or pressed cancel)
+	 */
+	private static boolean promptEditHeaderValues(String title, AtomicReference<String> key,
+			AtomicReference<String> label) {
+		JPanel panel = new JPanel();
+		SpringLayout layout = new SpringLayout();
+		panel.setLayout(layout);
+
+		ThemedLabel keyLabel = new ThemedLabel("Key:");
+		JComboBox<String> keyField = new JComboBox<>(COMMON_METADATA_KEYS_LABELS.keySet().toArray(new String[0]));
+		keyField.setUI(new BasicComboBoxUI());
+		keyField.setEditable(true);
+		JCheckBox customLabelCheckbox = new JCheckBox("Apply custom label");
+
+		ThemedLabel labelLabel = new ThemedLabel("Label:");
+
+		JTextField labelField = new JTextField() {
+			@Override
+			public Color getForeground() {
+				if(isEditable()) {
+					return super.getForeground();
+				} else {
+					return Theme.selected.disabledText;
+				}
+			}
+
+			@Override
+			public Color getBackground() {
+				if(isEditable()) {
+					return super.getBackground();
+				} else {
+					return Theme.selected.disabledButtonBackground;
+				}
+			}
+		};
+
+		if(key.get() != null) {
+			keyField.setSelectedItem(key.get());
+		}
+
+		if(label.get() != null) {
+			labelField.setText(label.get());
+		}
+
+		if(key.get() != null && label.get() != null && !headerLabelFromKey(key.get()).equals(label.get())) {
+			customLabelCheckbox.setSelected(true);
+		}
+
+		updateAddHeaderItemUI(customLabelCheckbox, keyField, labelField);
+
+		customLabelCheckbox.addActionListener(evt -> {
+			updateAddHeaderItemUI(customLabelCheckbox, keyField, labelField);
+		});
+
+		((JTextComponent) keyField.getEditor().getEditorComponent()).getDocument()
+				.addDocumentListener(new DocumentListener() {
+					@Override
+					public void insertUpdate(DocumentEvent e) {
+						update();
+					}
+
+					@Override
+					public void removeUpdate(DocumentEvent e) {
+						update();
+					}
+
+					@Override
+					public void changedUpdate(DocumentEvent e) {
+						update();
+					}
+
+					private void update() {
+						updateAddHeaderItemUI(customLabelCheckbox, keyField, labelField);
+					}
+				});
+
+		layout.putConstraint(SpringLayout.WEST, keyLabel, 0, SpringLayout.WEST, panel);
+		layout.putConstraint(SpringLayout.NORTH, keyField, 0, SpringLayout.NORTH, panel);
+		layout.putConstraint(SpringLayout.WEST, keyField, 5, SpringLayout.EAST, keyLabel);
+		layout.putConstraint(SpringLayout.VERTICAL_CENTER, keyLabel, 0, SpringLayout.VERTICAL_CENTER, keyField);
+
+		layout.putConstraint(SpringLayout.NORTH, customLabelCheckbox, 50, SpringLayout.SOUTH, keyField);
+		layout.putConstraint(SpringLayout.WEST, customLabelCheckbox, 0, SpringLayout.WEST, keyLabel);
+
+		layout.putConstraint(SpringLayout.WEST, labelLabel, 0, SpringLayout.WEST, customLabelCheckbox);
+		layout.putConstraint(SpringLayout.NORTH, labelField, 0, SpringLayout.SOUTH, customLabelCheckbox);
+		layout.putConstraint(SpringLayout.WEST, labelField, 5, SpringLayout.EAST, labelLabel);
+		layout.putConstraint(SpringLayout.EAST, labelField, 200, SpringLayout.WEST, labelField);
+		layout.putConstraint(SpringLayout.VERTICAL_CENTER, labelLabel, 0, SpringLayout.VERTICAL_CENTER, labelField);
+
+		panel.add(keyLabel);
+		panel.add(keyField);
+		panel.add(customLabelCheckbox);
+		panel.add(labelLabel);
+		panel.add(labelField);
+
+		panel.setPreferredSize(new Dimension(300, 230));
+		int chosen = JOptionPane.showOptionDialog(null, panel, title, JOptionPane.OK_CANCEL_OPTION,
+				JOptionPane.PLAIN_MESSAGE, null, null, null);
+
+		if(chosen == JOptionPane.CANCEL_OPTION || chosen == JOptionPane.CLOSED_OPTION) {
+			return false;
+		}
+
+		key.set(((JTextComponent) keyField.getEditor().getEditorComponent()).getText());
+		label.set(labelField.getText());
+
+		return true;
 	}
 
 	private static void updateAddHeaderItemUI(JCheckBox customLabelCheckbox, JComboBox<String> keyField,
@@ -322,31 +384,35 @@ public class TracksPanel extends JPanel {
 			if(COMMON_METADATA_KEYS_LABELS.containsKey(selected)) {
 				label = COMMON_METADATA_KEYS_LABELS.get(selected);
 			} else {
-				StringBuilder builder = new StringBuilder();
-				boolean capitalize = true;
-				for(char c : selected.toCharArray()) {
-					String s = Character.toString(c);
-
-
-					if(capitalize) {
-						builder.append(s.toUpperCase());
-					} else {
-						builder.append(s.toLowerCase());
-					}
-
-					capitalize = c == ' ';
-				}
-				label = builder.toString();
+				label = headerLabelFromKey(selected);
 			}
 			labelField.setText(label);
 		}
 	}
 
+	private static String headerLabelFromKey(String key) {
+		StringBuilder builder = new StringBuilder();
+		boolean capitalize = true;
+		for(char c : key.toCharArray()) {
+			String s = Character.toString(c);
+
+
+			if(capitalize) {
+				builder.append(s.toUpperCase());
+			} else {
+				builder.append(s.toLowerCase());
+			}
+
+			capitalize = c == ' ';
+		}
+		return builder.toString();
+	}
 
 	private static JMenuItem buildRemoveHeaderItem(Header header) {
 		JMenuItem item = new JMenuItem("Remove " + header.getLabel());
 		item.addActionListener(e -> {
 			Library.removeHeader(header);
+			LOGGER.info("Removing header {}: label {}, key {}", header.id, header.getLabel(), header.getKey());
 		});
 		return item;
 	}
@@ -516,6 +582,7 @@ public class TracksPanel extends JPanel {
 		private Order sortingOrder = null;
 		private boolean clicked = false;
 		private boolean hovered = false;
+		private JLabel label;
 
 		public HeaderPanel(TracksPanel tp, Header header) {
 			this.tp = tp;
@@ -525,7 +592,7 @@ public class TracksPanel extends JPanel {
 			SpringLayout layout = new SpringLayout();
 			setLayout(layout);
 
-			JLabel label = new ThemedLabel(header.getLabel());
+			label = new ThemedLabel(header.getLabel());
 			label.setFont(new Font("Source Sans Pro", Font.PLAIN, 21));
 			add(label);
 
@@ -538,6 +605,7 @@ public class TracksPanel extends JPanel {
 
 			JPopupMenu menu = new JPopupMenu();
 			menu.add(buildAddHeaderItem());
+			menu.add(buildEditHeaderItem(header));
 			menu.add(buildRemoveHeaderItem(header));
 
 			addMouseListener(new MouseAdapter() {
@@ -576,6 +644,11 @@ public class TracksPanel extends JPanel {
 			});
 
 			addMouseListener(GUIUtils.createPopupListener(menu, this));
+		}
+
+		public void setLabel(String label) {
+			this.label.setText(label);
+			repaint();
 		}
 
 		public void setWidth(int width) {

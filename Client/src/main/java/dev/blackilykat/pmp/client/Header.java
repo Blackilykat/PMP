@@ -29,19 +29,23 @@ public class Header {
 	private static final Logger LOGGER = LogManager.getLogger(Header.class);
 
 	public final EventSource<Void> eventHeaderRemoved = new EventSource<>();
-	public final EventSource<String> eventTitleChanged = new EventSource<>();
+	public final EventSource<String> eventLabelChanged = new EventSource<>();
 	public final EventSource<String> eventKeyChanged = new EventSource<>();
 
 	public final int id;
-	public final Type type;
+	public Type type;
 	private String label;
 	private String key;
 
-	public Header(int id, String title, String key) {
+	public Header(int id, String label, String key) {
 		this.id = id;
-		this.label = title;
+		this.label = label;
 		this.key = key;
 
+		updateType();
+	}
+
+	private void updateType() {
 		Type type = Type.INTEGER;
 		if(key.equalsIgnoreCase("duration")) {
 			type = Type.DURATION;
@@ -79,7 +83,7 @@ public class Header {
 		}
 		this.type = type;
 
-		LOGGER.debug("Header {} ({}) is of type {}", title, key, type);
+		LOGGER.debug("Header {} ({}, {}) is of type {}", id, label, key, type);
 	}
 
 	public String getLabel() {
@@ -88,7 +92,7 @@ public class Header {
 
 	public void setLabel(String label) {
 		this.label = label;
-		eventTitleChanged.call(label);
+		eventLabelChanged.call(label);
 	}
 
 	public String getKey() {
@@ -97,6 +101,7 @@ public class Header {
 
 	public void setKey(String key) {
 		this.key = key;
+		updateType();
 		eventKeyChanged.call(key);
 	}
 

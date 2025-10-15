@@ -166,7 +166,5 @@ public class MainWindow extends JFrame {
 		defaults.put("CheckBox.selectionForeground", Theme.selected.text);
 		defaults.put("CheckBox.font", new Font("Source Sans Pro", Font.PLAIN, 16));
 		defaults.put("CheckBox.border", BorderFactory.createEmptyBorder(4, 4, 4, 4));
-
-		LOGGER.debug("Defaults {}", defaults);
 	}
 }
