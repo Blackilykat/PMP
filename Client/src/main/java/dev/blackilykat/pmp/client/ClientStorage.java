@@ -52,6 +52,7 @@ public class ClientStorage extends Storage {
 
 	private List<Track> trackCache = new LinkedList<>();
 	private int currentActionID = 0;
+	private int currentHeaderID = 0;
 
 
 	private ClientStorage() {
@@ -83,6 +84,23 @@ public class ClientStorage extends Storage {
 	public synchronized void setCurrentActionID(int id) {
 		dirty = true;
 		currentActionID = id;
+	}
+
+
+	@JsonIgnore
+	public int getAndIncrementCurrentHeaderId() {
+		int hi = getCurrentHeaderID();
+		setCurrentHeaderID(hi + 1);
+		return hi;
+	}
+
+	public synchronized int getCurrentHeaderID() {
+		return currentHeaderID;
+	}
+
+	public synchronized void setCurrentHeaderID(int id) {
+		dirty = true;
+		currentHeaderID = id;
 	}
 
 	public synchronized List<Track> getTrackCache() {

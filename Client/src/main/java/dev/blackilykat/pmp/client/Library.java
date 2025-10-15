@@ -19,6 +19,7 @@ package dev.blackilykat.pmp.client;
 
 import dev.blackilykat.pmp.Filter;
 import dev.blackilykat.pmp.FilterOption;
+import dev.blackilykat.pmp.Order;
 import dev.blackilykat.pmp.event.EventSource;
 import dev.blackilykat.pmp.event.RetroactiveEventSource;
 import dev.blackilykat.pmp.util.Pair;
@@ -38,7 +39,10 @@ public class Library {
 	public static final RetroactiveEventSource<List<Track>> EVENT_LOADED = new RetroactiveEventSource<>();
 	public static final EventSource<Filter> EVENT_FILTER_ADDED = new EventSource<>();
 	public static final EventSource<Filter> EVENT_FILTER_REMOVED = new EventSource<>();
+	public static final EventSource<Header> EVENT_HEADER_ADDED = new EventSource<>();
+	public static final EventSource<Header> EVENT_HEADER_REMOVED = new EventSource<>();
 	public static final EventSource<SelectedTracksUpdatedEvent> EVENT_SELECTED_TRACKS_UPDATED = new EventSource<>();
+	public static final EventSource<SortingHeaderUpdatedEvent> EVENT_SORTING_HEADER_UPDATED = new EventSource<>();
 
 	private static final ScopedValue<Boolean> NO_RELOAD_SELECTION = ScopedValue.newInstance();
 
@@ -49,6 +53,9 @@ public class Library {
 	private static List<Track> tracks = new LinkedList<>();
 	private static List<Track> selectedTracks = new LinkedList<>();
 	private static List<Filter> filters = new LinkedList<>();
+	private static List<Header> headers = new LinkedList<>();
+	private static Header sortingHeader = null;
+	private static Order sortingOrder = Order.ASCENDING;
 
 	public static void reloadSelection() {
 		if(NO_RELOAD_SELECTION.orElse(false)) {
@@ -128,7 +135,13 @@ public class Library {
 		}
 
 		List<Track> oldSelectedTracks = selectedTracks;
-		selectedTracks = new LinkedList<>(selection.stream().toList());
+		selectedTracks = new LinkedList<>(selection.stream().sorted((a, b) -> {
+			if(sortingHeader == null || sortingOrder == null) {
+				return 0;
+			}
+			int multiplier = sortingOrder == Order.ASCENDING ? 1 : -1;
+			return sortingHeader.compare(a, b) * multiplier;
+		}).toList());
 		EVENT_SELECTED_TRACKS_UPDATED.call(
 				new SelectedTracksUpdatedEvent(Collections.unmodifiableList(oldSelectedTracks),
 						Collections.unmodifiableList(selectedTracks)));
@@ -156,6 +169,51 @@ public class Library {
 		EVENT_FILTER_REMOVED.call(filter);
 	}
 
+	public static List<Header> getHeaders() {
+		return Collections.unmodifiableList(headers);
+	}
+
+	public static void addHeader(Header header) {
+		headers.add(header);
+
+		EVENT_HEADER_ADDED.call(header);
+	}
+
+	/**
+	 * @throws IllegalStateException if header is the last header
+	 */
+	public static void removeHeader(Header header) {
+		if(headers.size() == 1) {
+			throw new IllegalStateException("Can't remove last header");
+		}
+
+		if(header == sortingHeader) {
+			sortingHeader = headers.getFirst();
+			sortingOrder = Order.ASCENDING;
+		}
+
+		headers.remove(header);
+
+		EVENT_HEADER_REMOVED.call(header);
+		header.eventHeaderRemoved.call(null);
+	}
+
+	public static void setSorting(Header header, Order order) {
+		sortingHeader = header;
+		sortingOrder = order;
+
+		reloadSelection();
+		EVENT_SORTING_HEADER_UPDATED.call(new SortingHeaderUpdatedEvent(header, order));
+	}
+
+	public static Header getSortingHeader() {
+		return sortingHeader;
+	}
+
+	public static Order getSortingOrder() {
+		return sortingOrder;
+	}
+
 	public static List<Filter> getFilters() {
 		return Collections.unmodifiableList(filters);
 	}
@@ -175,6 +233,7 @@ public class Library {
 			if(INITIALIZED.get()) {
 				return;
 			}
+			INITIALIZED.set(true);
 			LOGGER.info("Initializing library");
 
 			library = new File("library");
@@ -218,6 +277,15 @@ public class Library {
 			ClientStorage.EVENT_SAVING.register(storage -> {
 				storage.setTrackCache(tracks);
 			});
+
+			//TODO temp
+			headers.add(new Header(1, "N°", "tracknumber"));
+			headers.add(new Header(2, "Title", "title"));
+			headers.add(new Header(3, "Artist", "artist"));
+			headers.add(new Header(4, "Duration", "duration"));
+
+			sortingHeader = headers.getFirst();
+			sortingOrder = Order.ASCENDING;
 
 			Filter.EVENT_OPTION_CHANGED_STATE.register(evt -> {
 				collectReloads(() -> {
@@ -294,7 +362,6 @@ public class Library {
 
 			EVENT_LOADED.call(tracks);
 
-			INITIALIZED.set(true);
 			LOGGER.info("Initialized library");
 		}
 	}
@@ -312,4 +379,6 @@ public class Library {
 	}
 
 	public record SelectedTracksUpdatedEvent(List<Track> oldSelection, List<Track> newSelection) {}
+
+	public record SortingHeaderUpdatedEvent(Header header, Order order) {}
 }

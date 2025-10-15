@@ -31,9 +31,11 @@ public class Theme {
 
 	public Color panelBackground = new Color(0x343434);
 	public Color text = new Color(0xb8b8b8);
+	public Color disabledText = new Color(0x909090);
 	public Color tracklistBackground = new Color(0x252525);
 
 	public Color buttonBackground = new Color(0x151515);
+	public Color disabledButtonBackground = new Color(0x202020);
 	public Color filterPanelBackground = new Color(0x1d1d1d);
 
 	public Color filterOptionBackground = new Color(0x262626);
@@ -58,6 +60,8 @@ public class Theme {
 	public int headerPadding = 10;
 	public int headerSeparatorWidth = 2;
 	public int headerSeparatorVerticalSpacing = 7;
+	public int headerSortingArrowSize = 5;
+	public int headerSortingArrowDistance = 4;
 
 	public int trackPlayIconPadding = 15;
 	public int trackPlayIconSize = 25;

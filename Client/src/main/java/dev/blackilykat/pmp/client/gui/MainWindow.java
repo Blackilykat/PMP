@@ -146,5 +146,27 @@ public class MainWindow extends JFrame {
 		defaults.put("OptionPane.messageForeground", Theme.selected.text);
 		defaults.put("OptionPane.foreground", Theme.selected.text);
 		defaults.put("OptionPane.background", Theme.selected.panelBackground);
+
+		defaults.put("ComboBox.background", Theme.selected.buttonBackground);
+		defaults.put("ComboBox.foreground", Theme.selected.text);
+		defaults.put("ComboBox.buttonBackground", Theme.selected.buttonBackground);
+		defaults.put("ComboBox.buttonHighlight", Theme.selected.text);
+		defaults.put("ComboBox.selectionBackground", Theme.selected.getHovered(Theme.selected.buttonBackground));
+		defaults.put("ComboBox.selectionForeground", Theme.selected.text);
+		defaults.put("ComboBox.font", new Font("Source Sans Pro", Font.PLAIN, 16));
+		defaults.put("ComboBox.border", BorderFactory.createEmptyBorder(4, 8, 4, 8));
+
+		defaults.put("ComboBox.editor.background", Theme.selected.buttonBackground);
+		defaults.put("ComboBox.editor.foreground", Theme.selected.text);
+		defaults.put("ComboBox.editor.border", BorderFactory.createEmptyBorder(4, 4, 4, 4));
+
+		defaults.put("CheckBox.background", Theme.selected.panelBackground);
+		defaults.put("CheckBox.foreground", Theme.selected.text);
+		defaults.put("CheckBox.selectionBackground", Theme.selected.getClicked(Theme.selected.panelBackground));
+		defaults.put("CheckBox.selectionForeground", Theme.selected.text);
+		defaults.put("CheckBox.font", new Font("Source Sans Pro", Font.PLAIN, 16));
+		defaults.put("CheckBox.border", BorderFactory.createEmptyBorder(4, 4, 4, 4));
+
+		LOGGER.debug("Defaults {}", defaults);
 	}
 }
