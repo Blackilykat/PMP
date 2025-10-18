@@ -202,6 +202,8 @@ public class Library {
 
 		headers.add(position, header);
 
+		ClientStorage.getInstance().setHeaders(headers);
+
 		EVENT_HEADER_MOVED.call(new HeaderMovedEvent(header, oldPosition, position));
 	}
 
