@@ -647,8 +647,8 @@ public class TracksPanel extends JPanel {
 				i++;
 			}
 
-			remove(i);
 			remove(i + 1);
+			remove(i);
 
 			count--;
 		}
@@ -757,6 +757,10 @@ public class TracksPanel extends JPanel {
 
 				@Override
 				public void mouseDragged(MouseEvent e) {
+					// must be BUTTON1
+					if(!clicked) {
+						return;
+					}
 					if(headersPanel.movingHeader != HeaderPanel.this
 							&& Math.abs(e.getXOnScreen() - draggingStartX) > 20) {
 						headersPanel.movingHeader = HeaderPanel.this;
