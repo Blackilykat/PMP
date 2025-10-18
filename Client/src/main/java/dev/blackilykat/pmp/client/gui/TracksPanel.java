@@ -41,13 +41,13 @@ import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JTextField;
 import javax.swing.SpringLayout;
-import javax.swing.SwingUtilities;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.plaf.basic.BasicComboBoxUI;
 import javax.swing.text.JTextComponent;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
@@ -123,12 +123,26 @@ public class TracksPanel extends JPanel {
 		updateTracks();
 
 		Library.EVENT_HEADER_ADDED.register(header -> {
-			addHeader(header);
-			updateTracks();
+			GUIUtils.runOnSwingThread(() -> {
+				addHeader(header);
+				updateTracks();
+			});
 		});
 
 		Library.EVENT_HEADER_REMOVED.register(header -> {
-			removeHeader(header);
+			GUIUtils.runOnSwingThread(() -> {
+				removeHeader(header);
+			});
+		});
+
+		Library.EVENT_HEADER_MOVED.register(event -> {
+			Header header = event.header();
+			int newPosition = event.newPosition();
+
+			GUIUtils.runOnSwingThread(() -> {
+				moveHeader(header, newPosition);
+				updateTracks();
+			});
 		});
 
 		updateTracks();
@@ -160,7 +174,7 @@ public class TracksPanel extends JPanel {
 			headerWidths.put(header.id, width);
 		}
 
-		HeaderPanel hp = new HeaderPanel(this, header);
+		HeaderPanel hp = new HeaderPanel(headersPanel, this, header, headersPanel.getCount());
 		if(Library.getSortingHeader() == hp.header) {
 			hp.setSortingOrder(Library.getSortingOrder());
 		}
@@ -176,12 +190,58 @@ public class TracksPanel extends JPanel {
 		headersPanel.repaint();
 	}
 
+	private void moveHeader(Header header, int newPosition) {
+		Component[] componentsBeforeMoving = headersPanel.getComponents();
+
+		boolean foundFirstHP = false;
+		int offset = 0;
+
+		HeaderPanel headerPanel = null;
+		HeaderPanel.PaddingPanel paddingPanel = null;
+
+		for(Component component : componentsBeforeMoving) {
+			if(component instanceof HeaderPanel hp) {
+				foundFirstHP = true;
+				if(hp.header == header) {
+					headerPanel = hp;
+				}
+			} else if(component instanceof HeaderPanel.PaddingPanel pp) {
+				if(pp.headerPanel.header == header) {
+					paddingPanel = pp;
+				}
+			} else {
+				if(!foundFirstHP) {
+					offset++;
+				} else {
+					LOGGER.warn("Unexpected HeadersPanel structure, this should be unreachable "
+							+ "(TracksPanel#moveHeader)");
+				}
+			}
+		}
+
+		headersPanel.remove((Component) headerPanel);
+		headersPanel.remove(paddingPanel);
+
+		headersPanel.add(headerPanel, newPosition * 2 + offset);
+		headersPanel.add(paddingPanel, newPosition * 2 + 1 + offset);
+
+		int n = 0;
+		for(Component component : headersPanel.getComponents()) {
+			if(component instanceof HeaderPanel hp) {
+				hp.index = n;
+				n++;
+			}
+		}
+
+		headersPanel.revalidate();
+		headersPanel.repaint();
+	}
+
 	private void removeHeader(Header header) {
 		for(Component component : headersPanel.getComponents()) {
 			if(component instanceof HeaderPanel hp && hp.header == header) {
 				headersPanel.remove(hp);
-			} else if(component instanceof HeaderPanel.PaddingPanel pp && pp.headerPanel.header == header) {
-				headersPanel.remove(pp);
+				break;
 			}
 		}
 
@@ -196,7 +256,7 @@ public class TracksPanel extends JPanel {
 	}
 
 	private void updateTracks(List<Track> tracks) {
-		SwingUtilities.invokeLater(() -> {
+		GUIUtils.runOnSwingThread(() -> {
 			contentPanel.removeAll();
 			for(Track track : tracks) {
 				List<String> values = new LinkedList<>();
@@ -252,8 +312,6 @@ public class TracksPanel extends JPanel {
 			Header header = new Header(ClientStorage.getInstance().getAndIncrementCurrentHeaderId(), label.get(),
 					key.get());
 
-
-			LOGGER.info("Adding {}", header);
 
 			Library.addHeader(header);
 		});
@@ -412,7 +470,6 @@ public class TracksPanel extends JPanel {
 		JMenuItem item = new JMenuItem("Remove " + header.getLabel());
 		item.addActionListener(e -> {
 			Library.removeHeader(header);
-			LOGGER.info("Removing {}", header);
 		});
 		return item;
 	}
@@ -546,6 +603,8 @@ public class TracksPanel extends JPanel {
 	}
 
 	private static class HeadersPanel extends JPanel {
+		public HeaderPanel movingHeader = null;
+		private int count = 0;
 
 		public HeadersPanel() {
 			setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
@@ -572,27 +631,61 @@ public class TracksPanel extends JPanel {
 		public void add(HeaderPanel panel) {
 			super.add(panel);
 			super.add(new HeaderPanel.PaddingPanel(panel));
+			count++;
+		}
+
+		public void remove(HeaderPanel panel) {
+			Component[] components = getComponents();
+			int i = 0;
+			while(components[i] != panel) {
+				i++;
+			}
+
+			remove(i);
+			remove(i + 1);
+
+			count--;
+		}
+
+		public int getCount() {
+			return count;
 		}
 	}
 
 	private static class HeaderPanel extends JPanel {
 		public final TracksPanel tp;
+		public final HeadersPanel headersPanel;
 		public final Header header;
+		public int index;
 		protected int width;
 		private Order sortingOrder = null;
 		private boolean clicked = false;
 		private boolean hovered = false;
 		private JLabel label;
+		private int draggingStartX = -1;
 
-		public HeaderPanel(TracksPanel tp, Header header) {
+		public HeaderPanel(HeadersPanel headersPanel, TracksPanel tp, Header header, int index) {
 			this.tp = tp;
+			this.headersPanel = headersPanel;
 			this.width = headerWidths.get(header.id);
 			this.header = header;
+			this.index = index;
+
+			super();
 
 			SpringLayout layout = new SpringLayout();
 			setLayout(layout);
 
-			label = new ThemedLabel(header.getLabel());
+			label = new JLabel(header.getLabel()) {
+				@Override
+				public Color getForeground() {
+					if(headersPanel.movingHeader == HeaderPanel.this) {
+						return Theme.selected.disabledText;
+					} else {
+						return Theme.selected.text;
+					}
+				}
+			};
 			label.setFont(new Font("Source Sans Pro", Font.PLAIN, 21));
 			add(label);
 
@@ -614,6 +707,7 @@ public class TracksPanel extends JPanel {
 					if(e.getButton() == MouseEvent.BUTTON1) {
 						clicked = true;
 						repaint();
+						draggingStartX = e.getXOnScreen();
 					}
 				}
 
@@ -621,10 +715,16 @@ public class TracksPanel extends JPanel {
 				public void mouseReleased(MouseEvent e) {
 					if(e.getButton() == MouseEvent.BUTTON1) {
 						clicked = false;
-						if(sortingOrder == Order.ASCENDING) {
-							Library.setSorting(header, Order.DESCENDING);
+						draggingStartX = -1;
+						if(headersPanel.movingHeader == HeaderPanel.this) {
+							headersPanel.movingHeader = null;
+							tp.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
 						} else {
-							Library.setSorting(header, Order.ASCENDING);
+							if(sortingOrder == Order.ASCENDING) {
+								Library.setSorting(header, Order.DESCENDING);
+							} else {
+								Library.setSorting(header, Order.ASCENDING);
+							}
 						}
 						repaint();
 					}
@@ -640,6 +740,43 @@ public class TracksPanel extends JPanel {
 				public void mouseExited(MouseEvent e) {
 					hovered = false;
 					repaint();
+				}
+			});
+
+			addMouseMotionListener(new MouseAdapter() {
+				// Sometimes an event queues up with coordinates relative to the position of the component before
+				// moving it elsewhere, which makes it "overshoot" the movement. This ignores that queued up event
+				private boolean ignoreNext = false;
+
+				@Override
+				public void mouseDragged(MouseEvent e) {
+					if(headersPanel.movingHeader != HeaderPanel.this
+							&& Math.abs(e.getXOnScreen() - draggingStartX) > 20) {
+						headersPanel.movingHeader = HeaderPanel.this;
+						tp.setCursor(Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR));
+						repaint();
+					}
+
+					if(ignoreNext) {
+						ignoreNext = false;
+						return;
+					}
+					int pad = Theme.selected.headerPadding * 2;
+					if(headersPanel.movingHeader == HeaderPanel.this) {
+						int i = HeaderPanel.this.index;
+						List<Header> h = Library.getHeaders();
+
+						Header prev = i == 0 ? null : h.get(i - 1);
+						Header next = i == h.size() - 1 ? null : h.get(i + 1);
+
+						if(prev != null && e.getX() < -pad - headerWidths.get(prev.id) / 2) {
+							Library.moveHeader(header, HeaderPanel.this.index - 1);
+							ignoreNext = true;
+						} else if(next != null && e.getX() > width + pad + headerWidths.get(next.id) / 2) {
+							Library.moveHeader(header, HeaderPanel.this.index + 1);
+							ignoreNext = true;
+						}
+					}
 				}
 			});
 
@@ -695,6 +832,9 @@ public class TracksPanel extends JPanel {
 		@Override
 		public Color getBackground() {
 			Color base = Theme.selected.panelBackground;
+			if(headersPanel.movingHeader != null) {
+				return base;
+			}
 			if(clicked) {
 				return Theme.selected.getClicked(base);
 			}

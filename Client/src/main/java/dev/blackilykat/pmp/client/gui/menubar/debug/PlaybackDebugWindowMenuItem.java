@@ -19,6 +19,7 @@ package dev.blackilykat.pmp.client.gui.menubar.debug;
 
 import dev.blackilykat.pmp.client.Player;
 import dev.blackilykat.pmp.client.gui.Theme;
+import dev.blackilykat.pmp.client.gui.util.GUIUtils;
 import dev.blackilykat.pmp.client.gui.util.ThemedLabel;
 import dev.blackilykat.pmp.event.Listener;
 import org.apache.logging.log4j.LogManager;
@@ -29,7 +30,6 @@ import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JMenuItem;
 import javax.swing.JPanel;
-import javax.swing.SwingUtilities;
 import java.awt.Color;
 import java.awt.Container;
 import java.awt.Dimension;
@@ -91,7 +91,7 @@ public class PlaybackDebugWindowMenuItem extends JMenuItem {
 			content.add(printButton);
 
 			Listener<Player.PlaybackDebugInfoEvent> listener = event -> {
-				SwingUtilities.invokeLater(() -> {
+				GUIUtils.runOnSwingThread(() -> {
 					pulse.setText("Pulse: " + event.pulse());
 					framePosition.setText("Frame position: " + event.framePosition());
 					latency.setText("Latency: " + event.latency());

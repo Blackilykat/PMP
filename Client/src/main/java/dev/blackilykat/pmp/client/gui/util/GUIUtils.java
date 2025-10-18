@@ -18,12 +18,15 @@
 package dev.blackilykat.pmp.client.gui.util;
 
 import javax.swing.JPopupMenu;
+import javax.swing.SwingUtilities;
 import java.awt.Component;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 
 public class GUIUtils {
+	private static final ThreadLocal<Boolean> ON_SWING_THREAD = new ThreadLocal<>();
+
 	public static MouseListener createPopupListener(JPopupMenu menu, Component component) {
 		return new MouseAdapter() {
 			@Override
@@ -47,5 +50,23 @@ public class GUIUtils {
 				}
 			}
 		};
+	}
+
+	public static void markSwingThread() {
+		ON_SWING_THREAD.set(true);
+	}
+
+	/**
+	 * Runs the given runnable on the swing event thread. If this thread is the swing event thread, it runs it
+	 * immediately and does not return until it's done. Else, it uses {@link SwingUtilities#invokeLater(Runnable)} and
+	 * returns immediately.
+	 */
+	public static void runOnSwingThread(Runnable runnable) {
+		// can be null
+		if(Boolean.TRUE.equals(ON_SWING_THREAD.get())) {
+			runnable.run();
+		} else {
+			SwingUtilities.invokeLater(runnable);
+		}
 	}
 }

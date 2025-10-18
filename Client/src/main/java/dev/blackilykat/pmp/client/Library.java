@@ -41,6 +41,7 @@ public class Library {
 	public static final EventSource<Filter> EVENT_FILTER_REMOVED = new EventSource<>();
 	public static final EventSource<Header> EVENT_HEADER_ADDED = new EventSource<>();
 	public static final EventSource<Header> EVENT_HEADER_REMOVED = new EventSource<>();
+	public static final EventSource<HeaderMovedEvent> EVENT_HEADER_MOVED = new EventSource<>();
 	public static final EventSource<SelectedTracksUpdatedEvent> EVENT_SELECTED_TRACKS_UPDATED = new EventSource<>();
 	public static final EventSource<SortingHeaderUpdatedEvent> EVENT_SORTING_HEADER_UPDATED = new EventSource<>();
 
@@ -174,11 +175,34 @@ public class Library {
 	}
 
 	public static void addHeader(Header header) {
+		LOGGER.info("Adding {}", header);
+
+
 		headers.add(header);
 
 		ClientStorage.getInstance().setHeaders(headers);
 
 		EVENT_HEADER_ADDED.call(header);
+	}
+
+	public static void moveHeader(Header header, int position) {
+		if(!headers.contains(header)) {
+			throw new IllegalArgumentException(header + " is not in headers");
+		}
+		if(position < 0 || position >= headers.size()) {
+			throw new IndexOutOfBoundsException(
+					"Position " + position + " out of bounds for " + headers.size() + " headers");
+		}
+
+		LOGGER.debug("Moving {} to position {}", header, position);
+
+		int oldPosition = headers.indexOf(header);
+
+		headers.remove(header);
+
+		headers.add(position, header);
+
+		EVENT_HEADER_MOVED.call(new HeaderMovedEvent(header, oldPosition, position));
 	}
 
 	/**
@@ -188,6 +212,8 @@ public class Library {
 		if(headers.size() == 1) {
 			throw new IllegalStateException("Can't remove last header");
 		}
+
+		LOGGER.info("Removing {}", header);
 
 		if(header == sortingHeader) {
 			sortingHeader = headers.getFirst();
@@ -397,4 +423,6 @@ public class Library {
 	public record SelectedTracksUpdatedEvent(List<Track> oldSelection, List<Track> newSelection) {}
 
 	public record SortingHeaderUpdatedEvent(Header header, Order order) {}
+
+	public record HeaderMovedEvent(Header header, int oldPosition, int newPosition) {}
 }

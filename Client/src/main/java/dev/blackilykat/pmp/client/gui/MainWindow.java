@@ -18,12 +18,14 @@
 package dev.blackilykat.pmp.client.gui;
 
 import dev.blackilykat.pmp.client.Main;
+import dev.blackilykat.pmp.client.gui.util.GUIUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import javax.swing.BorderFactory;
 import javax.swing.JFrame;
 import javax.swing.SpringLayout;
+import javax.swing.SwingUtilities;
 import javax.swing.UIDefaults;
 import javax.swing.UIManager;
 import java.awt.Container;
@@ -82,6 +84,8 @@ public class MainWindow extends JFrame {
 
 	public static void main(String[] args) {
 		System.setProperty("awt.useSystemAAFontSettings", "lcd");
+
+		SwingUtilities.invokeLater(() -> GUIUtils.markSwingThread());
 
 		setLookAndFeelDefaults();
 

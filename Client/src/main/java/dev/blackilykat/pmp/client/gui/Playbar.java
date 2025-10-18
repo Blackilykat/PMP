@@ -21,6 +21,7 @@ import com.github.weisj.jsvg.SVGDocument;
 import com.github.weisj.jsvg.view.ViewBox;
 import dev.blackilykat.pmp.client.Player;
 import dev.blackilykat.pmp.client.Track;
+import dev.blackilykat.pmp.client.gui.util.GUIUtils;
 import dev.blackilykat.pmp.client.gui.util.ThemedLabel;
 import dev.blackilykat.pmp.util.Pair;
 import org.apache.logging.log4j.LogManager;
@@ -33,7 +34,6 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JSlider;
 import javax.swing.SpringLayout;
-import javax.swing.SwingUtilities;
 import javax.swing.plaf.basic.BasicSliderUI;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -87,7 +87,7 @@ public class Playbar extends JPanel {
 		add(repeatButton);
 
 		Player.EVENT_PROGRESS.register(ms -> {
-			SwingUtilities.invokeLater(() -> {
+			GUIUtils.runOnSwingThread(() -> {
 				Track currentTrack = Player.getTrack();
 				if(currentTrack != null) {
 					double percentage = ms / (currentTrack.getDurationSeconds() * 1000);
@@ -101,7 +101,7 @@ public class Playbar extends JPanel {
 		Player.EVENT_TRACK_CHANGE.register(event -> {
 			Track track = event.track();
 			CompletableFuture<byte[]> albumArtFuture = event.picture();
-			SwingUtilities.invokeLater(() -> {
+			GUIUtils.runOnSwingThread(() -> {
 				title.setText(track.getTitle());
 				List<String> artistList = new LinkedList<>();
 				for(Pair<String, String> metadatum : track.metadata) {
@@ -130,7 +130,7 @@ public class Playbar extends JPanel {
 		});
 
 		Player.EVENT_PLAY_PAUSE.register(paused -> {
-			SwingUtilities.invokeLater(() -> {
+			GUIUtils.runOnSwingThread(() -> {
 				if(paused) {
 					playPauseButton.setIcon(Theme.selected.playIcon);
 				} else {

@@ -20,6 +20,7 @@ package dev.blackilykat.pmp.client.gui;
 import dev.blackilykat.pmp.Filter;
 import dev.blackilykat.pmp.FilterOption;
 import dev.blackilykat.pmp.client.Library;
+import dev.blackilykat.pmp.client.gui.util.GUIUtils;
 import dev.blackilykat.pmp.client.gui.util.ThemedLabel;
 import dev.blackilykat.pmp.client.gui.util.ThemedVerticalScrollPane;
 import dev.blackilykat.pmp.event.Listener;
@@ -76,7 +77,9 @@ public class FiltersPanel extends JPanel {
 			add(new FilterPanel(filter));
 		}
 		Library.EVENT_FILTER_ADDED.register(filter -> {
-			add(new FilterPanel(filter));
+			GUIUtils.runOnSwingThread(() -> {
+				add(new FilterPanel(filter));
+			});
 		});
 	}
 
@@ -200,13 +203,17 @@ public class FiltersPanel extends JPanel {
 				int index = event.index();
 				FilterOption option = event.option();
 
-				addOption(index, option);
+				GUIUtils.runOnSwingThread(() -> {
+					addOption(index, option);
+				});
 			});
 
 			filter.eventOptionRemoved.register(event -> {
 				FilterOption option = event.option();
 
-				removeOption(option);
+				GUIUtils.runOnSwingThread(() -> {
+					removeOption(option);
+				});
 			});
 		}
 
