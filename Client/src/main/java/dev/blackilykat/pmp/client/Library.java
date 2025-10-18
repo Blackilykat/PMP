@@ -176,6 +176,8 @@ public class Library {
 	public static void addHeader(Header header) {
 		headers.add(header);
 
+		ClientStorage.getInstance().setHeaders(headers);
+
 		EVENT_HEADER_ADDED.call(header);
 	}
 
@@ -193,6 +195,8 @@ public class Library {
 		}
 
 		headers.remove(header);
+
+		ClientStorage.getInstance().setHeaders(headers);
 
 		EVENT_HEADER_REMOVED.call(header);
 		header.eventHeaderRemoved.call(null);
@@ -278,11 +282,23 @@ public class Library {
 				storage.setTrackCache(tracks);
 			});
 
-			//TODO temp
-			headers.add(new Header(1, "N°", "tracknumber"));
-			headers.add(new Header(2, "Title", "title"));
-			headers.add(new Header(3, "Artist", "artist"));
-			headers.add(new Header(4, "Duration", "duration"));
+			ClientStorage storage = ClientStorage.getInstance();
+
+			List<Header> storedHeaders = storage.getHeaders();
+			if(storedHeaders == null) {
+				headers.add(new Header(0, "N°", "tracknumber"));
+				headers.add(new Header(1, "Title", "title"));
+				headers.add(new Header(2, "Artist", "artist"));
+				headers.add(new Header(3, "Duration", "duration"));
+				storage.setHeaders(headers);
+				storage.setCurrentHeaderID(4);
+			} else {
+				for(Header storedHeader : storedHeaders) {
+					storedHeader.updateType();
+					headers.add(storedHeader);
+				}
+			}
+			LOGGER.debug("Headers: {}", headers);
 
 			sortingHeader = headers.getFirst();
 			sortingOrder = Order.ASCENDING;

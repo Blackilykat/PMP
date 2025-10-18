@@ -120,9 +120,11 @@ public class TracksPanel extends JPanel {
 		for(Header header : Library.getHeaders()) {
 			addHeader(header);
 		}
+		updateTracks();
 
 		Library.EVENT_HEADER_ADDED.register(header -> {
 			addHeader(header);
+			updateTracks();
 		});
 
 		Library.EVENT_HEADER_REMOVED.register(header -> {
@@ -172,8 +174,6 @@ public class TracksPanel extends JPanel {
 
 		headersPanel.revalidate();
 		headersPanel.repaint();
-
-		updateTracks();
 	}
 
 	private void removeHeader(Header header) {
@@ -229,7 +229,7 @@ public class TracksPanel extends JPanel {
 				return;
 			}
 
-			LOGGER.info("Edited header {}: label {} -> {}, key {} -> {}", header.id, header.getLabel(), label.get(),
+			LOGGER.info("Edited Header#{}: label {} -> {}, key {} -> {}", header.id, header.getLabel(), label.get(),
 					header.getKey(), key.get());
 
 			header.setKey(key.get());
@@ -253,7 +253,7 @@ public class TracksPanel extends JPanel {
 					key.get());
 
 
-			LOGGER.info("Adding header {}: label {}, key {}", header.id, label.get(), key.get());
+			LOGGER.info("Adding {}", header);
 
 			Library.addHeader(header);
 		});
@@ -412,7 +412,7 @@ public class TracksPanel extends JPanel {
 		JMenuItem item = new JMenuItem("Remove " + header.getLabel());
 		item.addActionListener(e -> {
 			Library.removeHeader(header);
-			LOGGER.info("Removing header {}: label {}, key {}", header.id, header.getLabel(), header.getKey());
+			LOGGER.info("Removing {}", header);
 		});
 		return item;
 	}

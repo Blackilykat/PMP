@@ -17,6 +17,8 @@
 
 package dev.blackilykat.pmp.client;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import dev.blackilykat.pmp.event.EventSource;
 import dev.blackilykat.pmp.util.Pair;
 import org.apache.logging.log4j.LogManager;
@@ -33,6 +35,8 @@ public class Header {
 	public final EventSource<String> eventKeyChanged = new EventSource<>();
 
 	public final int id;
+
+	@JsonIgnore
 	public Type type;
 	private String label;
 	private String key;
@@ -45,7 +49,16 @@ public class Header {
 		updateType();
 	}
 
-	private void updateType() {
+	// When storage is loaded, the library isn't and calling #updateType will raise an exception. This constructor
+	// allows the parser to create a "typeless" header, which will be updated when the library is loaded.
+	@JsonCreator
+	private Header(int id, String key) {
+		this.id = id;
+		this.key = key;
+		this.type = Type.STRING;
+	}
+
+	public void updateType() {
 		Type type = Type.INTEGER;
 		if(key.equalsIgnoreCase("duration")) {
 			type = Type.DURATION;
@@ -83,7 +96,7 @@ public class Header {
 		}
 		this.type = type;
 
-		LOGGER.debug("Header {} ({}, {}) is of type {}", id, label, key, type);
+		LOGGER.debug("{} is of type {}", this, type);
 	}
 
 	public String getLabel() {
@@ -105,6 +118,7 @@ public class Header {
 		eventKeyChanged.call(key);
 	}
 
+	@JsonIgnore
 	public String getStringValue(Track track) {
 		if(type == Type.TITLE) {
 			return track.getTitle();
@@ -244,6 +258,11 @@ public class Header {
 
 		LOGGER.error("Header#compare: Unknown header type {}: this should be unreachable", type);
 		return 0;
+	}
+
+	@Override
+	public String toString() {
+		return "Header#" + id + "(" + key + "," + label + ")";
 	}
 
 	public enum Type {

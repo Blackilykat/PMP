@@ -17,6 +17,7 @@
 
 package dev.blackilykat.pmp.event;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreType;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -30,6 +31,7 @@ import java.util.List;
  * encouraged if you need to have more values or if it isn't immediately clear what a value may represent. For simple
  * listeners, it is fine to use any class here.
  */
+@JsonIgnoreType
 public class EventSource<T> {
 	private static final Logger LOGGER = LogManager.getLogger(EventSource.class);
 	private List<Listener<T>> listeners = new LinkedList<>();

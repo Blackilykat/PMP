@@ -51,6 +51,7 @@ public class ClientStorage extends Storage {
 	private boolean dirty = true;
 
 	private List<Track> trackCache = new LinkedList<>();
+	private List<Header> headers = null;
 	private int currentActionID = 0;
 	private int currentHeaderID = 0;
 
@@ -101,6 +102,15 @@ public class ClientStorage extends Storage {
 	public synchronized void setCurrentHeaderID(int id) {
 		dirty = true;
 		currentHeaderID = id;
+	}
+
+	public synchronized List<Header> getHeaders() {
+		return headers == null ? null : Collections.unmodifiableList(headers);
+	}
+
+	public synchronized void setHeaders(List<Header> headers) {
+		dirty = true;
+		this.headers = headers;
 	}
 
 	public synchronized List<Track> getTrackCache() {
