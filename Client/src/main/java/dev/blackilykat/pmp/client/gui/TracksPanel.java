@@ -57,7 +57,6 @@ import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.time.Instant;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -78,7 +77,6 @@ public class TracksPanel extends JPanel {
 	private static final List<Header.Type> RIGHT_ALIGNED_TYPES = List.of(Header.Type.DOUBLE, Header.Type.INTEGER,
 			Header.Type.DURATION, Header.Type.TRACKNUMBER);
 
-	private static Map<Integer, Integer> headerWidths = new HashMap<>();
 	private HeadersPanel headersPanel = new HeadersPanel();
 	private ContentPanel contentPanel;
 
@@ -164,6 +162,7 @@ public class TracksPanel extends JPanel {
 	}
 
 	private void addHeader(Header header) {
+		Map<Integer, Integer> headerWidths = SwingStorage.getInstance().getHeaderWidths();
 		if(!headerWidths.containsKey(header.id)) {
 			Integer width = INITIAL_HEADER_WIDTHS.get(header.type);
 			if(width == null) {
@@ -172,6 +171,7 @@ public class TracksPanel extends JPanel {
 						+ "falling back to {}, this should be unreachable", header.type, width);
 			}
 			headerWidths.put(header.id, width);
+			SwingStorage.getInstance().setHeaderWidths(headerWidths);
 		}
 
 		HeaderPanel hp = new HeaderPanel(headersPanel, this, header, headersPanel.getCount());
@@ -494,6 +494,10 @@ public class TracksPanel extends JPanel {
 
 			add(Box.createRigidArea(
 					new Dimension(Theme.selected.trackPlayIconPadding * 2 + Theme.selected.trackPlayIconSize, 0)));
+
+
+			Map<Integer, Integer> headerWidths = SwingStorage.getInstance().getHeaderWidths();
+
 			for(int i = 0; i < headers.size(); i++) {
 				Header header = headers.get(i);
 				add(new TrackDataPanel(strings.get(i), headerWidths.get(header.id),
@@ -538,6 +542,8 @@ public class TracksPanel extends JPanel {
 		}
 
 		public void updateWidths() {
+			Map<Integer, Integer> headerWidths = SwingStorage.getInstance().getHeaderWidths();
+
 			int i = 0;
 			List<Header> headers = Library.getHeaders();
 			for(Component component : getComponents()) {
@@ -667,6 +673,7 @@ public class TracksPanel extends JPanel {
 		public HeaderPanel(HeadersPanel headersPanel, TracksPanel tp, Header header, int index) {
 			this.tp = tp;
 			this.headersPanel = headersPanel;
+			Map<Integer, Integer> headerWidths = SwingStorage.getInstance().getHeaderWidths();
 			this.width = headerWidths.get(header.id);
 			this.header = header;
 			this.index = index;
@@ -913,9 +920,13 @@ public class TracksPanel extends JPanel {
 
 				int offset = xOnScreen - lastX;
 
+				Map<Integer, Integer> headerWidths = SwingStorage.getInstance().getHeaderWidths();
+
 				headerWidths.put(headerPanel.header.id, headerWidths.get(headerPanel.header.id) + offset);
 				headerPanel.width = headerWidths.get(headerPanel.header.id);
 				headerPanel.revalidate();
+
+				SwingStorage.getInstance().setHeaderWidths(headerWidths);
 
 				if(shouldUpdateTracks) {
 					lastWidthUpdate = now;

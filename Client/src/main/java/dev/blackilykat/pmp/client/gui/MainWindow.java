@@ -33,6 +33,7 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.io.IOException;
 
 public class MainWindow extends JFrame {
 	public final static Logger LOGGER = LogManager.getLogger(MainWindow.class);
@@ -86,6 +87,13 @@ public class MainWindow extends JFrame {
 		System.setProperty("awt.useSystemAAFontSettings", "lcd");
 
 		SwingUtilities.invokeLater(() -> GUIUtils.markSwingThread());
+
+		try {
+			SwingStorage.load();
+		} catch(IOException e) {
+			LOGGER.fatal("Failed to load swing storage, exiting", e);
+			System.exit(1);
+		}
 
 		setLookAndFeelDefaults();
 
