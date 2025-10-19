@@ -28,6 +28,9 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -39,6 +42,8 @@ public class Library {
 	public static final RetroactiveEventSource<List<Track>> EVENT_LOADED = new RetroactiveEventSource<>();
 	public static final EventSource<Filter> EVENT_FILTER_ADDED = new EventSource<>();
 	public static final EventSource<Filter> EVENT_FILTER_REMOVED = new EventSource<>();
+	public static final EventSource<Track> EVENT_TRACK_ADDED = new EventSource<>();
+	public static final EventSource<Track> EVENT_TRACK_REMOVED = new EventSource<>();
 	public static final EventSource<Header> EVENT_HEADER_ADDED = new EventSource<>();
 	public static final EventSource<Header> EVENT_HEADER_REMOVED = new EventSource<>();
 	public static final EventSource<HeaderMovedEvent> EVENT_HEADER_MOVED = new EventSource<>();
@@ -408,6 +413,39 @@ public class Library {
 
 			LOGGER.info("Initialized library");
 		}
+	}
+
+	public static boolean addTrack(File file) throws IOException {
+		if(file == null || !file.exists()) {
+			throw new IllegalArgumentException("File does not exist");
+		}
+		if(file.isDirectory()) {
+			throw new IllegalArgumentException("File is a directory");
+		}
+		List<Pair<String, String>> metadata = Track.extractMetadata(file);
+		if(metadata == null) {
+			return false;
+		}
+
+		Path target = library.toPath().resolve(Track.makeFilename(metadata));
+		if(target.toFile().exists()) {
+			throw new FileAlreadyExistsException(target + " already exists");
+		}
+
+		try {
+			Files.createLink(target, file.toPath());
+			LOGGER.debug("Linked {} to {}", file, target);
+		} catch(IOException e) {
+			LOGGER.warn("Failed linking {} to {}", file, target, e);
+			Files.copy(file.toPath(), target);
+			LOGGER.debug("Copied {} to {}", file, target);
+		}
+
+		Track track = new Track(target.toFile());
+		tracks.add(track);
+		EVENT_TRACK_ADDED.call(track);
+		reloadSelection();
+		return true;
 	}
 
 	/**

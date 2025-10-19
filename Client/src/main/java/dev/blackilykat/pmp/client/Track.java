@@ -34,6 +34,7 @@ import javax.sound.sampled.AudioFormat;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.LinkedList;
@@ -70,7 +71,6 @@ public class Track {
 			throw new IllegalArgumentException("Track is a directory");
 		}
 
-		metadata = new LinkedList<>();
 		lastModified = file.lastModified();
 
 		Checksum sum = new CRC32();
@@ -79,48 +79,15 @@ public class Track {
 		FLACDecoder decoder = new FLACDecoder(is);
 		Metadata[] metadata = decoder.readMetadata();
 
-		// bs protected value with no getter
-		Field commentsField;
-		try {
-			commentsField = VorbisComment.class.getDeclaredField("comments");
-			commentsField.setAccessible(true);
-		} catch(NoSuchFieldException e) {
-			LOGGER.error("This should've been unreachable", e);
-			commentsField = null;
-		}
-
-		if(commentsField != null) {
-			for(Metadata metadatum : metadata) {
-				if(metadatum instanceof StreamInfo streamInfo) {
-					this.playbackInfo = new PlaybackInfo(streamInfo);
-					durationSeconds = streamInfo.getTotalSamples() / (double) streamInfo.getSampleRate();
-					continue;
-				}
-				if(!(metadatum instanceof VorbisComment comments)) {
-					continue;
-				}
-
-				VorbisString[] strings;
-				try {
-					strings = (VorbisString[]) commentsField.get(comments);
-				} catch(IllegalAccessException e) {
-					LOGGER.error("Shouldn't have been unable to get field value, skipping rest of metadata", e);
-					break;
-				}
-
-				for(VorbisString string : strings) {
-					String[] parts = string.toString().split("=");
-					if(parts.length < 2) {
-						LOGGER.warn("Ignoring metadatum without =: {}", string.toString());
-						continue;
-					}
-					Pair<String, String> pair = new Pair<>(parts[0],
-							Arrays.stream(parts).skip(1).collect(Collectors.joining("=")));
-
-					this.metadata.add(pair);
-				}
+		for(Metadata metadatum : metadata) {
+			if(metadatum instanceof StreamInfo streamInfo) {
+				this.playbackInfo = new PlaybackInfo(streamInfo);
+				durationSeconds = streamInfo.getTotalSamples() / (double) streamInfo.getSampleRate();
+				break;
 			}
 		}
+
+		this.metadata = extractMetadata(metadata);
 
 		while(is.available() > 0) {
 			//noinspection ResultOfMethodCallIgnored
@@ -194,6 +161,95 @@ public class Track {
 
 
 		return !hasKey && value.equals(Filter.OPTION_UNKNOWN);
+	}
+
+	/**
+	 * Extracts FLAC vorbis metadata from the given file
+	 *
+	 * @return the metadata, or null if the file is not a valid FLAC file
+	 */
+	public static List<Pair<String, String>> extractMetadata(File file) {
+		try(InputStream is = new FileInputStream(file)) {
+			FLACDecoder decoder = new FLACDecoder(is);
+			return extractMetadata(decoder.readMetadata());
+		} catch(IOException e) {
+			return null;
+		}
+	}
+
+	private static List<Pair<String, String>> extractMetadata(Metadata[] metadata) {
+		List<Pair<String, String>> list = new LinkedList<>();
+
+		// bs protected value with no getter
+		Field commentsField;
+		try {
+			commentsField = VorbisComment.class.getDeclaredField("comments");
+			commentsField.setAccessible(true);
+		} catch(NoSuchFieldException e) {
+			LOGGER.error("(Track#extractMetadata) This should've been unreachable", e);
+			commentsField = null;
+		}
+
+		if(commentsField != null) {
+			for(Metadata metadatum : metadata) {
+				if(!(metadatum instanceof VorbisComment comments)) {
+					continue;
+				}
+
+				VorbisString[] strings;
+				try {
+					strings = (VorbisString[]) commentsField.get(comments);
+				} catch(IllegalAccessException e) {
+					LOGGER.error("Shouldn't have been unable to get field value, skipping rest of metadata", e);
+					break;
+				}
+
+				for(VorbisString string : strings) {
+					String[] parts = string.toString().split("=");
+					if(parts.length < 2) {
+						LOGGER.warn("Ignoring metadatum without =: {}", string.toString());
+						continue;
+					}
+					Pair<String, String> pair = new Pair<>(parts[0],
+							Arrays.stream(parts).skip(1).collect(Collectors.joining("=")));
+
+					list.add(pair);
+				}
+			}
+		}
+
+		return list;
+	}
+
+	public static String makeFilename(List<Pair<String, String>> metadata) {
+		String title = "";
+		String album = "";
+		List<String> artists = new LinkedList<>();
+
+		for(Pair<String, String> metadatum : metadata) {
+			if(metadatum.key.equalsIgnoreCase("title")) {
+				title = metadatum.value;
+			} else if(metadatum.key.equalsIgnoreCase("album")) {
+				album = metadatum.value;
+			} else if(metadatum.key.equalsIgnoreCase("artist")) {
+				artists.add(metadatum.value);
+			}
+		}
+
+		StringBuilder builder = new StringBuilder();
+		builder.append(title).append("_").append(album).append("_").append(String.join("_", artists));
+
+		StringBuilder toReturn = new StringBuilder();
+		builder.chars().forEachOrdered(i -> {
+			if(Character.UnicodeScript.of(i) != Character.UnicodeScript.COMMON || (i >= '0' && i <= '9')) {
+				toReturn.append((char) i);
+			} else {
+				toReturn.append('_');
+			}
+		});
+		toReturn.append(".flac");
+
+		return toReturn.toString();
 	}
 
 	public static class PlaybackInfo {

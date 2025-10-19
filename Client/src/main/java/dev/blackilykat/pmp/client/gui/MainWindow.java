@@ -178,5 +178,19 @@ public class MainWindow extends JFrame {
 		defaults.put("CheckBox.selectionForeground", Theme.selected.text);
 		defaults.put("CheckBox.font", new Font("Source Sans Pro", Font.PLAIN, 16));
 		defaults.put("CheckBox.border", BorderFactory.createEmptyBorder(4, 4, 4, 4));
+
+		defaults.put("List.focusCellHighlightBorder", BorderFactory.createEmptyBorder());
+		defaults.put("List.background", Theme.selected.tracklistBackground);
+		defaults.put("List.foreground", Theme.selected.text);
+		defaults.put("List.selectionForeground", Theme.selected.tracklistBackground);
+		defaults.put("List.selectionBackground", Theme.selected.text);
+		defaults.put("List.font", new Font("Source Sans Pro", Font.PLAIN, 16));
+		defaults.put("List.border", BorderFactory.createEmptyBorder());
+
+		defaults.put("FileChooser.readOnly", Boolean.TRUE);
+		defaults.put("FileChooser.useSystemExtensionHiding", Boolean.TRUE);
+		defaults.put("FileChooser.usesSingleFilePane", Boolean.FALSE);
+
+		defaults.put("ScrollPane.border", BorderFactory.createEmptyBorder());
 	}
 }

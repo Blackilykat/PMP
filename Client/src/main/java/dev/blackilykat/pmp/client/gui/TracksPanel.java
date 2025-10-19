@@ -34,6 +34,7 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
+import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
@@ -43,6 +44,7 @@ import javax.swing.JTextField;
 import javax.swing.SpringLayout;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import javax.swing.filechooser.FileFilter;
 import javax.swing.plaf.basic.BasicComboBoxUI;
 import javax.swing.text.JTextComponent;
 import java.awt.Color;
@@ -56,6 +58,9 @@ import java.awt.Point;
 import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.FileAlreadyExistsException;
 import java.time.Instant;
 import java.util.LinkedList;
 import java.util.List;
@@ -474,6 +479,85 @@ public class TracksPanel extends JPanel {
 		return item;
 	}
 
+	private static JMenuItem buildAddTrackItem() {
+		JMenuItem item = new JMenuItem("Add track...");
+		item.addActionListener(e -> {
+
+			JFileChooser fileChooser = new JFileChooser();
+
+			fileChooser.setMultiSelectionEnabled(true);
+			fileChooser.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
+
+			fileChooser.setFileFilter(new FileFilter() {
+				@Override
+				public boolean accept(File f) {
+					return f.isDirectory() || f.getName().endsWith(".flac");
+				}
+
+				@Override
+				public String getDescription() {
+					return "Folders and FLAC files";
+				}
+			});
+
+			if(fileChooser.showOpenDialog(null) != JFileChooser.APPROVE_OPTION) {
+				return;
+			}
+
+			List<File> files = new LinkedList<>();
+			for(File file : fileChooser.getSelectedFiles()) {
+				files.addAll(crawlSubdirectories(file));
+			}
+
+			for(File file : files) {
+				try {
+					if(Library.addTrack(file)) {
+						LOGGER.info("Added track {}", file);
+					} else {
+						LOGGER.info("Skipped track {} as it doesn't seem to be a valid FLAC file", file);
+					}
+				} catch(FileAlreadyExistsException ex) {
+					LOGGER.info("Skipped track {} as it already exists", file);
+				} catch(IOException ex) {
+					LOGGER.error("Failed to add track {}", file, ex);
+				}
+			}
+		});
+
+		return item;
+	}
+
+	private static List<File> crawlSubdirectories(File file) {
+		if(file == null || !file.exists()) {
+			throw new IllegalArgumentException("Does not exist");
+		}
+		if(!file.isDirectory()) {
+			return List.of(file);
+		}
+
+		List<File> list = new LinkedList<>();
+		crawlSubdirectories(file, list);
+		return list;
+	}
+
+	private static void crawlSubdirectories(File directory, List<File> list) {
+		if(!directory.isDirectory()) {
+			throw new IllegalArgumentException("Not a directory");
+		}
+		File[] files = directory.listFiles();
+		if(files == null) {
+			return;
+		}
+		for(File file : files) {
+			if(file.isDirectory()) {
+				crawlSubdirectories(file, list);
+			} else {
+				list.add(file);
+			}
+		}
+	}
+
+
 	private static class TrackPanel extends JPanel {
 		public final Track track;
 
@@ -539,6 +623,10 @@ public class TracksPanel extends JPanel {
 					repaint();
 				}
 			});
+
+			JPopupMenu menu = new JPopupMenu();
+			menu.add(buildAddTrackItem());
+			addMouseListener(GUIUtils.createPopupListener(menu, this));
 		}
 
 		public void updateWidths() {
@@ -991,6 +1079,10 @@ public class TracksPanel extends JPanel {
 	private static class ContentPanel extends JPanel {
 		public ContentPanel() {
 			setLayout(new BoxLayout(this, BoxLayout.PAGE_AXIS));
+
+			JPopupMenu menu = new JPopupMenu();
+			menu.add(buildAddTrackItem());
+			addMouseListener(GUIUtils.createPopupListener(menu, this));
 		}
 
 		@Override
