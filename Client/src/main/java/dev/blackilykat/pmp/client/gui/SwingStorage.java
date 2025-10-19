@@ -52,6 +52,7 @@ public class SwingStorage {
 	private boolean dirty = true;
 
 	private Map<Integer, Integer> headerWidths = new HashMap<>();
+	private boolean confirmRemoveTrackPopup = true;
 
 	private SwingStorage() {
 		Timer savingTimer = new Timer("Swing storage saving timer");
@@ -74,6 +75,15 @@ public class SwingStorage {
 	public void setHeaderWidths(Map<Integer, Integer> headerWidths) {
 		dirty = true;
 		this.headerWidths = headerWidths;
+	}
+
+	public boolean getConfirmRemoveTrackPopup() {
+		return confirmRemoveTrackPopup;
+	}
+
+	public void setConfirmRemoveTrackPopup(boolean confirmRemoveTrackPopup) {
+		dirty = true;
+		this.confirmRemoveTrackPopup = confirmRemoveTrackPopup;
 	}
 
 	/**

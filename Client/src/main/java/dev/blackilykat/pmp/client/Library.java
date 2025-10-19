@@ -448,6 +448,24 @@ public class Library {
 		return true;
 	}
 
+	public static void removeTrack(Track track) {
+		if(!tracks.contains(track)) {
+			throw new IllegalArgumentException("Track is not in library");
+		}
+
+		//noinspection LoggingSimilarMessage
+		LOGGER.info("Removing track {}", track.getFile());
+
+		tracks.remove(track);
+
+		if(!track.getFile().delete()) {
+			LOGGER.error("Failed to delete file {}", track.getFile());
+		}
+
+		EVENT_TRACK_REMOVED.call(track);
+		reloadSelection();
+	}
+
 	/**
 	 * Runs the specified runnable preventing the selection reloads from happening, then does a selection reload. Used
 	 * to improve performance when performing actions that would normally trigger one on bulk.

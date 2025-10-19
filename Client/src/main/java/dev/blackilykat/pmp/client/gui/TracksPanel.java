@@ -479,6 +479,35 @@ public class TracksPanel extends JPanel {
 		return item;
 	}
 
+	private static JMenuItem buildRemoveTrackItem(Track track) {
+		JMenuItem item = new JMenuItem("Remove " + track.getTitle());
+		item.addActionListener(e -> {
+			if(SwingStorage.getInstance().getConfirmRemoveTrackPopup()) {
+				JPanel panel = new JPanel();
+				panel.setLayout(new BoxLayout(panel, BoxLayout.PAGE_AXIS));
+
+				ThemedLabel label = new ThemedLabel("Are you sure you want to remove " + track.getTitle() + "?");
+				JCheckBox confirm = new JCheckBox("Don't ask again");
+
+				panel.add(label);
+				panel.add(confirm);
+
+				int res = JOptionPane.showOptionDialog(null, panel, "Remove a track?", JOptionPane.YES_NO_OPTION,
+						JOptionPane.PLAIN_MESSAGE, null, null, null);
+				if(res != JOptionPane.YES_OPTION) {
+					return;
+				}
+
+				if(confirm.isSelected()) {
+					SwingStorage.getInstance().setConfirmRemoveTrackPopup(false);
+				}
+			}
+
+			Library.removeTrack(track);
+		});
+		return item;
+	}
+
 	private static JMenuItem buildAddTrackItem() {
 		JMenuItem item = new JMenuItem("Add track...");
 		item.addActionListener(e -> {
@@ -626,6 +655,7 @@ public class TracksPanel extends JPanel {
 
 			JPopupMenu menu = new JPopupMenu();
 			menu.add(buildAddTrackItem());
+			menu.add(buildRemoveTrackItem(track));
 			addMouseListener(GUIUtils.createPopupListener(menu, this));
 		}
 
