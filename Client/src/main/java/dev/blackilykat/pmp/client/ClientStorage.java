@@ -21,6 +21,8 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
+import dev.blackilykat.pmp.Filter;
+import dev.blackilykat.pmp.Session;
 import dev.blackilykat.pmp.Storage;
 import dev.blackilykat.pmp.event.EventSource;
 import org.apache.logging.log4j.LogManager;
@@ -39,6 +41,13 @@ import java.util.TimerTask;
 
 public class ClientStorage extends Storage {
 	public static final EventSource<ClientStorage> EVENT_SAVING = new EventSource<>();
+	/**
+	 * Event called when periodically saving to check whether storage is dirty.
+	 * <p>Do not use this event to store data. This is not guaranteed to be called at every save. Use
+	 * {@link #EVENT_SAVING} for that.
+	 * <p>Use {@link MaybeSavingEvent#markDirty()} and return to indicate that there is data to save.
+	 */
+	public static final EventSource<MaybeSavingEvent> EVENT_MAYBE_SAVING = new EventSource<>();
 
 	private static final File file = new File("storage.json");
 	private static final Logger LOGGER = LogManager.getLogger(ClientStorage.class);
@@ -51,8 +60,15 @@ public class ClientStorage extends Storage {
 	private boolean dirty = true;
 
 	private List<Track> trackCache = new LinkedList<>();
+	// null: empty configuration is technically valid, but not default
 	private List<Header> headers = null;
+	private List<Filter> filters = null;
+	// empty list: empty configuration is invalid and will be populated at startup
+	private List<Session> sessions = List.of();
+	private int selectedSession = -1;
 	private int currentActionID = 0;
+	private int currentFilterID = 0;
+	private int currentSessionID = 0;
 	private int currentHeaderID = 0;
 
 
@@ -87,6 +103,48 @@ public class ClientStorage extends Storage {
 		currentActionID = id;
 	}
 
+	@Override
+	@JsonIgnore
+	public int getAndIncrementCurrentFilterId() {
+		return super.getAndIncrementCurrentFilterId();
+	}
+
+	@Override
+	public synchronized int getCurrentFilterID() {
+		return currentFilterID;
+	}
+
+	@Override
+	public synchronized void setCurrentFilterID(int id) {
+		dirty = true;
+		currentFilterID = id;
+	}
+
+	@Override
+	@JsonIgnore
+	public int getAndIncrementCurrentSessionId() {
+		return super.getAndIncrementCurrentSessionId();
+	}
+
+	@Override
+	public synchronized int getCurrentSessionID() {
+		return currentSessionID;
+	}
+
+	@Override
+	public synchronized void setCurrentSessionID(int id) {
+		dirty = true;
+		currentSessionID = id;
+	}
+
+	public int getSelectedSession() {
+		return selectedSession;
+	}
+
+	public void setSelectedSession(int selectedSession) {
+		dirty = true;
+		this.selectedSession = selectedSession;
+	}
 
 	@JsonIgnore
 	public int getAndIncrementCurrentHeaderId() {
@@ -121,6 +179,33 @@ public class ClientStorage extends Storage {
 		dirty = true;
 		this.trackCache = new LinkedList<>(trackCache);
 	}
+
+	public synchronized List<Session> getSessions() {
+		return Collections.unmodifiableList(sessions);
+	}
+
+	public synchronized void setSessions(List<Session> sessions) {
+		dirty = true;
+
+		LinkedList<Session> list = new LinkedList<>();
+		for(Session session : sessions) {
+			list.add(session.clone());
+		}
+		this.sessions = list;
+	}
+
+	public synchronized List<Filter> getFilters() {
+		if(filters == null) {
+			return null;
+		}
+		return Collections.unmodifiableList(filters);
+	}
+
+	public synchronized void setFilters(List<Filter> filters) {
+		dirty = true;
+		this.filters = new LinkedList<>(filters);
+	}
+
 
 	/**
 	 * Saves storage to disk.
@@ -208,8 +293,15 @@ public class ClientStorage extends Storage {
 	 */
 	public static void maybeSave() throws IOException {
 		ClientStorage clientStorage = getInstance();
+
 		if(clientStorage.dirty) {
 			clientStorage.save();
+		} else {
+			MaybeSavingEvent event = new MaybeSavingEvent(clientStorage);
+			EVENT_MAYBE_SAVING.call(event);
+			if(event.getDirty()) {
+				clientStorage.save();
+			}
 		}
 	}
 
@@ -224,6 +316,29 @@ public class ClientStorage extends Storage {
 			throw new IllegalStateException("Storage is null or not client storage");
 		}
 		return clientStorage;
+	}
+
+	public static class MaybeSavingEvent {
+		public final ClientStorage clientStorage;
+		private boolean dirty = false;
+
+		public MaybeSavingEvent(ClientStorage clientStorage) {
+			this.clientStorage = clientStorage;
+		}
+
+		public void markDirty() {
+			dirty = true;
+
+			try {
+				LOGGER.debug("Storage marked dirty at {}", new Throwable().getStackTrace()[1]);
+			} catch(IndexOutOfBoundsException e) {
+				LOGGER.debug("Storage marked dirty at unknown location");
+			}
+		}
+
+		public boolean getDirty() {
+			return dirty;
+		}
 	}
 
 	static {

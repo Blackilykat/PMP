@@ -31,15 +31,18 @@ import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Library {
-	public static final RetroactiveEventSource<List<Track>> EVENT_LOADED = new RetroactiveEventSource<>();
+	public static final RetroactiveEventSource<Collection<Track>> EVENT_LOADED = new RetroactiveEventSource<>();
 	public static final EventSource<Filter> EVENT_FILTER_ADDED = new EventSource<>();
 	public static final EventSource<Filter> EVENT_FILTER_REMOVED = new EventSource<>();
 	public static final EventSource<Track> EVENT_TRACK_ADDED = new EventSource<>();
@@ -56,7 +59,7 @@ public class Library {
 	private static final AtomicBoolean INITIALIZED = new AtomicBoolean(false);
 
 	private static File library = null;
-	private static List<Track> tracks = new LinkedList<>();
+	private static Map<String, Track> tracks = new HashMap<>();
 	private static List<Track> selectedTracks = new LinkedList<>();
 	private static List<Filter> filters = new LinkedList<>();
 	private static List<Header> headers = new LinkedList<>();
@@ -69,7 +72,7 @@ public class Library {
 		}
 		LOGGER.debug("Reloading selection");
 
-		Set<Track> selection = new HashSet<>(tracks);
+		Set<Track> selection = new HashSet<>(tracks.values());
 		Set<Track> newSelection = new HashSet<>();
 
 		for(Filter filter : filters) {
@@ -255,20 +258,18 @@ public class Library {
 		return Collections.unmodifiableList(filters);
 	}
 
-	public static List<Track> getAllTracks() {
-		maybeInit();
-		return Collections.unmodifiableList(tracks);
+	public static Collection<Track> getAllTracks() {
+		return Collections.unmodifiableCollection(tracks.values());
 	}
 
 	public static List<Track> getSelectedTracks() {
-		maybeInit();
 		return Collections.unmodifiableList(selectedTracks);
 	}
 
-	public static void maybeInit() {
+	public static void init() {
 		synchronized(INITIALIZED) {
 			if(INITIALIZED.get()) {
-				return;
+				throw new IllegalStateException("Already initialized");
 			}
 			INITIALIZED.set(true);
 			LOGGER.info("Initializing library");
@@ -296,13 +297,14 @@ public class Library {
 							}
 							totalCached++;
 							wasCached = true;
-							tracks.add(cached);
+							tracks.put(file.getName(), cached);
 						}
 					}
 					if(!wasCached) {
 						LOGGER.warn("Track {} was not cached", file.getName());
 						try {
-							tracks.add(new Track(file));
+							Track track = new Track(file);
+							tracks.put(file.getName(), track);
 						} catch(IOException e) {
 							LOGGER.error("Error on track {}", file.getName());
 						}
@@ -311,8 +313,18 @@ public class Library {
 			}
 			LOGGER.info("{} tracks cached", totalCached);
 
+			ClientStorage.EVENT_MAYBE_SAVING.register(event -> {
+				ClientStorage storage = event.clientStorage;
+
+				// imperfect check but the computational effort is probably not worth it considering there is no data
+				// loss involved (and it usually saves on shutdown anyway)
+				if(storage.getTrackCache().size() != tracks.size()) {
+					event.markDirty();
+				}
+			});
+
 			ClientStorage.EVENT_SAVING.register(storage -> {
-				storage.setTrackCache(tracks);
+				storage.setTrackCache(tracks.values().stream().toList());
 			});
 
 			ClientStorage storage = ClientStorage.getInstance();
@@ -406,10 +418,44 @@ public class Library {
 				});
 			});
 
-			addFilter(new Filter("artist"));
-			addFilter(new Filter("album"));
+			{
+				List<Filter> storedFilters = storage.getFilters();
+				if(storedFilters == null) {
+					addFilter(new Filter("artist"));
+					addFilter(new Filter("album"));
 
-			EVENT_LOADED.call(tracks);
+					storage.setFilters(filters);
+				} else {
+					for(Filter filter : storedFilters) {
+						addFilter(filter);
+					}
+				}
+			}
+
+			ClientStorage.EVENT_MAYBE_SAVING.register(event -> {
+				ClientStorage cs = event.clientStorage;
+
+				List<Filter> storedFilters = cs.getFilters();
+				if(storedFilters.size() != filters.size()) {
+					event.markDirty();
+					return;
+				}
+
+				for(int i = 0; i < storedFilters.size(); i++) {
+					Filter a = storedFilters.get(i);
+					Filter b = filters.get(i);
+					if(a.id != b.id || !a.key.equals(b.key)) {
+						event.markDirty();
+						return;
+					}
+				}
+			});
+
+			ClientStorage.EVENT_SAVING.register(cs -> {
+				cs.setFilters(filters);
+			});
+
+			EVENT_LOADED.call(tracks.values());
 
 			LOGGER.info("Initialized library");
 		}
@@ -442,21 +488,21 @@ public class Library {
 		}
 
 		Track track = new Track(target.toFile());
-		tracks.add(track);
+		tracks.put(track.getFile().getName(), track);
 		EVENT_TRACK_ADDED.call(track);
 		reloadSelection();
 		return true;
 	}
 
 	public static void removeTrack(Track track) {
-		if(!tracks.contains(track)) {
+		if(!tracks.containsValue(track)) {
 			throw new IllegalArgumentException("Track is not in library");
 		}
 
 		//noinspection LoggingSimilarMessage
 		LOGGER.info("Removing track {}", track.getFile());
 
-		tracks.remove(track);
+		tracks.remove(track.getFile().getName());
 
 		if(!track.getFile().delete()) {
 			LOGGER.error("Failed to delete file {}", track.getFile());
@@ -464,6 +510,10 @@ public class Library {
 
 		EVENT_TRACK_REMOVED.call(track);
 		reloadSelection();
+	}
+
+	public static Track getTrackByFilename(String filename) {
+		return tracks.get(filename);
 	}
 
 	/**

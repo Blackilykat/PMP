@@ -31,6 +31,26 @@ public abstract class Storage {
 
 	public abstract void setCurrentActionID(int id);
 
+	public int getAndIncrementCurrentFilterId() {
+		int id = getCurrentFilterID();
+		setCurrentFilterID(id + 1);
+		return id;
+	}
+
+	public abstract int getCurrentFilterID();
+
+	public abstract void setCurrentFilterID(int id);
+
+	public int getAndIncrementCurrentSessionId() {
+		int id = getCurrentSessionID();
+		setCurrentSessionID(id + 1);
+		return id;
+	}
+
+	public abstract int getCurrentSessionID();
+
+	public abstract void setCurrentSessionID(int id);
+
 	public static Storage getStorage() {
 		if(storage == null) {
 			throw new IllegalStateException("Storage was never set");

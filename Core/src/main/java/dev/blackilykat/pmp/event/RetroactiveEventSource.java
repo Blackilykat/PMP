@@ -17,18 +17,15 @@
 
 package dev.blackilykat.pmp.event;
 
-import java.util.LinkedList;
-import java.util.List;
-
 public class RetroactiveEventSource<T> extends EventSource<T> {
-	private final List<T> pastEvents = new LinkedList<>();
+	private T lastEvent = null;
 
 	@Override
 	public synchronized void register(Listener<T> listener) {
 		super.register(listener);
 
-		for(T event : pastEvents) {
-			listener.run(event);
+		if(lastEvent != null) {
+			listener.run(lastEvent);
 		}
 	}
 
@@ -36,6 +33,6 @@ public class RetroactiveEventSource<T> extends EventSource<T> {
 	public synchronized void call(T t) {
 		super.call(t);
 
-		pastEvents.add(t);
+		lastEvent = t;
 	}
 }

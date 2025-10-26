@@ -46,7 +46,9 @@ public class Main {
 		}
 
 		new Thread(() -> {
-			Library.maybeInit();
+			Library.init();
+
+			Player.init();
 		}).start();
 		MainWindow.main(args);
 	}

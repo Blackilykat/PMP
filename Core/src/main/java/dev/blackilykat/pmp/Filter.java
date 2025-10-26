@@ -17,6 +17,8 @@
 
 package dev.blackilykat.pmp;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import dev.blackilykat.pmp.event.EventSource;
 
 import java.util.Collections;
@@ -34,11 +36,19 @@ public class Filter {
 	public final EventSource<OptionAddedEvent> eventOptionAdded = new EventSource<>();
 	public final EventSource<OptionRemovedEvent> eventOptionRemoved = new EventSource<>();
 
+	public final int id;
 	public final String key;
 
+	@JsonIgnore
 	private final List<FilterOption> options = new LinkedList<>();
 
 	public Filter(String key) {
+		this(Storage.getStorage().getAndIncrementCurrentFilterId(), key);
+	}
+
+	@JsonCreator
+	public Filter(int id, String key) {
+		this.id = id;
 		this.key = key;
 	}
 

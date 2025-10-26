@@ -55,10 +55,10 @@ import java.util.concurrent.CompletableFuture;
 public class Playbar extends JPanel {
 	private static final Logger LOGGER = LogManager.getLogger(Playbar.class);
 
-	public JLabel title = new ThemedLabel("Vancouver");
-	public JLabel artists = new ThemedLabel("Artist1, Artist2");
-	public JLabel currentTime = new ThemedLabel("1:41");
-	public JLabel duration = new ThemedLabel("3:42");
+	public JLabel title = new ThemedLabel("");
+	public JLabel artists = new ThemedLabel("");
+	public JLabel currentTime = new ThemedLabel("-:--");
+	public JLabel duration = new ThemedLabel("-:--");
 	public TimeSlider track = new TimeSlider();
 	public AlbumArtDisplay albumArt = new AlbumArtDisplay();
 	public RoundButton shuffleButton = new RoundButton(45, Theme.selected.shuffleOnIcon);
@@ -274,7 +274,7 @@ public class Playbar extends JPanel {
 		private double loadedPercentage = 1.0;
 
 		public TimeSlider() {
-			super(0, MAX_VALUE, 45_000);
+			super(0, MAX_VALUE, 0);
 		}
 
 		@Override
