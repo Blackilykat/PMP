@@ -45,6 +45,7 @@ public class PlaybackDebugWindowMenuItem extends JMenuItem {
 
 		addActionListener(e -> {
 			JFrame window = new JFrame("Playback debug");
+			window.setMinimumSize(new Dimension(500, 250));
 			Container content = window.getContentPane();
 			BoxLayout layout = new BoxLayout(content, BoxLayout.PAGE_AXIS);
 			content.setLayout(layout);
