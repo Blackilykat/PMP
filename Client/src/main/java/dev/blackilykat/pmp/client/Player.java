@@ -905,9 +905,16 @@ public class Player {
 		}
 
 		List<Track> options = Library.getSelectedTracks();
+		if(options.isEmpty()) {
+			return null;
+		}
 		int current = options.indexOf(currentTrack);
 
 		if(shuffle == ShuffleOption.ON) {
+			if(options.size() == 1) {
+				return options.getFirst();
+			}
+
 			// select any track except the one just played
 			Random random = new Random();
 			int selection = random.nextInt(options.size() - 1);
@@ -935,6 +942,9 @@ public class Player {
 		}
 
 		List<Track> options = Library.getSelectedTracks();
+		if(options.isEmpty()) {
+			return null;
+		}
 		int current = options.indexOf(currentTrack);
 
 		if(current == -1) {
