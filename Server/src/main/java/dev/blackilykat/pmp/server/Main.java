@@ -17,8 +17,12 @@
 
 package dev.blackilykat.pmp.server;
 
+import dev.blackilykat.pmp.util.LoggingProxy;
+
 public class Main {
 	public static void main(String[] args) {
+		LoggingProxy.setUpProxies();
+
 		System.out.println("Hello, world!");
 	}
 }

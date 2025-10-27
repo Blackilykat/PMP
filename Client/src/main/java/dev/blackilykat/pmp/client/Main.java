@@ -19,6 +19,7 @@ package dev.blackilykat.pmp.client;
 
 import dev.blackilykat.pmp.client.gui.MainWindow;
 import dev.blackilykat.pmp.event.EventSource;
+import dev.blackilykat.pmp.util.LoggingProxy;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -33,6 +34,8 @@ public class Main {
 	static void main(String[] args) {
 		logDebugSystemInfo();
 		LOGGER.info("Starting client");
+
+		LoggingProxy.setUpProxies();
 
 		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
 			shutdown(false);
