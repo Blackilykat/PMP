@@ -50,6 +50,7 @@ public class Library {
 	public static final EventSource<Header> EVENT_HEADER_ADDED = new EventSource<>();
 	public static final EventSource<Header> EVENT_HEADER_REMOVED = new EventSource<>();
 	public static final EventSource<HeaderMovedEvent> EVENT_HEADER_MOVED = new EventSource<>();
+	public static final EventSource<FilterMovedEvent> EVENT_FILTER_MOVED = new EventSource<>();
 	public static final EventSource<SelectedTracksUpdatedEvent> EVENT_SELECTED_TRACKS_UPDATED = new EventSource<>();
 	public static final EventSource<SortingHeaderUpdatedEvent> EVENT_SORTING_HEADER_UPDATED = new EventSource<>();
 
@@ -157,12 +158,13 @@ public class Library {
 	}
 
 	public static void addFilter(Filter filter) {
+		LOGGER.info("Adding filter {}", filter);
 		filters.add(filter);
 
 		collectReloads(() -> {
 			FilterOption opt = new FilterOption(Filter.OPTION_EVERYTHING);
-			opt.setState(FilterOption.State.POSITIVE);
 			filter.addOption(opt);
+			opt.setState(FilterOption.State.POSITIVE);
 
 			reloadSelection();
 		});
@@ -171,6 +173,7 @@ public class Library {
 	}
 
 	public static void removeFilter(Filter filter) {
+		LOGGER.info("Removing filter {}", filter);
 		filters.remove(filter);
 
 		reloadSelection();
@@ -178,12 +181,33 @@ public class Library {
 		EVENT_FILTER_REMOVED.call(filter);
 	}
 
+	public static void moveFilter(Filter filter, int position) {
+		if(position < 0 || position >= filters.size()) {
+			throw new IndexOutOfBoundsException(
+					"Position " + position + " is out of bounds for size " + filters.size());
+		}
+
+		int oldPos = filters.indexOf(filter);
+		if(oldPos == -1) {
+			throw new IllegalArgumentException("Filter " + filter + " is not in filters");
+		}
+
+		LOGGER.info("Moving filter {} from {} to {}", filter, oldPos, position);
+
+		filters.remove(filter);
+		filters.add(position, filter);
+
+		reloadSelection();
+
+		EVENT_FILTER_MOVED.call(new FilterMovedEvent(filter, oldPos, position));
+	}
+
 	public static List<Header> getHeaders() {
 		return Collections.unmodifiableList(headers);
 	}
 
 	public static void addHeader(Header header) {
-		LOGGER.info("Adding {}", header);
+		LOGGER.info("Adding header {}", header);
 
 
 		headers.add(header);
@@ -223,7 +247,7 @@ public class Library {
 			throw new IllegalStateException("Can't remove last header");
 		}
 
-		LOGGER.info("Removing {}", header);
+		LOGGER.info("Removing header {}", header);
 
 		if(header == sortingHeader) {
 			sortingHeader = headers.getFirst();
@@ -276,7 +300,7 @@ public class Library {
 
 			library = new File("library");
 			if(!library.exists()) {
-				library.mkdirs();
+				var _ = library.mkdirs();
 			}
 			if(!library.isDirectory()) {
 				LOGGER.error("Library is a file");
@@ -533,4 +557,6 @@ public class Library {
 	public record SortingHeaderUpdatedEvent(Header header, Order order) {}
 
 	public record HeaderMovedEvent(Header header, int oldPosition, int newPosition) {}
+
+	public record FilterMovedEvent(Filter filter, int oldPosition, int newPosition) {}
 }

@@ -32,7 +32,10 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JLabel;
+import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
 import javax.swing.SpringLayout;
 import javax.swing.plaf.basic.BasicButtonUI;
 import java.awt.BorderLayout;
@@ -44,6 +47,7 @@ import java.awt.Graphics;
 import java.awt.Point;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.List;
 import java.util.Random;
 
 public class FiltersPanel extends JPanel {
@@ -81,6 +85,72 @@ public class FiltersPanel extends JPanel {
 				add(new FilterPanel(filter));
 			});
 		});
+
+		Library.EVENT_FILTER_REMOVED.register(filter -> {
+			GUIUtils.runOnSwingThread(() -> {
+				for(Component component : getComponents()) {
+					if(!(component instanceof FilterPanel fp)) {
+						continue;
+					}
+
+					if(fp.filter != filter) {
+						continue;
+					}
+
+					remove(fp);
+				}
+			});
+		});
+
+		Library.EVENT_FILTER_MOVED.register(event -> {
+			Filter filter = event.filter();
+			int pos = event.newPosition();
+
+			GUIUtils.runOnSwingThread(() -> {
+				FilterPanel panel = null;
+				for(Component component : getComponents()) {
+					if(!(component instanceof FilterPanel fp)) {
+						continue;
+					}
+
+					if(fp.filter != filter) {
+						continue;
+					}
+
+					panel = fp;
+					remove(fp);
+				}
+
+				if(panel == null) {
+					LOGGER.error("FiltersPanel#<init>: panel is null, this should be unreachable");
+					return;
+				}
+
+				int componentIndex = 0, filterIndex = 0;
+				for(Component component : getComponents()) {
+					componentIndex++;
+					if(!(component instanceof FilterPanel fp)) {
+						continue;
+					}
+
+					if(filterIndex >= pos) {
+						componentIndex--;
+						break;
+					}
+
+					filterIndex++;
+				}
+
+				super.add(panel, componentIndex);
+				panel.revalidate();
+				revalidate();
+				repaint();
+			});
+		});
+
+		JPopupMenu menu = new JPopupMenu();
+		menu.add(buildAddFilterMenuItem());
+		addMouseListener(GUIUtils.createPopupListener(menu, this));
 	}
 
 	public void add(FilterPanel filterPanel) {
@@ -123,13 +193,80 @@ public class FiltersPanel extends JPanel {
 		return Theme.selected.panelBackground;
 	}
 
+	public static JMenuItem buildAddFilterMenuItem() {
+		JMenuItem item = new JMenuItem("Add filter...");
+		item.addActionListener(_ -> {
+			String res = JOptionPane.showInputDialog(null, "Choose filter key", "Add a filter",
+					JOptionPane.PLAIN_MESSAGE);
+			if(res == null) {
+				return;
+			}
+
+			Filter filter = new Filter(res);
+			Library.addFilter(filter);
+		});
+
+		return item;
+	}
+
+	public static JMenuItem buildRemoveFilterMenuItem(Filter filter) {
+		JMenuItem item = new JMenuItem("Remove " + filter.key);
+		item.addActionListener(_ -> {
+			Library.removeFilter(filter);
+		});
+		return item;
+	}
+
+	public static JMenuItem buildMoveFilterUpMenuItem(Filter filter) {
+		JMenuItem item = new JMenuItem("Move " + filter.key + " up");
+		item.addActionListener(_ -> {
+			int pos = Library.getFilters().indexOf(filter);
+			if(pos < 1) {
+				return;
+			}
+
+			Library.moveFilter(filter, pos - 1);
+		});
+		return item;
+	}
+
+	public static JMenuItem buildMoveFilterDownMenuItem(Filter filter) {
+		JMenuItem item = new JMenuItem("Move " + filter.key + " down");
+		item.addActionListener(_ -> {
+			List<Filter> filters = Library.getFilters();
+			int pos = filters.indexOf(filter);
+			if(pos >= filters.size() - 1 || pos < 0) {
+				return;
+			}
+
+			Library.moveFilter(filter, pos + 1);
+		});
+		return item;
+	}
+
 	public static class FilterPanel extends JPanel {
+		public final Filter filter;
 		private JLabel name;
 		private JPanel mainBox;
 		private JPanel content;
 
 		public FilterPanel(Filter filter) {
-			name = new ThemedLabel(filter.key);
+			this.filter = filter;
+			String label;
+			{
+				char[] keyChars = filter.key.toCharArray();
+
+				boolean capitalize = true;
+				for(int i = 0; i < keyChars.length; i++) {
+					if(capitalize) {
+						keyChars[i] = Character.toUpperCase(keyChars[i]);
+					}
+					capitalize = keyChars[i] == ' ';
+				}
+
+				label = new String(keyChars);
+			}
+			name = new ThemedLabel(label);
 			name.setFont(new Font("Source Sans Pro", Font.PLAIN, 20));
 
 			JPanel nameContainer = new JPanel() {
@@ -215,6 +352,13 @@ public class FiltersPanel extends JPanel {
 					removeOption(option);
 				});
 			});
+
+			JPopupMenu menu = new JPopupMenu();
+			menu.add(buildAddFilterMenuItem());
+			menu.add(buildRemoveFilterMenuItem(filter));
+			menu.add(buildMoveFilterUpMenuItem(filter));
+			menu.add(buildMoveFilterDownMenuItem(filter));
+			addMouseListener(GUIUtils.createPopupListener(menu, this));
 		}
 
 		public void addOption(FilterOption option) {

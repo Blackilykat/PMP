@@ -140,6 +140,11 @@ public class Filter {
 		}
 	}
 
+	@Override
+	public String toString() {
+		return "Filter(" + id + ", " + key + ")";
+	}
+
 	public record OptionAddedEvent(Filter filter, int index, FilterOption option) {}
 
 	public record OptionRemovedEvent(Filter filter, FilterOption option) {}
