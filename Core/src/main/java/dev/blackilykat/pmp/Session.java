@@ -32,6 +32,9 @@ public class Session implements Cloneable {
 	public final EventSource<Long> eventPlaybackPositionChanged = new EventSource<>();
 	public final EventSource<List<Pair<Integer, String>>> eventPositiveFilterOptionsChanged = new EventSource<>();
 	public final EventSource<List<Pair<Integer, String>>> eventNegativeFilterOptionsChanged = new EventSource<>();
+	public final EventSource<RepeatOption> eventRepeatChanged = new EventSource<>();
+	public final EventSource<ShuffleOption> eventShuffleChanged = new EventSource<>();
+	public final EventSource<String> eventNextTrackChanged = new EventSource<>();
 
 
 	public final int id;
@@ -62,6 +65,15 @@ public class Session implements Cloneable {
 	 * value of the option.
 	 */
 	private List<Pair<Integer, String>> negativeFilterOptions = new LinkedList<>();
+
+	private RepeatOption repeat = RepeatOption.OFF;
+	private ShuffleOption shuffle = ShuffleOption.OFF;
+
+	/**
+	 * Next track which will get immediately played at the end of this one. Can be null if playback stops after this
+	 * track.
+	 */
+	private String nextTrack = null;
 
 	public Session() {
 		this(Storage.getStorage().getAndIncrementCurrentSessionId());
@@ -126,6 +138,33 @@ public class Session implements Cloneable {
 		eventNegativeFilterOptionsChanged.call(this.negativeFilterOptions);
 	}
 
+	public RepeatOption getRepeat() {
+		return repeat;
+	}
+
+	public void setRepeat(RepeatOption repeat) {
+		this.repeat = repeat;
+		eventRepeatChanged.call(repeat);
+	}
+
+	public ShuffleOption getShuffle() {
+		return shuffle;
+	}
+
+	public void setShuffle(ShuffleOption shuffle) {
+		this.shuffle = shuffle;
+		eventShuffleChanged.call(shuffle);
+	}
+
+	public String getNextTrack() {
+		return nextTrack;
+	}
+
+	public void setNextTrack(String nextTrack) {
+		this.nextTrack = nextTrack;
+		eventNextTrackChanged.call(nextTrack);
+	}
+
 	@Override
 	public Session clone() {
 		try {
@@ -142,7 +181,7 @@ public class Session implements Cloneable {
 
 	@Override
 	public String toString() {
-		return String.format("Session#%d(%s, %s, Epoch: %s, Pos: %d)", id, track, playing ? "Playing" : "Not playing",
-				playbackEpoch, playbackPosition);
+		return String.format("Session#%d(%s, %s, Epoch: %s, Pos: %d, shuffle: %s, repeat: %s)", id, track,
+				playing ? "Playing" : "Not playing", playbackEpoch, playbackPosition, shuffle, repeat);
 	}
 }

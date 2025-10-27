@@ -19,6 +19,8 @@ package dev.blackilykat.pmp.client.gui;
 
 import com.github.weisj.jsvg.SVGDocument;
 import com.github.weisj.jsvg.view.ViewBox;
+import dev.blackilykat.pmp.RepeatOption;
+import dev.blackilykat.pmp.ShuffleOption;
 import dev.blackilykat.pmp.client.Player;
 import dev.blackilykat.pmp.client.Track;
 import dev.blackilykat.pmp.client.gui.util.GUIUtils;
@@ -78,13 +80,32 @@ public class Playbar extends JPanel {
 		add(track);
 		add(albumArt);
 		add(shuffleButton);
+		shuffleButton.addActionListener(_ -> {
+			Player.setShuffle(switch(Player.getShuffle()) {
+				case ON -> ShuffleOption.OFF;
+				case OFF -> ShuffleOption.ON;
+			});
+		});
 		add(previousButton);
+		previousButton.addActionListener(_ -> {
+			Player.previous();
+		});
 		add(playPauseButton);
-		playPauseButton.addActionListener(e -> {
+		playPauseButton.addActionListener(_ -> {
 			Player.playPause();
 		});
 		add(nextButton);
+		nextButton.addActionListener(_ -> {
+			Player.next();
+		});
 		add(repeatButton);
+		repeatButton.addActionListener(_ -> {
+			Player.setRepeat(switch(Player.getRepeat()) {
+				case OFF -> RepeatOption.ALL;
+				case ALL -> RepeatOption.TRACK;
+				case TRACK -> RepeatOption.OFF;
+			});
+		});
 
 		Player.EVENT_PROGRESS.register(ms -> {
 			GUIUtils.runOnSwingThread(() -> {
@@ -135,6 +156,25 @@ public class Playbar extends JPanel {
 					playPauseButton.setIcon(Theme.selected.playIcon);
 				} else {
 					playPauseButton.setIcon(Theme.selected.pauseIcon);
+				}
+			});
+		});
+
+		Player.EVENT_REPEAT_CHANGED.register(repeat -> {
+			GUIUtils.runOnSwingThread(() -> {
+				switch(repeat) {
+					case ALL -> repeatButton.setIcon(Theme.selected.repeatAllIcon);
+					case OFF -> repeatButton.setIcon(Theme.selected.repeatOffIcon);
+					case TRACK -> repeatButton.setIcon(Theme.selected.repeatTrackIcon);
+				}
+			});
+		});
+
+		Player.EVENT_SHUFFLE_CHANGED.register(shuffle -> {
+			GUIUtils.runOnSwingThread(() -> {
+				switch(shuffle) {
+					case ON -> shuffleButton.setIcon(Theme.selected.shuffleOnIcon);
+					case OFF -> shuffleButton.setIcon(Theme.selected.shuffleOffIcon);
 				}
 			});
 		});

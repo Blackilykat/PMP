@@ -23,7 +23,9 @@ import dev.blackilykat.jpasimple.SampleFormat;
 import dev.blackilykat.jpasimple.SampleSpec;
 import dev.blackilykat.pmp.Filter;
 import dev.blackilykat.pmp.FilterOption;
+import dev.blackilykat.pmp.RepeatOption;
 import dev.blackilykat.pmp.Session;
+import dev.blackilykat.pmp.ShuffleOption;
 import dev.blackilykat.pmp.event.EventSource;
 import dev.blackilykat.pmp.event.RetroactiveEventSource;
 import dev.blackilykat.pmp.util.OverridingSingleThreadExecutor;
@@ -57,6 +59,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -75,6 +78,9 @@ public class Player {
 			new RetroactiveEventSource<>();
 	public static final RetroactiveEventSource<PlaybackDebugInfoEvent> EVENT_PLAYBACK_DEBUG_INFO =
 			new RetroactiveEventSource<>();
+	public static final RetroactiveEventSource<RepeatOption> EVENT_REPEAT_CHANGED = new RetroactiveEventSource<>();
+	public static final RetroactiveEventSource<ShuffleOption> EVENT_SHUFFLE_CHANGED = new RetroactiveEventSource<>();
+	public static final RetroactiveEventSource<Track> EVENT_NEXT_TRACK_CHANGED = new RetroactiveEventSource<>();
 	public static final EventSource<Long> EVENT_SEEK = new EventSource<>();
 
 	private static final Logger LOGGER = LogManager.getLogger(Player.class);
@@ -108,6 +114,9 @@ public class Player {
 	private static final Pair<ScheduledExecutorService, ScheduledFuture<?>> PROGRESS_EXECUTOR = new Pair<>(
 			Executors.newSingleThreadScheduledExecutor(), null);
 	private static final AtomicBoolean paused = new AtomicBoolean(true);
+	private static RepeatOption repeat = RepeatOption.OFF;
+	private static ShuffleOption shuffle = ShuffleOption.OFF;
+	private static Track nextTrack = null;
 	private static boolean shouldSeek = false;
 	private static Thread audioThread = null;
 	private static Track currentTrack = null;
@@ -238,6 +247,43 @@ public class Player {
 		setPosition(ms);
 		EVENT_PROGRESS.call(ms);
 		EVENT_SEEK.call(ms);
+	}
+
+	public static void next() {
+		if(nextTrack != null) {
+			play(nextTrack);
+		} else {
+			pause();
+		}
+	}
+
+	public static void previous() {
+		Track prev = findPreviousTrack();
+		if(prev != null) {
+			play(prev);
+		} else {
+			pause();
+		}
+	}
+
+	public static ShuffleOption getShuffle() {
+		return shuffle;
+	}
+
+	public static void setShuffle(ShuffleOption shuffle) {
+		LOGGER.info("Shuffle set to {}", shuffle);
+		Player.shuffle = shuffle;
+		EVENT_SHUFFLE_CHANGED.call(shuffle);
+	}
+
+	public static RepeatOption getRepeat() {
+		return repeat;
+	}
+
+	public static void setRepeat(RepeatOption repeat) {
+		LOGGER.info("Repeat set to {}", repeat);
+		Player.repeat = repeat;
+		EVENT_REPEAT_CHANGED.call(repeat);
 	}
 
 	public static Track getTrack() {
@@ -491,7 +537,7 @@ public class Player {
 							}
 
 							if(framePosition >= pcm.length) {
-								pause();
+								next();
 								break;
 							}
 
@@ -503,7 +549,7 @@ public class Player {
 									line.write(pcm, framePosition, pcm.length - framePosition);
 								}
 
-								pause();
+								next();
 								break;
 							}
 
@@ -669,6 +715,32 @@ public class Player {
 			selectedSession.setTrack(track.getFile().getName());
 		});
 
+		EVENT_SHUFFLE_CHANGED.register(shuffle -> {
+			selectNextTrack();
+			if(APPLYING_SESSION.orElse(false)) {
+				return;
+			}
+
+			selectedSession.setShuffle(shuffle);
+		});
+
+		EVENT_REPEAT_CHANGED.register(repeat -> {
+			selectNextTrack();
+			if(APPLYING_SESSION.orElse(false)) {
+				return;
+			}
+
+			selectedSession.setRepeat(repeat);
+		});
+
+		EVENT_NEXT_TRACK_CHANGED.register(track -> {
+			if(APPLYING_SESSION.orElse(false)) {
+				return;
+			}
+
+			selectedSession.setNextTrack(track == null ? null : track.getFile().getName());
+		});
+
 		Filter.EVENT_OPTION_CHANGED_STATE.register(event -> {
 			if(APPLYING_SESSION.orElse(false)) {
 				return;
@@ -711,6 +783,14 @@ public class Player {
 				selectedSession.setNegativeFilterOptions(negativeOptions);
 			}
 		});
+
+		EVENT_TRACK_CHANGE.register(_ -> {
+			selectNextTrack();
+		});
+
+		Library.EVENT_SELECTED_TRACKS_UPDATED.register(_ -> {
+			selectNextTrack();
+		});
 	}
 
 	private static int msToPlaybackBytes(long ms) {
@@ -744,6 +824,9 @@ public class Player {
 			} else {
 				setPosition(session.getPlaybackPosition());
 			}
+
+			setRepeat(session.getRepeat());
+			setShuffle(session.getShuffle());
 
 			Library.collectReloads(() -> {
 				List<Pair<Integer, String>> positive = session.getPositiveFilterOptions();
@@ -808,6 +891,63 @@ public class Player {
 			EVENT_PLAY_PAUSE.call(paused.get());
 			EVENT_PROGRESS.call(getPosition());
 		});
+	}
+
+	public static void selectNextTrack() {
+		nextTrack = findNextTrack();
+
+		EVENT_NEXT_TRACK_CHANGED.call(nextTrack);
+	}
+
+	private static Track findNextTrack() {
+		if(repeat == RepeatOption.TRACK) {
+			return currentTrack;
+		}
+
+		List<Track> options = Library.getSelectedTracks();
+		int current = options.indexOf(currentTrack);
+
+		if(shuffle == ShuffleOption.ON) {
+			// select any track except the one just played
+			Random random = new Random();
+			int selection = random.nextInt(options.size() - 1);
+			if(current != -1 && selection >= current) {
+				selection++;
+			}
+
+			return options.get(selection);
+		} else if(current == -1) {
+			return options.getFirst();
+		} else if(current == options.size() - 1) {
+			if(repeat == RepeatOption.ALL) {
+				return options.getFirst();
+			} else {
+				return null;
+			}
+		} else {
+			return options.get(current + 1);
+		}
+	}
+
+	private static Track findPreviousTrack() {
+		if(repeat == RepeatOption.TRACK || shuffle == ShuffleOption.ON) {
+			return findNextTrack();
+		}
+
+		List<Track> options = Library.getSelectedTracks();
+		int current = options.indexOf(currentTrack);
+
+		if(current == -1) {
+			return options.getLast();
+		} else if(current == 0) {
+			if(repeat == RepeatOption.ALL) {
+				return options.getLast();
+			} else {
+				return null;
+			}
+		} else {
+			return options.get(current - 1);
+		}
 	}
 
 	public record TrackChangeEvent(Track track, CompletableFuture<byte[]> picture) {}
