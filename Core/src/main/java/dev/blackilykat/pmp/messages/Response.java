@@ -18,20 +18,13 @@
 package dev.blackilykat.pmp.messages;
 
 /**
- * Message to create a playback session. When the client sends this, it may only set a requestId to ask the server to
- * create a session. The requestId must be a sessionId that's unique to the client. The server will then respond to that
- * client with the requestId sent by the client and the responseId being the actual id of the playback session. Other
- * clients will receive a message only containing the response id, since they did not request the creation of that
- * session.
+ * Any message that responds to a {@link Request}.
  */
-public class PlaybackSessionCreateMessage extends Message {
-	public static final String MESSAGE_TYPE = "PlaybackSessionCreate";
-
+public abstract class Response extends Message {
 	public Integer requestId;
-	public Integer responseId;
 
-	public PlaybackSessionCreateMessage(Integer requestId, Integer responseId) {
+	public Response(Integer requestId) {
+		super();
 		this.requestId = requestId;
-		this.responseId = responseId;
 	}
 }

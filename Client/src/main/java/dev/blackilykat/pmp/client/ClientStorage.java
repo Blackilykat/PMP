@@ -28,10 +28,16 @@ import dev.blackilykat.pmp.event.EventSource;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.security.Key;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -70,7 +76,15 @@ public class ClientStorage extends Storage {
 	private int currentFilterID = 0;
 	private int currentSessionID = 0;
 	private int currentHeaderID = 0;
-
+	private String serverAddress = "localhost";
+	private int serverPort = 6803;
+	private int serverFilePort = 6804;
+	/**
+	 * Base64 encoded serialized {@link Key} object
+	 */
+	private String encodedServerPublicKey = null;
+	private String token = null;
+	private Integer deviceID = null;
 
 	private ClientStorage() {
 		Timer savingTimer = new Timer("Client storage saving timer");
@@ -206,6 +220,96 @@ public class ClientStorage extends Storage {
 		this.filters = new LinkedList<>(filters);
 	}
 
+	public String getServerAddress() {
+		return serverAddress;
+	}
+
+	public void setServerAddress(String serverAddress) {
+		dirty = true;
+		this.serverAddress = serverAddress;
+	}
+
+	public int getServerPort() {
+		return serverPort;
+	}
+
+	public void setServerPort(int serverPort) {
+		dirty = true;
+		this.serverPort = serverPort;
+	}
+
+	public int getServerFilePort() {
+		return serverFilePort;
+	}
+
+	public void setServerFilePort(int serverFilePort) {
+		dirty = true;
+		this.serverFilePort = serverFilePort;
+	}
+
+	@JsonIgnore
+	public Key getServerPublicKey() {
+		if(encodedServerPublicKey == null) {
+			return null;
+		}
+
+		byte[] data = Base64.getDecoder().decode(encodedServerPublicKey);
+		try(ObjectInputStream is = new ObjectInputStream(new ByteArrayInputStream(data))) {
+			Object o = is.readObject();
+			if(!(o instanceof Key key)) {
+				LOGGER.error("Storage#getServerPublicKey: Key is not a key but a {}, this should be unreachable",
+						o.getClass().getName());
+				return null;
+			}
+			return key;
+		} catch(IOException | ClassNotFoundException e) {
+			LOGGER.error("Storage#getServerPublicKey: this should be unreachable", e);
+			return null;
+		}
+	}
+
+	@JsonIgnore
+	public void setServerPublicKey(Key serverPublicKey) {
+		dirty = true;
+		if(this.encodedServerPublicKey != null) {
+			LOGGER.warn("Overriding server public key");
+		}
+		try(ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+			ObjectOutputStream os = new ObjectOutputStream(byteStream)) {
+
+			os.writeObject(serverPublicKey);
+			byte[] data = byteStream.toByteArray();
+			this.encodedServerPublicKey = Base64.getEncoder().encodeToString(data);
+		} catch(IOException e) {
+			LOGGER.error("Storage#getServerPublicKey: this should be unreachable", e);
+		}
+	}
+
+	public String getEncodedServerPublicKey() {
+		return encodedServerPublicKey;
+	}
+
+	private void setEncodedServerPublicKey(String encodedServerPublicKey) {
+		this.encodedServerPublicKey = encodedServerPublicKey;
+	}
+
+	public String getToken() {
+		return token;
+	}
+
+	public void setToken(String token) {
+		dirty = true;
+		this.token = token;
+	}
+
+	public Integer getDeviceID() {
+		return deviceID;
+	}
+
+	public void setDeviceID(Integer deviceID) {
+		dirty = true;
+		this.deviceID = deviceID;
+	}
 
 	/**
 	 * Saves storage to disk.

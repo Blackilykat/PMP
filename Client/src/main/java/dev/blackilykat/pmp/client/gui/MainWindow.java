@@ -17,13 +17,21 @@
 
 package dev.blackilykat.pmp.client.gui;
 
+import dev.blackilykat.pmp.client.ClientStorage;
 import dev.blackilykat.pmp.client.Main;
+import dev.blackilykat.pmp.client.Server;
 import dev.blackilykat.pmp.client.gui.util.GUIUtils;
+import dev.blackilykat.pmp.client.gui.util.ThemedLabel;
+import dev.blackilykat.pmp.messages.LoginAsExistingDeviceRequest;
+import dev.blackilykat.pmp.messages.LoginAsNewDeviceRequest;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import javax.swing.BorderFactory;
 import javax.swing.JFrame;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JPasswordField;
 import javax.swing.SpringLayout;
 import javax.swing.SwingUtilities;
 import javax.swing.UIDefaults;
@@ -107,6 +115,30 @@ public class MainWindow extends JFrame {
 		});
 
 		mainWindow.setVisible(true);
+
+		Server.EVENT_SHOULD_ASK_PASSWORD.register(_ -> {
+
+			JPasswordField passwordField = new JPasswordField(16);
+			JPanel panel = new JPanel();
+			panel.add(new ThemedLabel("Enter the server password: "));
+			panel.add(passwordField);
+			int response = JOptionPane.showOptionDialog(null, panel, "Enter the server password",
+					JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null, null, 0);
+			if(response != JOptionPane.OK_OPTION) {
+				Server.disconnectWithoutRetrying("Login cancelled by user");
+				return;
+			}
+
+			String password = new String(passwordField.getPassword());
+
+			ClientStorage cs = ClientStorage.getInstance();
+			Integer deviceId = cs.getDeviceID();
+			if(deviceId == null) {
+				Server.send(new LoginAsNewDeviceRequest(password, "host"));
+			} else {
+				Server.send(LoginAsExistingDeviceRequest.newWithPassword(password, deviceId));
+			}
+		});
 	}
 
 
@@ -151,6 +183,15 @@ public class MainWindow extends JFrame {
 		defaults.put("TextField.caretForeground", Theme.selected.text);
 		defaults.put("TextField.border", BorderFactory.createEmptyBorder(4, 4, 4, 4));
 		defaults.put("TextField.font", new Font("Source Sans Pro", Font.PLAIN, 16));
+
+
+		defaults.put("PasswordField.background", Theme.selected.buttonBackground);
+		defaults.put("PasswordField.foreground", Theme.selected.text);
+		defaults.put("PasswordField.selectionBackground", Theme.selected.text);
+		defaults.put("PasswordField.selectionForeground", Theme.selected.buttonBackground);
+		defaults.put("PasswordField.caretForeground", Theme.selected.text);
+		defaults.put("PasswordField.border", BorderFactory.createEmptyBorder(4, 4, 4, 4));
+		defaults.put("PasswordField.font", new Font("Source Sans Pro", Font.PLAIN, 16));
 
 		defaults.put("OptionPane.messageAreaBackground", Theme.selected.panelBackground);
 		defaults.put("OptionPane.buttonAreaBackground", Theme.selected.panelBackground);

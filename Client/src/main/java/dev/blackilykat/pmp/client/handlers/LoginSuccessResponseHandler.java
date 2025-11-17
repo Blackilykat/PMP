@@ -15,21 +15,25 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package dev.blackilykat.pmp.messages;
+package dev.blackilykat.pmp.client.handlers;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
+import dev.blackilykat.pmp.MessageHandler;
+import dev.blackilykat.pmp.PMPConnection;
+import dev.blackilykat.pmp.client.ClientStorage;
+import dev.blackilykat.pmp.messages.LoginSuccessResponse;
 
-/**
- * Used when a client needs to receive missing actions from the server. Clients can expect the server to send all
- * library actions from (inclusive) {@link #start} up to the latest one.
- */
-public class LibraryActionRequestMessage extends Message {
-	public static final String MESSAGE_TYPE = "LibraryActionRequest";
+public class LoginSuccessResponseHandler extends MessageHandler<LoginSuccessResponse> {
+	public LoginSuccessResponseHandler() {
+		super(LoginSuccessResponse.class);
+	}
 
-	public Integer start;
+	@Override
+	public void run(PMPConnection connection, LoginSuccessResponse message) {
+		ClientStorage cs = ClientStorage.getInstance();
+		if(message.deviceId != null) {
+			cs.setDeviceID(message.deviceId);
+		}
 
-	@JsonCreator
-	public LibraryActionRequestMessage(Integer start) {
-		this.start = start;
+		cs.setToken(message.token);
 	}
 }

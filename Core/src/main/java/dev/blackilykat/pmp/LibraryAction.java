@@ -17,7 +17,6 @@
 
 package dev.blackilykat.pmp;
 
-import dev.blackilykat.pmp.messages.LibraryActionMessage;
 import dev.blackilykat.pmp.util.Pair;
 
 import java.io.Serializable;
@@ -46,14 +45,6 @@ public class LibraryAction implements Serializable {
 
 	public LibraryAction() {
 		this.fileName = "";
-	}
-
-	public LibraryActionMessage toMessage() {
-		if(actionType != Type.CHANGE_METADATA) {
-			return new LibraryActionMessage(actionType, fileName);
-		} else {
-			return new LibraryActionMessage(actionType, fileName, newMetadata);
-		}
 	}
 
 	public enum Type {

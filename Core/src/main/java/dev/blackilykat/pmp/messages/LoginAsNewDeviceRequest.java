@@ -17,20 +17,28 @@
 
 package dev.blackilykat.pmp.messages;
 
-import java.util.ArrayList;
-import java.util.List;
-
-
 /**
- * The list of track headers. These must be shared between devices to communicate how to sort the library.
+ * Request to log in as a new device. Only supports password login as a token could not have been previously assigned.
+ * <p>Direction: C2S
  */
-public class HeaderListMessage extends Message {
-	public static final String MESSAGE_TYPE = "HeaderList";
+public class LoginAsNewDeviceRequest extends Request {
+	public static final String MESSAGE_TYPE = "LoginAsNewDevice";
 
-	public List<Header> headers = new ArrayList<>();
+	public String password;
+	public String hostname;
 
-	public HeaderListMessage() {
+	public LoginAsNewDeviceRequest(String password, String hostname) {
+		this.password = password;
+		this.hostname = hostname;
 	}
 
-	public record Header(int id, String key, String name) {}
+	@Override
+	public Message withRedactedInfo() {
+		LoginAsNewDeviceRequest clone = (LoginAsNewDeviceRequest) clone();
+		if(clone.password != null) {
+			clone.password = "REDACTED";
+		}
+		return clone;
+	}
 }
+

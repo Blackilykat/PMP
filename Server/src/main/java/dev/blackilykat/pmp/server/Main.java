@@ -17,12 +17,126 @@
 
 package dev.blackilykat.pmp.server;
 
+import dev.blackilykat.pmp.PMPConnection;
+import dev.blackilykat.pmp.event.EventSource;
+import dev.blackilykat.pmp.messages.LoginAsExistingDeviceRequest;
+import dev.blackilykat.pmp.messages.LoginAsNewDeviceRequest;
+import dev.blackilykat.pmp.messages.Message;
+import dev.blackilykat.pmp.server.handlers.LoginAsExistingDeviceRequestHandler;
+import dev.blackilykat.pmp.server.handlers.LoginAsNewDeviceRequestHandler;
 import dev.blackilykat.pmp.util.LoggingProxy;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import javax.net.ssl.SSLServerSocket;
+import java.io.Console;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 
 public class Main {
-	public static void main(String[] args) {
+	public static final EventSource<Void> EVENT_SHUTDOWN = new EventSource<>();
+	private static final Logger LOGGER = LogManager.getLogger(Main.class);
+
+	static void main(String[] args) {
+
+
+		try {
+			ServerStorage.load();
+		} catch(IOException e) {
+			LOGGER.fatal("Failed to load storage", e);
+			System.exit(1);
+		}
+
+		{
+			ServerStorage ss = ServerStorage.getInstance();
+			boolean passwordArg = Arrays.stream(args).toList().contains("--password");
+			if(passwordArg || ss.getPassword() == null) {
+				Console console = System.console();
+				if(console == null) {
+					LOGGER.fatal(
+							"Need a real terminal to ask password, or \"password\" to have a value in storage.json");
+					System.exit(1);
+				}
+
+				while(true) {
+					System.out.print("Enter the new password: ");
+					String first = console.readLine();
+					System.out.print("Confirm the new password: ");
+					String second = console.readLine();
+					if(!first.equals(second)) {
+						System.out.println("Passwords entered do not match!");
+						continue;
+					}
+					ss.setPassword(first);
+					break;
+				}
+
+				try {
+					ServerStorage.doSave();
+				} catch(IOException e) {
+					LOGGER.fatal("Failed to save new password to storage", e);
+					System.exit(1);
+				}
+
+				LOGGER.info("Saved new password");
+				if(passwordArg) {
+					LOGGER.info("Found password argument, exiting");
+					System.exit(0);
+				}
+			}
+		}
+
 		LoggingProxy.setUpProxies();
 
-		System.out.println("Hello, world!");
+		Encryption.init();
+
+		registerHandlers();
+
+		SSLServerSocket serverSocket = null;
+		try {
+			serverSocket = (SSLServerSocket) Encryption.getSslContext()
+					.getServerSocketFactory()
+					.createServerSocket(6803);
+		} catch(IOException e) {
+			LOGGER.fatal("Failed to create server socket", e);
+			System.exit(1);
+		}
+
+		assert serverSocket != null;
+
+		//noinspection InfiniteLoopStatement
+		while(true) {
+			try {
+				ClientConnection conn = new ClientConnection(serverSocket.accept());
+			} catch(Exception e) {
+				LOGGER.warn("Failed to connect to a client", e);
+			} catch(Throwable t) {
+				LOGGER.fatal("Something went very wrong while connecting a client", t);
+				throw t;
+			}
+		}
+	}
+
+	private static void registerHandlers() {
+		new LoginAsNewDeviceRequestHandler().register();
+		new LoginAsExistingDeviceRequestHandler().register();
+
+		PMPConnection.EVENT_RECEIVING_MESSAGE.register(evt -> {
+			if(!(evt.connection instanceof ClientConnection connection)) {
+				return;
+			}
+			if(connection.device != null) {
+				return;
+			}
+
+			List<Class<? extends Message>> loggedOutWhitelist = List.of(LoginAsNewDeviceRequest.class,
+					LoginAsExistingDeviceRequest.class);
+			if(loggedOutWhitelist.contains(evt.message.getClass())) {
+				return;
+			}
+
+			evt.cancel();
+		});
 	}
 }

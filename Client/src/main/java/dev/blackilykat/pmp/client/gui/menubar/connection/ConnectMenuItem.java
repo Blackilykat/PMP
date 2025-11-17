@@ -15,24 +15,30 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package dev.blackilykat.pmp.messages;
+package dev.blackilykat.pmp.client.gui.menubar.connection;
 
-/**
- * The first message the server sends once a client is authenticated. Used to confirm the login and send some initial
- * necessary pieces of information.
- */
-public class WelcomeMessage extends Message {
-	public static final String MESSAGE_TYPE = "Welcome";
+import dev.blackilykat.pmp.client.Server;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
-	public Integer clientId;
-	public Integer latestActionId;
-	public String token;
-	public Integer deviceId;
+import javax.swing.JMenuItem;
 
-	public WelcomeMessage(Integer clientId, Integer latestActionId, String token, Integer deviceId) {
-		this.clientId = clientId;
-		this.latestActionId = latestActionId;
-		this.token = token;
-		this.deviceId = deviceId;
+public class ConnectMenuItem extends JMenuItem {
+	private static final Logger LOGGER = LogManager.getLogger(ConnectMenuItem.class);
+
+	public ConnectMenuItem() {
+		super("Connect");
+
+		addActionListener(e -> {
+			Server.connect();
+		});
+
+		Server.EVENT_CONNECTED.register(_ -> {
+			setEnabled(false);
+		});
+
+		Server.EVENT_DISCONNECTED.register(_ -> {
+			setEnabled(true);
+		});
 	}
 }

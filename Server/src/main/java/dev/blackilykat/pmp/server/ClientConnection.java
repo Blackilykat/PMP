@@ -15,22 +15,19 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package dev.blackilykat.pmp.messages;
+package dev.blackilykat.pmp.server;
 
 import dev.blackilykat.pmp.PMPConnection;
 
-/**
- * Message used to keep the connection alive. A keepalive should be sent every {@value #KEEPALIVE_MS} milliseconds, and
- * the connection will be killed after <b>approximately</b> {@value #KEEPALIVE_MAX_MS} milliseconds.
- * <p>
- * This message is handled by {@link PMPConnection}.
- */
-public class KeepaliveMessage extends Message {
-	public static final long KEEPALIVE_MS = 10_000;
-	public static final long KEEPALIVE_MAX_MS = 30_000;
+import java.io.IOException;
+import java.net.Socket;
 
-	public static final String MESSAGE_TYPE = "Keepalive";
+public class ClientConnection extends PMPConnection {
 
-	public KeepaliveMessage() {
+	private static int clientID = 1;
+	public Device device = null;
+
+	public ClientConnection(Socket socket) throws IOException {
+		super(socket, "Client " + clientID++);
 	}
 }

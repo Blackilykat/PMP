@@ -21,11 +21,12 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
+import dev.blackilykat.pmp.event.EventSource;
+import dev.blackilykat.pmp.event.RetroactiveEventSource;
 import dev.blackilykat.pmp.messages.DisconnectMessage;
-import dev.blackilykat.pmp.messages.KeepaliveMessage;
-import dev.blackilykat.pmp.messages.LoginMessage;
 import dev.blackilykat.pmp.messages.Message;
-import dev.blackilykat.pmp.messages.WelcomeMessage;
+import dev.blackilykat.pmp.messages.Request;
+import dev.blackilykat.pmp.messages.Response;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -36,21 +37,30 @@ import java.io.OutputStream;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Queue;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 
 public class PMPConnection {
+	public static final EventSource<ReceivingMessageEvent> EVENT_RECEIVING_MESSAGE = new EventSource<>();
+
+	private static final int KEEPALIVE_MS = 10_000;
+	private static final int KEEPALIVE_MAX_MS = 30_000;
 	private static final Logger LOGGER = LogManager.getLogger(PMPConnection.class);
 	private static final ObjectMapper mapper = new ObjectMapper();
 	public final Socket socket;
 	public final String name;
 	public final Object connectedLock = new Object();
+	public final RetroactiveEventSource<Void> eventConnected = new RetroactiveEventSource<>();
+	public final RetroactiveEventSource<Void> eventDisconnected = new RetroactiveEventSource<>();
 	private final MessageReceivingThread messageReceivingThread;
 	private final InputStream inputStream;
 	private final MessageSendingThread messageSendingThread;
@@ -60,9 +70,9 @@ public class PMPConnection {
 	private final Timer keepaliveTimer;
 	private final List<MessageListener<?>> listeners = new LinkedList<>();
 	private final Object messageIdCounterLock = new Object();
+	private final Map<Integer, Request> pendingRequests = new HashMap<>();
 	public Boolean connected = false;
 	private long lastKeepalive;
-	private int messageIdCounter = 0;
 
 	public PMPConnection(Socket socket, String name) throws IOException {
 		if(!(socket instanceof SSLSocket)) {
@@ -88,29 +98,28 @@ public class PMPConnection {
 			public void run() {
 				// Keepalive timeout doesn't need to be exact so it's fine to send and check at the same time
 
-				if(System.currentTimeMillis() - lastKeepalive > KeepaliveMessage.KEEPALIVE_MAX_MS) {
+				if(System.currentTimeMillis() - lastKeepalive > KEEPALIVE_MAX_MS) {
 					disconnect("Keepalive timeout");
 				} else {
-					send(new KeepaliveMessage());
+					try {
+						sendKeepalive();
+					} catch(IOException e) {
+						disconnect("Failed to send keepalive");
+					}
 				}
 			}
-		}, KeepaliveMessage.KEEPALIVE_MS, KeepaliveMessage.KEEPALIVE_MS);
+		}, KEEPALIVE_MS, KEEPALIVE_MS);
 	}
 
 	/**
 	 * Adds a message to the message queue
-	 *
-	 * @return the newly assigned message id
 	 */
-	public int send(Message message) {
-		synchronized(messageIdCounterLock) {
-			messageQueue.add(message.withMessageId(messageIdCounter));
-			return messageIdCounter++;
-		}
+	public void send(Message message) {
+		messageQueue.add(message);
 	}
 
 	/**
-	 * Sends a message ignoring the message queue and writing to the socket on this thread. Does not assign a message
+	 * Sends a message ignoring the message queue and writing to the socket on this thread. Does not assign a request
 	 * ID.
 	 */
 	private void sendNow(Message message) throws IOException {
@@ -119,33 +128,15 @@ public class PMPConnection {
 
 			boolean anyRedacted = false;
 
-			Message printedMessage = message.withMessageId(message.messageId);
-
-			if(printedMessage instanceof LoginMessage loginMessage) {
-				anyRedacted = true;
-				if(loginMessage.password != null) {
-					loginMessage.password = "REDACTED";
-				}
-				if(loginMessage.token != null) {
-					loginMessage.token = "REDACTED";
-				}
-			} else if(printedMessage instanceof WelcomeMessage welcomeMessage) {
-				anyRedacted = true;
-				if(welcomeMessage.token != null) {
-					welcomeMessage.token = "REDACTED";
-				}
-			}
-
-			if(anyRedacted) {
-				// re-serialize to print with redacted values
-				//noinspection LoggingSimilarMessage
-				LOGGER.info("Sending message to {} (some hidden values): {}", name,
-						mapper.writeValueAsString(printedMessage));
-			} else {
-				LOGGER.info("Sending message to {}: {}", name, messageStr);
-			}
+			LOGGER.info("Sending message to {}: {}", name, mapper.writeValueAsString(message.withRedactedInfo()));
 
 			outputStream.write((messageStr + '\n').getBytes(StandardCharsets.UTF_8));
+		}
+	}
+
+	private void sendKeepalive() throws IOException {
+		synchronized(outputStreamLock) {
+			outputStream.write((int) '\n');
 		}
 	}
 
@@ -163,11 +154,7 @@ public class PMPConnection {
 		if(connected) {
 			connected = false;
 			try {
-				int id;
-				synchronized(messageIdCounterLock) {
-					id = messageIdCounter++;
-				}
-				sendNow(new DisconnectMessage().withMessageId(id));
+				sendNow(new DisconnectMessage());
 			} catch(IOException ignored) {
 			}
 		}
@@ -179,6 +166,8 @@ public class PMPConnection {
 		messageReceivingThread.interrupt();
 		messageSendingThread.interrupt();
 		keepaliveTimer.cancel();
+
+		eventDisconnected.call(null);
 	}
 
 	public void registerListener(MessageListener<?> listener) {
@@ -205,6 +194,15 @@ public class PMPConnection {
 			try {
 				while(!Thread.interrupted()) {
 					Message message = messageQueue.take();
+
+					if(message instanceof Request request) {
+						if(request.requestId == null) {
+							request.assignId();
+						}
+
+						assert !pendingRequests.containsKey(request.requestId);
+						pendingRequests.put(request.requestId, request);
+					}
 
 					sendNow(message);
 				}
@@ -242,7 +240,9 @@ public class PMPConnection {
 					}
 					if(read != ((int) '\n')) {
 						inputBuffer.add((byte) read);
-					} else if(!inputBuffer.isEmpty()) {
+					} else if(inputBuffer.isEmpty()) {
+						lastKeepalive = System.currentTimeMillis();
+					} else {
 						byte[] msg = new byte[inputBuffer.size()];
 						for(int i = 0; i < msg.length; i++) {
 							//noinspection DataFlowIssue
@@ -252,9 +252,7 @@ public class PMPConnection {
 						if(messageString.equals("PMP")) {
 							LOGGER.info("Received PMP signature from {}", name);
 							connected = true;
-							synchronized(connectedLock) {
-								connectedLock.notifyAll();
-							}
+							eventConnected.call(null);
 							continue;
 						}
 						if(!connected) {
@@ -265,28 +263,31 @@ public class PMPConnection {
 						try {
 							Message message = mapper.readValue(messageString, Message.class);
 
-							boolean sendRaw = true;
-							Message printedMessage = message.withMessageId(message.messageId);
-							if(printedMessage instanceof LoginMessage loginMessage) {
-								sendRaw = false;
-								if(loginMessage.password != null) {
-									loginMessage.password = "REDACTED";
-								}
-								if(loginMessage.token != null) {
-									loginMessage.token = "REDACTED";
-								}
-							} else if(printedMessage instanceof WelcomeMessage welcomeMessage) {
-								sendRaw = false;
-								if(welcomeMessage.token != null) {
-									welcomeMessage.token = "REDACTED";
-								}
-							}
-							if(sendRaw) {
+
+							Message printedMessage = message.withRedactedInfo();
+							if(printedMessage == message) {
 								//noinspection LoggingSimilarMessage
 								LOGGER.info("Received message from {}: {}", name, messageString);
 							} else {
 								LOGGER.info("Received message from {} (some hidden values): {}", name,
 										mapper.writeValueAsString(printedMessage));
+							}
+
+							ReceivingMessageEvent evt = new ReceivingMessageEvent(message, PMPConnection.this);
+							EVENT_RECEIVING_MESSAGE.call(evt);
+							if(evt.isCancelled()) {
+								continue;
+							}
+
+							if(message instanceof Response response) {
+								Request request = pendingRequests.get(response.requestId);
+								if(request != null) {
+									for(Consumer<Response> consumer : request.getResponseConsumers()) {
+										consumer.accept(response);
+									}
+
+									pendingRequests.remove(response.requestId);
+								}
 							}
 
 							AtomicBoolean cancelled = new AtomicBoolean(false);
@@ -305,28 +306,29 @@ public class PMPConnection {
 
 							if(cancelled.get()) {
 								LOGGER.info("A {} message was cancelled", message.getClass().getSimpleName());
-							} else {
-								boolean foundHandler = false;
+								continue;
+							}
 
-								for(MessageHandler<?> handler : MessageHandler.registeredHandlers) {
-									if(!handler.type.isInstance(message)) {
-										continue;
-									}
-									if(foundHandler) {
-										LOGGER.warn("Multiple handlers for message type {}",
-												message.getClass().getSimpleName());
-									}
-									foundHandler = true;
-									try {
-										handler.runCasting(PMPConnection.this, message);
-									} catch(Exception e) {
-										LOGGER.error("Exception in message listener", e);
-									}
-								}
+							boolean foundHandler = false;
 
-								if(!foundHandler) {
-									LOGGER.warn("Unhandled message type {}", message.getClass().getSimpleName());
+							for(MessageHandler<?> handler : MessageHandler.registeredHandlers) {
+								if(!handler.type.isInstance(message)) {
+									continue;
 								}
+								if(foundHandler) {
+									LOGGER.warn("Multiple handlers for message type {}",
+											message.getClass().getSimpleName());
+								}
+								foundHandler = true;
+								try {
+									handler.runCasting(PMPConnection.this, message);
+								} catch(Exception e) {
+									LOGGER.error("Exception in message listener", e);
+								}
+							}
+
+							if(!foundHandler) {
+								LOGGER.warn("Unhandled message type {}", message.getClass().getSimpleName());
 							}
 						} catch(JsonProcessingException e) {
 							LOGGER.error("Invalid message format: {} (original message: '{}')", e.getMessage(),
@@ -349,15 +351,28 @@ public class PMPConnection {
 		}
 	}
 
+	public static class ReceivingMessageEvent {
+		public final PMPConnection connection;
+		public final Message message;
+		private boolean cancelled;
+
+		public ReceivingMessageEvent(Message message, PMPConnection connection) {
+			this.message = message;
+			this.connection = connection;
+		}
+
+		public boolean isCancelled() {
+			return cancelled;
+		}
+
+		public void cancel() {
+			cancelled = true;
+			LOGGER.info("Cancelled incoming message at {}", new Throwable().getStackTrace()[1]);
+		}
+	}
+
 	static {
 		mapper.registerModule(new ParameterNamesModule(JsonCreator.Mode.PROPERTIES));
-
-		MessageHandler.registeredHandlers.add(new MessageHandler<>(KeepaliveMessage.class) {
-			@Override
-			public void run(PMPConnection connection, KeepaliveMessage message) {
-				connection.lastKeepalive = System.currentTimeMillis();
-			}
-		});
 
 		MessageHandler.registeredHandlers.add(new MessageHandler<>(DisconnectMessage.class) {
 			@Override

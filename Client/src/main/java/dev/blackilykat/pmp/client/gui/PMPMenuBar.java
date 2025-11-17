@@ -17,6 +17,8 @@
 
 package dev.blackilykat.pmp.client.gui;
 
+import dev.blackilykat.pmp.client.gui.menubar.connection.ConnectMenuItem;
+import dev.blackilykat.pmp.client.gui.menubar.connection.DisconnectMenuItem;
 import dev.blackilykat.pmp.client.gui.menubar.debug.AddDebugLogMenuItem;
 import dev.blackilykat.pmp.client.gui.menubar.debug.PlaybackDebugWindowMenuItem;
 import org.apache.logging.log4j.LogManager;
@@ -31,6 +33,7 @@ public class PMPMenuBar extends JMenuBar {
 
 	public PMPMenuBar() {
 		add(menu("Debug", new AddDebugLogMenuItem(), new PlaybackDebugWindowMenuItem()));
+		add(menu("Connection", new ConnectMenuItem(), new DisconnectMenuItem()));
 	}
 
 	private static JMenu menu(String text, JMenuItem... items) {

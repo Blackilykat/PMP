@@ -54,6 +54,8 @@ public class Main {
 			Player.init();
 		}).start();
 		MainWindow.main(args);
+
+		Server.connect();
 	}
 
 	public static void shutdown(boolean exit) {

@@ -22,8 +22,8 @@ import dev.blackilykat.pmp.PMPConnection;
 /**
  * Used to indicate that a side is disconnecting from the socket. The side receiving this message can expect the side
  * who sent it to have already disconnected from the socket.
- * <p>
- * This message is handled by {@link PMPConnection}.
+ * <p>This message is handled by {@link PMPConnection}.
+ * <p>Direction: bidirectional
  */
 public class DisconnectMessage extends Message {
 	public static final String MESSAGE_TYPE = "Disconnect";

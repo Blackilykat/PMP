@@ -15,17 +15,30 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package dev.blackilykat.pmp.messages;
+package dev.blackilykat.pmp.client.gui.menubar.connection;
 
-/**
- * Message to delete a playback session.
- */
-public class PlaybackSessionDeleteMessage extends Message {
-	public static final String MESSAGE_TYPE = "PlaybackSessionDelete";
+import dev.blackilykat.pmp.client.Server;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
-	public Integer id;
+import javax.swing.JMenuItem;
 
-	public PlaybackSessionDeleteMessage(Integer id) {
-		this.id = id;
+public class DisconnectMenuItem extends JMenuItem {
+	private static final Logger LOGGER = LogManager.getLogger(DisconnectMenuItem.class);
+
+	public DisconnectMenuItem() {
+		super("Disconnect");
+
+		addActionListener(e -> {
+			Server.disconnectWithoutRetrying("User ordered disconnect");
+		});
+
+		Server.EVENT_CONNECTED.register(_ -> {
+			setEnabled(true);
+		});
+
+		Server.EVENT_DISCONNECTED.register(_ -> {
+			setEnabled(false);
+		});
 	}
 }

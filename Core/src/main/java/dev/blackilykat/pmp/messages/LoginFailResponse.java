@@ -17,27 +17,20 @@
 
 package dev.blackilykat.pmp.messages;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-
-import java.util.HashMap;
-import java.util.Map;
-
 /**
- * Sends every track's filename along with its crc32 hash. Used to make sure libraries don't get de-synced, which would
- * ideally happen only if someone goes out of their way to manually edit music files outside through the application.
- * This would also help discover and fix de-sync caused due to bugs though.
+ * A login request was rejected.
+ * <p>Direction: S2C
  */
-public class LibraryHashesMessage extends Message {
-	public static final String MESSAGE_TYPE = "LibraryHashes";
+public class LoginFailResponse extends Response {
+	public static final String MESSAGE_TYPE = "LoginFail";
+	public Reason reason;
 
-	public Map<String, Long> hashes;
-
-	public LibraryHashesMessage() {
-		hashes = new HashMap<>();
+	public LoginFailResponse(Integer requestId, Reason reason) {
+		super(requestId);
+		this.reason = reason;
 	}
 
-	@JsonCreator
-	public LibraryHashesMessage(Map<String, Long> hashes) {
-		this.hashes = hashes;
+	public enum Reason {
+		INCORRECT_CREDENTIALS, NO_SUCH_DEVICE, BAD_REQUEST, DEVICE_ALREADY_CONNECTED
 	}
 }
