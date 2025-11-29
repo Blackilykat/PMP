@@ -21,13 +21,13 @@ import dev.blackilykat.jpasimple.PASimple;
 import dev.blackilykat.jpasimple.PulseAudioException;
 import dev.blackilykat.jpasimple.SampleFormat;
 import dev.blackilykat.jpasimple.SampleSpec;
-import dev.blackilykat.pmp.Filter;
-import dev.blackilykat.pmp.FilterOption;
 import dev.blackilykat.pmp.RepeatOption;
-import dev.blackilykat.pmp.Session;
 import dev.blackilykat.pmp.ShuffleOption;
 import dev.blackilykat.pmp.event.EventSource;
 import dev.blackilykat.pmp.event.RetroactiveEventSource;
+import dev.blackilykat.pmp.messages.PlaybackControlMessage;
+import dev.blackilykat.pmp.messages.PlaybackOwnershipMessage;
+import dev.blackilykat.pmp.messages.PlaybackUpdateMessage;
 import dev.blackilykat.pmp.util.OverridingSingleThreadExecutor;
 import dev.blackilykat.pmp.util.Pair;
 import org.apache.logging.log4j.LogManager;
@@ -56,7 +56,6 @@ import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Random;
@@ -68,7 +67,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
-import java.util.function.Predicate;
 
 public class Player {
 	public static final RetroactiveEventSource<Boolean> EVENT_PLAY_PAUSE = new RetroactiveEventSource<>();
@@ -82,11 +80,10 @@ public class Player {
 	public static final RetroactiveEventSource<ShuffleOption> EVENT_SHUFFLE_CHANGED = new RetroactiveEventSource<>();
 	public static final RetroactiveEventSource<Track> EVENT_NEXT_TRACK_CHANGED = new RetroactiveEventSource<>();
 	public static final EventSource<Long> EVENT_SEEK = new EventSource<>();
-
+	public static final EventSource<Integer> EVENT_PLAYBACK_OWNER_CHANGED = new EventSource<>();
+	public static final ScopedValue<Boolean> DONT_SEND_UPDATES = ScopedValue.newInstance();
 	private static final Logger LOGGER = LogManager.getLogger(Player.class);
-
 	private static final ScopedValue<Boolean> APPLYING_SESSION = ScopedValue.newInstance();
-
 	private static final AudioFormat PLAYBACK_AUDIO_FORMAT = new AudioFormat(AudioFormat.Encoding.PCM_SIGNED, 44100,
 			16,
 			2, 4, 44100, false);
@@ -114,10 +111,12 @@ public class Player {
 	private static final Pair<ScheduledExecutorService, ScheduledFuture<?>> PROGRESS_EXECUTOR = new Pair<>(
 			Executors.newSingleThreadScheduledExecutor(), null);
 	private static final AtomicBoolean paused = new AtomicBoolean(true);
+	private static final AtomicReference<Integer> playbackOwner = new AtomicReference<>(null);
 	private static RepeatOption repeat = RepeatOption.OFF;
 	private static ShuffleOption shuffle = ShuffleOption.OFF;
 	private static Track nextTrack = null;
 	private static boolean shouldSeek = false;
+	private static boolean shouldCheckOwnership = false;
 	private static Thread audioThread = null;
 	private static Track currentTrack = null;
 	private static byte[] pcm = null;
@@ -140,11 +139,35 @@ public class Player {
 	private static PASimple paStream = null;
 	private static SourceDataLine line = null;
 
-	private static List<Session> sessions = null;
-	private static Session selectedSession = null;
+	public static boolean shouldSendControl() {
+		return !DONT_SEND_UPDATES.orElse(false) && Server.isLoggedIn() && playbackOwner.get() != null
+				&& !playbackOwner.get().equals(Server.deviceId);
+	}
 
+	public static boolean shouldSendUpdate() {
+		return !DONT_SEND_UPDATES.orElse(false) && Server.isLoggedIn() && Objects.equals(playbackOwner.get(),
+				Server.deviceId);
+	}
+
+	public static void takeOwnershipIfNeeded() {
+		if(DONT_SEND_UPDATES.orElse(false)) {
+			return;
+		}
+		if(Server.isLoggedIn() && playbackOwner.get() == null) {
+			setPlaybackOwner(Server.deviceId);
+			Server.send(new PlaybackOwnershipMessage());
+		}
+	}
 
 	public static void play() {
+		if(shouldSendControl()) {
+			PlaybackControlMessage msg = new PlaybackControlMessage();
+			msg.playing = true;
+			Server.send(msg);
+			return;
+		}
+		takeOwnershipIfNeeded();
+
 		synchronized(paused) {
 			if(paused.get()) {
 				playbackEpoch = Instant.now().minus(playbackPosition, ChronoUnit.MILLIS);
@@ -159,6 +182,14 @@ public class Player {
 	}
 
 	public static void pause() {
+		if(shouldSendControl()) {
+			PlaybackControlMessage msg = new PlaybackControlMessage();
+			msg.playing = false;
+			Server.send(msg);
+			return;
+		}
+		takeOwnershipIfNeeded();
+
 		synchronized(paused) {
 			if(!paused.get()) {
 				playbackPosition =
@@ -182,6 +213,17 @@ public class Player {
 	}
 
 	public static void play(Track track) {
+		if(shouldSendControl()) {
+			PlaybackControlMessage msg = new PlaybackControlMessage();
+			msg.playing = true;
+			msg.position = 0L;
+			msg.track = track.getFile().getName();
+			Server.send(msg);
+			return;
+		}
+
+		takeOwnershipIfNeeded();
+
 		pause();
 		currentTrack = track;
 		LOGGER.info("Playing {}", track.getTitle());
@@ -189,34 +231,7 @@ public class Player {
 		shouldSeek = true;
 		setPosition(0);
 
-		CompletableFuture<byte[]> albumArtFuture = new CompletableFuture<>();
-		CompletableFuture<byte[]> pcmDataFuture = new CompletableFuture<>();
-
-		pcmDataFuture.thenAccept(pcmData -> {
-			pcm = pcmData;
-		});
-
-		AtomicBoolean firstLoad = new AtomicBoolean(true);
-		Consumer<Integer> onPcmLoad = bytes -> {
-			if(bytes >= PLAYBACK_AUDIO_FORMAT.getSampleRate() * PLAYBACK_AUDIO_FORMAT.getChannels()
-					&& firstLoad.getAndSet(false)) {
-
-				if(paStream != null) {
-					try {
-						paStream.flush();
-						paStream.drain();
-					} catch(PulseAudioException e) {
-						LOGGER.error("Failed to drain paStream", e);
-					}
-				}
-				play();
-			}
-			EVENT_CURRENT_TRACK_LOAD.call(new CurrentTrackLoadEvent(bytes, pcm.length));
-		};
-
-		load(track, albumArtFuture, pcmDataFuture, onPcmLoad);
-
-		EVENT_TRACK_CHANGE.call(new TrackChangeEvent(track, albumArtFuture));
+		load(track, true, true);
 	}
 
 	/**
@@ -241,7 +256,24 @@ public class Player {
 		playbackEpoch = now.minus(ms, ChronoUnit.MILLIS);
 	}
 
+	public static long getPlaybackEpoch() {
+		return playbackEpoch.toEpochMilli();
+	}
+
+	public static void setPlaybackEpoch(long epoch) {
+		playbackEpoch = Instant.ofEpochMilli(epoch);
+		shouldSeek = true;
+	}
+
 	public static void seek(long ms) {
+		if(shouldSendControl()) {
+			PlaybackControlMessage msg = new PlaybackControlMessage();
+			msg.position = ms;
+			Server.send(msg);
+		}
+
+		takeOwnershipIfNeeded();
+
 		shouldSeek = true;
 
 		setPosition(ms);
@@ -272,6 +304,15 @@ public class Player {
 
 	public static void setShuffle(ShuffleOption shuffle) {
 		LOGGER.info("Shuffle set to {}", shuffle);
+		if(shouldSendControl()) {
+			PlaybackControlMessage msg = new PlaybackControlMessage();
+			msg.shuffle = shuffle;
+			Server.send(msg);
+			return;
+		}
+
+		takeOwnershipIfNeeded();
+
 		Player.shuffle = shuffle;
 		EVENT_SHUFFLE_CHANGED.call(shuffle);
 	}
@@ -282,14 +323,72 @@ public class Player {
 
 	public static void setRepeat(RepeatOption repeat) {
 		LOGGER.info("Repeat set to {}", repeat);
+
+		if(shouldSendControl()) {
+			PlaybackControlMessage msg = new PlaybackControlMessage();
+			msg.repeat = repeat;
+			Server.send(msg);
+			return;
+		}
+
+		takeOwnershipIfNeeded();
+
 		Player.repeat = repeat;
 		EVENT_REPEAT_CHANGED.call(repeat);
+	}
+
+	public static boolean getPaused() {
+		return paused.get();
 	}
 
 	public static Track getTrack() {
 		return currentTrack;
 	}
 
+	public static void load(@Nonnull Track track, boolean loadAudio, boolean startPlaying) {
+		currentTrack = track;
+
+		CompletableFuture<byte[]> albumArtFuture = new CompletableFuture<>();
+		CompletableFuture<byte[]> pcmDataFuture = new CompletableFuture<>();
+
+		if(loadAudio) {
+			pcmDataFuture.thenAccept(pcmData -> {
+				pcm = pcmData;
+			});
+		} else {
+			pcm = null;
+		}
+
+		AtomicBoolean firstLoad = new AtomicBoolean(true);
+		Consumer<Integer> onPcmLoad = null;
+		if(loadAudio) {
+			onPcmLoad = bytes -> {
+				if(bytes >= PLAYBACK_AUDIO_FORMAT.getSampleRate() * PLAYBACK_AUDIO_FORMAT.getChannels()
+						&& firstLoad.getAndSet(false)) {
+
+					if(paStream != null) {
+						try {
+							paStream.flush();
+						} catch(PulseAudioException e) {
+							LOGGER.error("Failed to drain paStream", e);
+						}
+					}
+					if(startPlaying) {
+						play();
+					}
+				}
+				EVENT_CURRENT_TRACK_LOAD.call(new CurrentTrackLoadEvent(bytes, pcm.length));
+			};
+		}
+
+		load(track, albumArtFuture, pcmDataFuture, onPcmLoad);
+
+		if(!loadAudio && startPlaying) {
+			play();
+		}
+
+		EVENT_TRACK_CHANGE.call(new TrackChangeEvent(track, albumArtFuture));
+	}
 
 	/**
 	 * Loads the specified track's album art and PCM data in the playback audio format.
@@ -452,6 +551,10 @@ public class Player {
 		}
 	}
 
+	private static boolean checkOwnershipForbidsToPlay() {
+		return Server.isLoggedIn() && !Objects.equals(playbackOwner.get(), Server.deviceId);
+	}
+
 	public static void init() {
 		if(audioThread != null) {
 			throw new IllegalStateException("Already initialized");
@@ -490,9 +593,10 @@ public class Player {
 
 				long writeCooldown = (long) (msPerWrite * PLAYBACK_WRITE_COOLDOWN_MULTIPLIER);
 
-				long lastWrite = 0;
+				long lastWrite;
 
 				try {
+					mainLoop:
 					//noinspection InfiniteLoopStatement
 					while(true) {
 						synchronized(paused) {
@@ -501,8 +605,20 @@ public class Player {
 							}
 						}
 
-						if(shouldSeek) {
-							paStream.drain();
+						synchronized(playbackOwner) {
+							if(checkOwnershipForbidsToPlay()) {
+								playbackOwner.wait();
+								continue;
+							}
+						}
+
+						if(pcm == null) {
+							// I'd normally avoid this, but when it's null it should be just about to create the array
+							// and replace the value, so it should realistically be just one cycle (or a few with very
+							// slow storage) of this before it can get to playing audio
+							//noinspection BusyWait
+							Thread.sleep(100);
+							continue;
 						}
 
 						framePosition = msToPlaybackBytes(getPosition());
@@ -510,6 +626,12 @@ public class Player {
 						double totalOffset = 0;
 						lastWrite = System.nanoTime();
 						while(!paused.get() && !shouldSeek) {
+							if(shouldCheckOwnership) {
+								shouldCheckOwnership = false;
+								if(checkOwnershipForbidsToPlay()) {
+									continue mainLoop;
+								}
+							}
 							long now = System.nanoTime();
 							long lastWriteDiff = now - lastWrite;
 							totalOffset += msPerWrite - (lastWriteDiff / 1_000_000.0);
@@ -577,211 +699,31 @@ public class Player {
 		};
 		audioThread.start();
 
-		sessions = new LinkedList<>();
-
 		{
-			ClientStorage storage = ClientStorage.getInstance();
-
-			List<Session> storedSessions = storage.getSessions();
-			if(storedSessions.isEmpty()) {
-				Session session = new Session();
-				storage.setSessions(List.of(session));
-				storage.setSelectedSession(session.id);
-				sessions.add(session);
-				applySession(session);
-			} else {
-				sessions.addAll(storedSessions);
-				applySession(sessions.getFirst());
-			}
+			ClientStorage cs = ClientStorage.getInstance();
+			ClientStorage.PlaybackInfo pi = cs.getPlaybackInfo();
+			loadPlaybackInfo(pi);
 		}
 
 		ClientStorage.EVENT_MAYBE_SAVING.register(event -> {
-			ClientStorage storage = event.clientStorage;
+			ClientStorage cs = event.clientStorage;
+			ClientStorage.PlaybackInfo pi = cs.getPlaybackInfo();
 
-			if(storage.getSelectedSession() != selectedSession.id) {
+			if(!Player.paused.get() || !Player.getTrack().getFile().getName().equals(pi.track())
+					|| Player.getPosition() != pi.position() || Player.getRepeat() != pi.repeat()
+					|| Player.getShuffle() != pi.shuffle()) {
 				event.markDirty();
-				return;
 			}
 
-			List<Session> oldSessions = storage.getSessions();
-
-			if(sessions.size() != oldSessions.size()) {
-				event.markDirty();
-				return;
-			}
-
-			for(int i = 0; i < oldSessions.size(); i++) {
-				Session oldS = oldSessions.get(i);
-				Session newS = sessions.get(i);
-
-				if(oldS.id != newS.id || oldS.getPlaying() != newS.getPlaying()
-						|| oldS.getPlaybackEpoch() != newS.getPlaybackEpoch() || !oldS.getTrack()
-						.equals(newS.getTrack()) || oldS.getPlaybackPosition() != newS.getPlaybackPosition()) {
-					event.markDirty();
-					return;
-				}
-
-				List<Pair<Integer, String>> oldPO = oldS.getPositiveFilterOptions();
-				List<Pair<Integer, String>> newPO = newS.getPositiveFilterOptions();
-				if(oldPO.size() != newPO.size()) {
-					event.markDirty();
-					return;
-				}
-				for(int p = 0; p < oldPO.size(); p++) {
-					Pair<Integer, String> oldPair = oldPO.get(p);
-					Pair<Integer, String> newPair = newPO.get(p);
-
-					if(!Objects.equals(oldPair.key, newPair.key) || !Objects.equals(oldPair.value, newPair.value)) {
-						event.markDirty();
-						return;
-					}
-				}
-
-				List<Pair<Integer, String>> oldNO = oldS.getNegativeFilterOptions();
-				List<Pair<Integer, String>> newNO = newS.getNegativeFilterOptions();
-				if(oldNO.size() != newNO.size()) {
-					event.markDirty();
-					return;
-				}
-				for(int p = 0; p < oldNO.size(); p++) {
-					Pair<Integer, String> oldPair = oldNO.get(p);
-					Pair<Integer, String> newPair = newNO.get(p);
-
-					if(!Objects.equals(oldPair.key, newPair.key) || !Objects.equals(oldPair.value, newPair.value)) {
-						event.markDirty();
-						return;
-					}
-				}
-			}
+			// filter options are unlikely to change alone and not computationally cheap, they're probably not worth
+			// checking
 		});
 
 		ClientStorage.EVENT_SAVING.register(storage -> {
-			for(Session session : sessions) {
-				if(session.getPlaying()) {
-					long now = Instant.now().toEpochMilli();
-					long pos = now - session.getPlaybackEpoch();
-					LOGGER.debug("Setting position of session {} to {} - {} = {}", session.id, now,
-							session.getPlaybackEpoch(), pos);
-					session.setPlaybackPosition(pos);
-					session.setPlaying(false);
-				}
-
-				Predicate<? super Pair<Integer, String>> oldOptionPredicate = pair -> {
-					for(Filter filter : Library.getFilters()) {
-						if(filter.id == pair.key) {
-							return false;
-						}
-					}
-					return true;
-				};
-
-				List<Pair<Integer, String>> pos = new LinkedList<>(session.getPositiveFilterOptions());
-				pos.removeIf(oldOptionPredicate);
-				session.setPositiveFilterOptions(pos);
-
-				List<Pair<Integer, String>> neg = new LinkedList<>(session.getNegativeFilterOptions());
-				neg.removeIf(oldOptionPredicate);
-				session.setNegativeFilterOptions(neg);
-			}
-			storage.setSessions(sessions);
-			storage.setSelectedSession(selectedSession.id);
-		});
-
-		EVENT_PLAY_PAUSE.register(paused -> {
-			if(APPLYING_SESSION.orElse(false)) {
-				return;
-			}
-
-			selectedSession.setPlaying(!paused);
-			selectedSession.setPlaybackPosition(playbackPosition);
-			if(playbackEpoch != null) {
-				selectedSession.setPlaybackEpoch(playbackEpoch.toEpochMilli());
-			}
-		});
-
-		EVENT_SEEK.register(ms -> {
-			if(playbackEpoch != null) {
-				selectedSession.setPlaybackEpoch(playbackEpoch.toEpochMilli());
-			}
-			selectedSession.setPlaybackPosition(ms);
-		});
-
-		EVENT_TRACK_CHANGE.register(event -> {
-			if(APPLYING_SESSION.orElse(false)) {
-				return;
-			}
-			Track track = event.track();
-
-			selectedSession.setTrack(track.getFile().getName());
-		});
-
-		EVENT_SHUFFLE_CHANGED.register(shuffle -> {
-			selectNextTrack();
-			if(APPLYING_SESSION.orElse(false)) {
-				return;
-			}
-
-			selectedSession.setShuffle(shuffle);
-		});
-
-		EVENT_REPEAT_CHANGED.register(repeat -> {
-			selectNextTrack();
-			if(APPLYING_SESSION.orElse(false)) {
-				return;
-			}
-
-			selectedSession.setRepeat(repeat);
-		});
-
-		EVENT_NEXT_TRACK_CHANGED.register(track -> {
-			if(APPLYING_SESSION.orElse(false)) {
-				return;
-			}
-
-			selectedSession.setNextTrack(track == null ? null : track.getFile().getName());
-		});
-
-		Filter.EVENT_OPTION_CHANGED_STATE.register(event -> {
-			if(APPLYING_SESSION.orElse(false)) {
-				return;
-			}
-			Filter filter = event.filter();
-			FilterOption.State oldState = event.oldState();
-			FilterOption.State newState = event.newState();
-			FilterOption option = event.option();
-
-			boolean changedPositive = false, changedNegative = false;
-
-			List<Pair<Integer, String>> positiveOptions = new LinkedList<>(selectedSession.getPositiveFilterOptions());
-			List<Pair<Integer, String>> negativeOptions = new LinkedList<>(selectedSession.getNegativeFilterOptions());
-
-			switch(oldState) {
-				case POSITIVE -> {
-					positiveOptions.removeIf(p -> p.key == filter.id && p.value.equals(option.value));
-					changedPositive = true;
-				}
-				case NEGATIVE -> {
-					negativeOptions.removeIf(p -> p.key == filter.id && p.value.equals(option.value));
-					changedNegative = true;
-				}
-			}
-
-			switch(newState) {
-				case POSITIVE -> {
-					positiveOptions.add(new Pair<>(filter.id, option.value));
-					changedPositive = true;
-				}
-				case NEGATIVE -> {
-					negativeOptions.add(new Pair<>(filter.id, option.value));
-					changedNegative = true;
-				}
-			}
-			if(changedPositive) {
-				selectedSession.setPositiveFilterOptions(positiveOptions);
-			}
-			if(changedNegative) {
-				selectedSession.setNegativeFilterOptions(negativeOptions);
-			}
+			storage.setPlaybackInfo(new ClientStorage.PlaybackInfo(
+					Player.getTrack() == null ? null : Player.getTrack().getFile().getName(), Player.getPosition(),
+					Library.exportPositiveOptions(), Library.exportNegativeOptions(), Player.getRepeat(),
+					Player.getShuffle()));
 		});
 
 		EVENT_TRACK_CHANGE.register(_ -> {
@@ -790,6 +732,68 @@ public class Player {
 
 		Library.EVENT_SELECTED_TRACKS_UPDATED.register(_ -> {
 			selectNextTrack();
+		});
+
+		EVENT_PLAY_PAUSE.register(paused -> {
+			if(!shouldSendUpdate()) {
+				return;
+			}
+			PlaybackUpdateMessage msg = new PlaybackUpdateMessage();
+			if(paused) {
+				msg.playing = false;
+				msg.positionOrEpoch = getPosition();
+			} else {
+				msg.playing = true;
+				msg.positionOrEpoch = getPlaybackEpoch();
+			}
+			Server.send(msg);
+		});
+
+		EVENT_TRACK_CHANGE.register(event -> {
+			if(!shouldSendUpdate()) {
+				return;
+			}
+			PlaybackUpdateMessage msg = new PlaybackUpdateMessage();
+			msg.track = event.track.getFile().getName();
+			Server.send(msg);
+		});
+
+		EVENT_SEEK.register(pos -> {
+			if(!shouldSendUpdate()) {
+				return;
+			}
+			PlaybackUpdateMessage msg = new PlaybackUpdateMessage();
+			if(getPaused()) {
+				msg.positionOrEpoch = pos;
+			} else {
+				msg.positionOrEpoch = getPlaybackEpoch();
+			}
+			Server.send(msg);
+		});
+
+		EVENT_SHUFFLE_CHANGED.register(shuffle -> {
+			if(!shouldSendUpdate()) {
+				return;
+			}
+			PlaybackUpdateMessage msg = new PlaybackUpdateMessage();
+			msg.shuffle = shuffle;
+			Server.send(msg);
+		});
+
+		EVENT_REPEAT_CHANGED.register(repeat -> {
+			if(!shouldSendUpdate()) {
+				return;
+			}
+			PlaybackUpdateMessage msg = new PlaybackUpdateMessage();
+			msg.repeat = repeat;
+			Server.send(msg);
+		});
+
+		Server.EVENT_DISCONNECTED.register(_ -> {
+			if(playbackOwner.get() != null && !playbackOwner.get().equals(Server.deviceId)) {
+				pause();
+				setPlaybackOwner(null);
+			}
 		});
 	}
 
@@ -800,97 +804,29 @@ public class Player {
 		return val;
 	}
 
-	public static void applySession(Session session) {
-		LOGGER.info("Applying session {}", session);
-		if(selectedSession == session) {
+	public static void loadPlaybackInfo(ClientStorage.PlaybackInfo pi) {
+		if(pi == null) {
 			return;
 		}
-		ScopedValue.where(APPLYING_SESSION, true).run(() -> {
-			selectedSession = session;
 
-			Track track = Library.getTrackByFilename(selectedSession.getTrack());
+		Track track = Library.getTrackByFilename(pi.track());
 
-			currentTrack = track;
+		currentTrack = track;
+		load(track, false, false);
 
-			CompletableFuture<byte[]> albumArtFuture = new CompletableFuture<>();
-			CompletableFuture<byte[]> pcmDataFuture = new CompletableFuture<>();
+		setPosition(pi.position());
 
-			pcmDataFuture.thenAccept(pcmData -> {
-				pcm = pcmData;
-			});
+		if(pi.repeat() != null) {
+			setRepeat(pi.repeat());
+		}
+		if(pi.shuffle() != null) {
+			setShuffle(pi.shuffle());
+		}
 
-			if(session.getPlaying()) {
-				setPosition(Instant.now().toEpochMilli() - session.getPlaybackEpoch());
-			} else {
-				setPosition(session.getPlaybackPosition());
-			}
+		Library.importFilterOptions(pi.positiveFilterOptions(), pi.negativeFilterOptions());
 
-			setRepeat(session.getRepeat());
-			setShuffle(session.getShuffle());
-
-			Library.collectReloads(() -> {
-				List<Pair<Integer, String>> positive = session.getPositiveFilterOptions();
-				List<Pair<Integer, String>> negative = session.getNegativeFilterOptions();
-				for(Filter filter : Library.getFilters()) {
-					int id = filter.id;
-
-					runtimeOptions:
-					for(FilterOption option : filter.getOptions()) {
-						String value = option.value;
-
-						for(Pair<Integer, String> positiveOption : positive) {
-							if(positiveOption.key != id || !Objects.equals(value, positiveOption.value)) {
-								continue;
-							}
-
-							option.setState(FilterOption.State.POSITIVE);
-							continue runtimeOptions;
-						}
-
-
-						boolean isNegative = false;
-						for(Pair<Integer, String> negativeOption : negative) {
-							if(negativeOption.key != id || !Objects.equals(value, negativeOption.value)) {
-								continue;
-							}
-
-							option.setState(FilterOption.State.NEGATIVE);
-							continue runtimeOptions;
-						}
-
-						option.setState(FilterOption.State.NONE);
-					}
-				}
-			});
-
-
-			AtomicBoolean firstLoad = new AtomicBoolean(true);
-			Consumer<Integer> onPcmLoad = null;
-			if(session.getPlaying()) {
-				onPcmLoad = bytes -> {
-					if(bytes >= PLAYBACK_AUDIO_FORMAT.getSampleRate() * PLAYBACK_AUDIO_FORMAT.getChannels()
-							&& firstLoad.getAndSet(false)) {
-
-						if(paStream != null) {
-							try {
-								paStream.flush();
-								paStream.drain();
-							} catch(PulseAudioException e) {
-								LOGGER.error("Failed to drain paStream", e);
-							}
-						}
-						play();
-					}
-					EVENT_CURRENT_TRACK_LOAD.call(new CurrentTrackLoadEvent(bytes, pcm.length));
-				};
-			}
-
-			load(track, albumArtFuture, pcmDataFuture, onPcmLoad);
-
-			EVENT_TRACK_CHANGE.call(new TrackChangeEvent(track, albumArtFuture));
-			EVENT_PLAY_PAUSE.call(paused.get());
-			EVENT_PROGRESS.call(getPosition());
-		});
+		EVENT_PLAY_PAUSE.call(paused.get());
+		EVENT_PROGRESS.call(getPosition());
 	}
 
 	public static void selectNextTrack() {
@@ -958,6 +894,25 @@ public class Player {
 		} else {
 			return options.get(current - 1);
 		}
+	}
+
+	public static Integer getPlaybackOwner() {
+		return playbackOwner.get();
+	}
+
+	public static void setPlaybackOwner(Integer playbackOwner) {
+		if(pcm == null && (!Server.isLoggedIn() || Objects.equals(playbackOwner, Server.deviceId))
+				&& currentTrack != null) {
+			// make sure audio is loaded if we own now
+			load(currentTrack, true, false);
+		}
+		Player.playbackOwner.set(playbackOwner);
+		synchronized(Player.playbackOwner) {
+			Player.playbackOwner.notifyAll();
+		}
+
+		shouldCheckOwnership = true;
+		EVENT_PLAYBACK_OWNER_CHANGED.call(playbackOwner);
 	}
 
 	public record TrackChangeEvent(Track track, CompletableFuture<byte[]> picture) {}

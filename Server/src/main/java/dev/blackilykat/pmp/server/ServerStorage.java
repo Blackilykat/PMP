@@ -21,8 +21,11 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
+import dev.blackilykat.pmp.RepeatOption;
+import dev.blackilykat.pmp.ShuffleOption;
 import dev.blackilykat.pmp.Storage;
 import dev.blackilykat.pmp.event.EventSource;
+import dev.blackilykat.pmp.util.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -59,11 +62,18 @@ public class ServerStorage extends Storage {
 
 	private int currentActionID = 0;
 	private int currentFilterID = 0;
-	private int currentSessionID = 0;
+	private int currentSessionID = 1;
 	private int currentDeviceID = 0;
 	private List<Device> devices = List.of();
-	// 
 	private String password = null;
+
+	private String track = null;
+	private List<Pair<Integer, String>> positiveFilterOptions = List.of();
+	private List<Pair<Integer, String>> negativeFilterOptions = List.of();
+	private RepeatOption repeat = RepeatOption.ALL;
+	private ShuffleOption shuffle = ShuffleOption.OFF;
+	private long position = 0;
+
 
 	private ServerStorage() {
 		Timer savingTimer = new Timer("Server storage saving timer");
@@ -162,6 +172,60 @@ public class ServerStorage extends Storage {
 	public synchronized void setPassword(String password) {
 		dirty = true;
 		this.password = password;
+	}
+
+	public synchronized String getTrack() {
+		return track;
+	}
+
+	public synchronized void setTrack(String track) {
+		dirty = true;
+		this.track = track;
+	}
+
+	public synchronized ShuffleOption getShuffle() {
+		return shuffle;
+	}
+
+	public synchronized void setShuffle(ShuffleOption shuffle) {
+		dirty = true;
+		this.shuffle = shuffle;
+	}
+
+	public synchronized RepeatOption getRepeat() {
+		return repeat;
+	}
+
+	public synchronized void setRepeat(RepeatOption repeat) {
+		dirty = true;
+		this.repeat = repeat;
+	}
+
+	public synchronized List<Pair<Integer, String>> getPositiveFilterOptions() {
+		return Collections.unmodifiableList(positiveFilterOptions);
+	}
+
+	public synchronized void setPositiveFilterOptions(List<Pair<Integer, String>> positiveFilterOptions) {
+		dirty = true;
+		this.positiveFilterOptions = new LinkedList<>(positiveFilterOptions);
+	}
+
+	public synchronized List<Pair<Integer, String>> getNegativeFilterOptions() {
+		return Collections.unmodifiableList(negativeFilterOptions);
+	}
+
+	public synchronized void setNegativeFilterOptions(List<Pair<Integer, String>> negativeFilterOptions) {
+		dirty = true;
+		this.negativeFilterOptions = new LinkedList<>(negativeFilterOptions);
+	}
+
+	public synchronized long getPosition() {
+		return position;
+	}
+
+	public synchronized void setPosition(long position) {
+		dirty = true;
+		this.position = position;
 	}
 
 	/**
@@ -306,6 +370,21 @@ public class ServerStorage extends Storage {
 
 		public boolean getDirty() {
 			return dirty;
+		}
+	}
+
+
+	public record PlaybackState(String track, Long position, ShuffleOption shuffle, RepeatOption repeat,
+			List<Pair<Integer, String>> positiveOptions, List<Pair<Integer, String>> negativeOptions) {
+
+		public PlaybackState(String track, Long position, ShuffleOption shuffle, RepeatOption repeat,
+				List<Pair<Integer, String>> positiveOptions, List<Pair<Integer, String>> negativeOptions) {
+			this.track = track;
+			this.position = position;
+			this.shuffle = shuffle;
+			this.repeat = repeat;
+			this.positiveOptions = Collections.unmodifiableList(new LinkedList<>(positiveOptions));
+			this.negativeOptions = Collections.unmodifiableList(new LinkedList<>(negativeOptions));
 		}
 	}
 

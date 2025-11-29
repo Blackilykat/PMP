@@ -22,9 +22,11 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 import dev.blackilykat.pmp.Filter;
-import dev.blackilykat.pmp.Session;
+import dev.blackilykat.pmp.RepeatOption;
+import dev.blackilykat.pmp.ShuffleOption;
 import dev.blackilykat.pmp.Storage;
 import dev.blackilykat.pmp.event.EventSource;
+import dev.blackilykat.pmp.util.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -69,9 +71,6 @@ public class ClientStorage extends Storage {
 	// null: empty configuration is technically valid, but not default
 	private List<Header> headers = null;
 	private List<Filter> filters = null;
-	// empty list: empty configuration is invalid and will be populated at startup
-	private List<Session> sessions = List.of();
-	private int selectedSession = -1;
 	private int currentActionID = 0;
 	private int currentFilterID = 0;
 	private int currentSessionID = 0;
@@ -85,6 +84,7 @@ public class ClientStorage extends Storage {
 	private String encodedServerPublicKey = null;
 	private String token = null;
 	private Integer deviceID = null;
+	private PlaybackInfo playbackInfo;
 
 	private ClientStorage() {
 		Timer savingTimer = new Timer("Client storage saving timer");
@@ -151,15 +151,6 @@ public class ClientStorage extends Storage {
 		currentSessionID = id;
 	}
 
-	public int getSelectedSession() {
-		return selectedSession;
-	}
-
-	public void setSelectedSession(int selectedSession) {
-		dirty = true;
-		this.selectedSession = selectedSession;
-	}
-
 	@JsonIgnore
 	public int getAndIncrementCurrentHeaderId() {
 		int hi = getCurrentHeaderID();
@@ -194,18 +185,13 @@ public class ClientStorage extends Storage {
 		this.trackCache = new LinkedList<>(trackCache);
 	}
 
-	public synchronized List<Session> getSessions() {
-		return Collections.unmodifiableList(sessions);
+	public synchronized PlaybackInfo getPlaybackInfo() {
+		return playbackInfo;
 	}
 
-	public synchronized void setSessions(List<Session> sessions) {
+	public synchronized void setPlaybackInfo(PlaybackInfo playbackInfo) {
 		dirty = true;
-
-		LinkedList<Session> list = new LinkedList<>();
-		for(Session session : sessions) {
-			list.add(session.clone());
-		}
-		this.sessions = list;
+		this.playbackInfo = playbackInfo;
 	}
 
 	public synchronized List<Filter> getFilters() {
@@ -444,6 +430,10 @@ public class ClientStorage extends Storage {
 			return dirty;
 		}
 	}
+
+	// playing is not here because it should never be playing at startup
+	public record PlaybackInfo(String track, long position, List<Pair<Integer, String>> positiveFilterOptions,
+			List<Pair<Integer, String>> negativeFilterOptions, RepeatOption repeat, ShuffleOption shuffle) {}
 
 	static {
 		mapper = new ObjectMapper();

@@ -20,6 +20,9 @@ package dev.blackilykat.pmp.client;
 import dev.blackilykat.pmp.PMPConnection;
 import dev.blackilykat.pmp.client.handlers.LoginFailResponseHandler;
 import dev.blackilykat.pmp.client.handlers.LoginSuccessResponseHandler;
+import dev.blackilykat.pmp.client.handlers.PlaybackControlMessageHandler;
+import dev.blackilykat.pmp.client.handlers.PlaybackOwnershipMessageHandler;
+import dev.blackilykat.pmp.client.handlers.PlaybackUpdateMessageHandler;
 import dev.blackilykat.pmp.event.EventSource;
 import dev.blackilykat.pmp.messages.LoginAsExistingDeviceRequest;
 import dev.blackilykat.pmp.messages.Message;
@@ -51,6 +54,7 @@ public class Server {
 	private static final Logger LOGGER = LogManager.getLogger(Server.class);
 	private static final Timer RECONNECT_TIMER = new Timer("Server reconnect timer");
 	private static final Object connectionLock = new Object();
+	public static Integer deviceId = null;
 	private static PMPConnection connection = null;
 	private static SSLContext sslContext = null;
 
@@ -113,6 +117,7 @@ public class Server {
 				});
 				connection.eventDisconnected.register(_ -> {
 					EVENT_DISCONNECTED.call(null);
+					deviceId = null;
 					if(SHOULD_NOT_RECONNECT.orElse(false)) {
 						return;
 					}
@@ -194,8 +199,27 @@ public class Server {
 		}, RECONNECT_COOLDOWN_MS);
 	}
 
+	/**
+	 * In most cases, you'll want to use {@link #isLoggedIn()} instead.
+	 *
+	 * @return Whether the client's socket is connected to the server's and the PMPConnection has been established.
+	 */
+	public static boolean isConnected() {
+		return connection != null && connection.connected;
+	}
+
+	/**
+	 * @return Whether the client is connected to the server and is confirmed to be logged in successfully
+	 */
+	public static boolean isLoggedIn() {
+		return isConnected() && deviceId != null;
+	}
+
 	static {
 		new LoginFailResponseHandler().register();
 		new LoginSuccessResponseHandler().register();
+		new PlaybackControlMessageHandler().register();
+		new PlaybackOwnershipMessageHandler().register();
+		new PlaybackUpdateMessageHandler().register();
 	}
 }

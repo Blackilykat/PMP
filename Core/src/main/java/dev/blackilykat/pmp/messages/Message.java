@@ -27,6 +27,10 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 		@Type(value = LoginAsExistingDeviceRequest.class, name = LoginAsExistingDeviceRequest.MESSAGE_TYPE),
 		@Type(value = LoginSuccessResponse.class, name = LoginSuccessResponse.MESSAGE_TYPE),
 		@Type(value = LoginFailResponse.class, name = LoginFailResponse.MESSAGE_TYPE),
+		@Type(value = ErrorMessage.class, name = ErrorMessage.MESSAGE_TYPE),
+		@Type(value = PlaybackControlMessage.class, name = PlaybackControlMessage.MESSAGE_TYPE),
+		@Type(value = PlaybackUpdateMessage.class, name = PlaybackUpdateMessage.MESSAGE_TYPE),
+		@Type(value = PlaybackOwnershipMessage.class, name = PlaybackOwnershipMessage.MESSAGE_TYPE),
 		@Type(value = DisconnectMessage.class, name = DisconnectMessage.MESSAGE_TYPE),})
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public abstract class Message implements Cloneable {

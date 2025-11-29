@@ -51,6 +51,7 @@ import java.util.function.Consumer;
 
 public class PMPConnection {
 	public static final EventSource<ReceivingMessageEvent> EVENT_RECEIVING_MESSAGE = new EventSource<>();
+	public static final EventSource<PMPConnection> EVENT_DISCONNECTED = new EventSource<>();
 
 	private static final int KEEPALIVE_MS = 10_000;
 	private static final int KEEPALIVE_MAX_MS = 30_000;
@@ -151,6 +152,7 @@ public class PMPConnection {
 	}
 
 	private void _disconnect() {
+		boolean wasConnected = connected;
 		if(connected) {
 			connected = false;
 			try {
@@ -167,7 +169,10 @@ public class PMPConnection {
 		messageSendingThread.interrupt();
 		keepaliveTimer.cancel();
 
-		eventDisconnected.call(null);
+		if(wasConnected) {
+			eventDisconnected.call(null);
+			EVENT_DISCONNECTED.call(this);
+		}
 	}
 
 	public void registerListener(MessageListener<?> listener) {
@@ -377,7 +382,6 @@ public class PMPConnection {
 		MessageHandler.registeredHandlers.add(new MessageHandler<>(DisconnectMessage.class) {
 			@Override
 			public void run(PMPConnection connection, DisconnectMessage message) {
-				connection.connected = false;
 				connection.disconnect("Received disconnect message");
 			}
 		});

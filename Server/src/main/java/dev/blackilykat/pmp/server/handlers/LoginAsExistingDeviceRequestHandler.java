@@ -24,6 +24,7 @@ import dev.blackilykat.pmp.messages.LoginFailResponse;
 import dev.blackilykat.pmp.messages.LoginSuccessResponse;
 import dev.blackilykat.pmp.server.ClientConnection;
 import dev.blackilykat.pmp.server.Device;
+import dev.blackilykat.pmp.server.Playback;
 import dev.blackilykat.pmp.server.ServerStorage;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -60,7 +61,10 @@ public class LoginAsExistingDeviceRequestHandler extends MessageHandler<LoginAsE
 					device.rerollToken();
 					device.setClientConnection(connection);
 					connection.device = device;
-					connection.send(new LoginSuccessResponse(message.requestId, device.id, device.getToken()));
+					LoginSuccessResponse response = new LoginSuccessResponse(message.requestId, device.id,
+							device.getToken());
+					Playback.fillLoginSuccessResponse(response);
+					connection.send(response);
 				} else {
 					connection.send(
 							new LoginFailResponse(message.requestId, LoginFailResponse.Reason.INCORRECT_CREDENTIALS));

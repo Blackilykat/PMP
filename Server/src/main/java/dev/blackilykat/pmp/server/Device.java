@@ -19,6 +19,7 @@ package dev.blackilykat.pmp.server;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import dev.blackilykat.pmp.messages.Message;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -28,6 +29,7 @@ import java.security.SecureRandom;
 
 public class Device {
 	// all reasonably usable standard ASCII chars
+	@SuppressWarnings("SpellCheckingInspection")
 	public static final String TOKEN_CHARSET =
 			"!\"#$%&'()*+,-./0123456789:;" + "<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
 	public static final int TOKEN_LENGTH = 128;
@@ -88,6 +90,25 @@ public class Device {
 					+ "send this log to the developer.";
 			LOGGER.fatal(msg, e);
 			System.exit(1);
+		}
+	}
+
+	public static void broadcast(Message message) {
+		broadcastExcept(message, null);
+	}
+
+	public static void broadcastExcept(Message message, Device ignoredDevice) {
+		ServerStorage ss = ServerStorage.getInstance();
+		for(Device device : ss.getDevices()) {
+			if(device == ignoredDevice) {
+				continue;
+			}
+			ClientConnection connection = device.getClientConnection();
+			if(connection == null) {
+				continue;
+			}
+
+			connection.send(message);
 		}
 	}
 }

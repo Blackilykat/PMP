@@ -24,6 +24,7 @@ import dev.blackilykat.pmp.messages.LoginFailResponse;
 import dev.blackilykat.pmp.messages.LoginSuccessResponse;
 import dev.blackilykat.pmp.server.ClientConnection;
 import dev.blackilykat.pmp.server.Device;
+import dev.blackilykat.pmp.server.Playback;
 import dev.blackilykat.pmp.server.ServerStorage;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -77,6 +78,8 @@ public class LoginAsNewDeviceRequestHandler extends MessageHandler<LoginAsNewDev
 		ss.setDevices(devices);
 
 		connection.device = device;
-		connection.send(new LoginSuccessResponse(message.requestId, device.id, device.getToken()));
+		LoginSuccessResponse response = new LoginSuccessResponse(message.requestId, device.id, device.getToken());
+		Playback.fillLoginSuccessResponse(response);
+		connection.send(response);
 	}
 }

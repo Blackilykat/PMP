@@ -123,6 +123,16 @@ public class Playbar extends JPanel {
 			Track track = event.track();
 			CompletableFuture<byte[]> albumArtFuture = event.picture();
 			GUIUtils.runOnSwingThread(() -> {
+				if(track == null) {
+					title.setText("");
+					artists.setText("");
+					duration.setText("-:--");
+					currentTime.setText("-:--");
+					this.track.setLoadedPercentage(100);
+					this.track.progressValue(0);
+					albumArt.setImage(null);
+					return;
+				}
 				title.setText(track.getTitle());
 				List<String> artistList = new LinkedList<>();
 				for(Pair<String, String> metadatum : track.metadata) {
@@ -172,6 +182,9 @@ public class Playbar extends JPanel {
 
 		Player.EVENT_SHUFFLE_CHANGED.register(shuffle -> {
 			GUIUtils.runOnSwingThread(() -> {
+				if(shuffle == null) {
+					return;
+				}
 				switch(shuffle) {
 					case ON -> shuffleButton.setIcon(Theme.selected.shuffleOnIcon);
 					case OFF -> shuffleButton.setIcon(Theme.selected.shuffleOffIcon);

@@ -17,8 +17,13 @@
 
 package dev.blackilykat.pmp.messages;
 
+import dev.blackilykat.pmp.RepeatOption;
+import dev.blackilykat.pmp.ShuffleOption;
+import dev.blackilykat.pmp.util.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import java.util.List;
 
 /**
  * After a request, the client is now logged in.
@@ -29,8 +34,18 @@ public class LoginSuccessResponse extends Response {
 
 	private static final Logger LOGGER = LogManager.getLogger(LoginSuccessResponse.class);
 
-	public Integer deviceId = null;
+	public Integer deviceId;
 	public String token;
+
+	// non-login info the client needs when connecting
+	public Integer playbackOwner;
+	public boolean playing;
+	public Long positionOrEpoch;
+	public ShuffleOption shuffle;
+	public RepeatOption repeat;
+	public String track;
+	public List<Pair<Integer, String>> positiveOptions;
+	public List<Pair<Integer, String>> negativeOptions;
 
 	public LoginSuccessResponse(Integer requestId, Integer deviceId, String token) {
 		super(requestId);

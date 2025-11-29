@@ -22,6 +22,8 @@ import dev.blackilykat.pmp.FilterOption;
 import dev.blackilykat.pmp.Order;
 import dev.blackilykat.pmp.event.EventSource;
 import dev.blackilykat.pmp.event.RetroactiveEventSource;
+import dev.blackilykat.pmp.messages.PlaybackControlMessage;
+import dev.blackilykat.pmp.messages.PlaybackUpdateMessage;
 import dev.blackilykat.pmp.util.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -38,6 +40,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -55,6 +58,7 @@ public class Library {
 	public static final EventSource<SortingHeaderUpdatedEvent> EVENT_SORTING_HEADER_UPDATED = new EventSource<>();
 
 	private static final ScopedValue<Boolean> NO_RELOAD_SELECTION = ScopedValue.newInstance();
+	private static final ScopedValue<Boolean> IGNORE_FILTER_OPTION_UPDATE = ScopedValue.newInstance();
 
 	private static final Logger LOGGER = LogManager.getLogger(Library.class);
 	private static final AtomicBoolean INITIALIZED = new AtomicBoolean(false);
@@ -373,73 +377,112 @@ public class Library {
 			sortingOrder = Order.ASCENDING;
 
 			Filter.EVENT_OPTION_CHANGED_STATE.register(evt -> {
-				collectReloads(() -> {
-					Filter filter = evt.filter();
-					FilterOption option = evt.option();
-					FilterOption.State oldState = evt.oldState();
-					FilterOption.State state = evt.newState();
+				if(IGNORE_FILTER_OPTION_UPDATE.orElse(false)) {
+					return;
+				}
+				if(Player.shouldSendControl()) {
+					PlaybackControlMessage msg = new PlaybackControlMessage();
+					msg.positiveOptions = exportPositiveOptions();
+					msg.negativeOptions = exportNegativeOptions();
 
-					if(filter != null) {
-						if(option.value.equals(Filter.OPTION_EVERYTHING)) {
-							if(state == FilterOption.State.POSITIVE) {
-								for(FilterOption otherOption : filter.getOptions()) {
-									if(otherOption != option && otherOption.getState() == FilterOption.State.POSITIVE) {
-										otherOption.setState(FilterOption.State.NONE);
-									}
-								}
-							} else if(state == FilterOption.State.NONE) {
-								boolean otherPositive = false;
-
-								for(FilterOption otherOption : filter.getOptions()) {
-									if(otherOption != option && otherOption.getState() == FilterOption.State.POSITIVE) {
-										otherPositive = true;
-										break;
-									}
-								}
-
-								if(!otherPositive) {
-									option.setState(FilterOption.State.POSITIVE);
-								}
-							} else if(state == FilterOption.State.NEGATIVE) {
-								option.setState(oldState);
-							}
+					if(evt.newState() == FilterOption.State.POSITIVE) {
+						if(evt.option().value.equals(Filter.OPTION_EVERYTHING)) {
+							msg.positiveOptions.removeIf(pair -> pair.key == evt.filter().id && !pair.value.equals(
+									Filter.OPTION_EVERYTHING));
 						} else {
-							if(state == FilterOption.State.POSITIVE) {
-								for(FilterOption otherOption : filter.getOptions()) {
-									if(!otherOption.value.equals(Filter.OPTION_EVERYTHING)) {
-										continue;
-									}
-
-									if(option.getState() == FilterOption.State.POSITIVE) {
-										otherOption.setState(FilterOption.State.NONE);
-									}
-									break;
-								}
-							} else if(state == FilterOption.State.NONE) {
-								boolean anyPositive = false;
-								FilterOption everything = null;
-								for(FilterOption otherOption : filter.getOptions()) {
-									if(otherOption.value.equals(Filter.OPTION_EVERYTHING)) {
-										everything = otherOption;
-									}
-
-									if(otherOption.getState() == FilterOption.State.POSITIVE) {
-										anyPositive = true;
-										break;
-									}
-								}
-
-								if(!anyPositive) {
-									assert everything != null;
-
-									everything.setState(FilterOption.State.POSITIVE);
-								}
-							}
+							msg.positiveOptions.removeIf(
+									pair -> pair.key == evt.filter().id && pair.value.equals(Filter.OPTION_EVERYTHING));
 						}
 					}
 
+					Server.send(msg);
+					ScopedValue.where(IGNORE_FILTER_OPTION_UPDATE, true).run(() -> {
+						evt.option().setState(evt.oldState());
+					});
+					return;
+				}
+
+				Player.takeOwnershipIfNeeded();
+
+
+				ScopedValue.where(Player.DONT_SEND_UPDATES, true).run(() -> {
+					collectReloads(() -> {
+						Filter filter = evt.filter();
+						FilterOption option = evt.option();
+						FilterOption.State oldState = evt.oldState();
+						FilterOption.State state = evt.newState();
+
+						if(filter != null) {
+							if(option.value.equals(Filter.OPTION_EVERYTHING)) {
+								if(state == FilterOption.State.POSITIVE) {
+									for(FilterOption otherOption : filter.getOptions()) {
+										if(otherOption != option
+												&& otherOption.getState() == FilterOption.State.POSITIVE) {
+											otherOption.setState(FilterOption.State.NONE);
+										}
+									}
+								} else if(state == FilterOption.State.NONE) {
+									boolean otherPositive = false;
+
+									for(FilterOption otherOption : filter.getOptions()) {
+										if(otherOption != option
+												&& otherOption.getState() == FilterOption.State.POSITIVE) {
+											otherPositive = true;
+											break;
+										}
+									}
+
+									if(!otherPositive) {
+										option.setState(FilterOption.State.POSITIVE);
+									}
+								} else if(state == FilterOption.State.NEGATIVE) {
+									option.setState(oldState);
+								}
+							} else {
+								if(state == FilterOption.State.POSITIVE) {
+									for(FilterOption otherOption : filter.getOptions()) {
+										if(!otherOption.value.equals(Filter.OPTION_EVERYTHING)) {
+											continue;
+										}
+
+										if(option.getState() == FilterOption.State.POSITIVE) {
+											otherOption.setState(FilterOption.State.NONE);
+										}
+										break;
+									}
+								} else if(state == FilterOption.State.NONE) {
+									boolean anyPositive = false;
+									FilterOption everything = null;
+									for(FilterOption otherOption : filter.getOptions()) {
+										if(otherOption.value.equals(Filter.OPTION_EVERYTHING)) {
+											everything = otherOption;
+										}
+
+										if(otherOption.getState() == FilterOption.State.POSITIVE) {
+											anyPositive = true;
+											break;
+										}
+									}
+
+									if(!anyPositive) {
+										assert everything != null;
+
+										everything.setState(FilterOption.State.POSITIVE);
+									}
+								}
+							}
+						}
+					});
+
 					reloadSelection();
 				});
+
+				if(Player.shouldSendUpdate()) {
+					PlaybackUpdateMessage msg = new PlaybackUpdateMessage();
+					msg.positiveOptions = exportPositiveOptions();
+					msg.negativeOptions = exportNegativeOptions();
+					Server.send(msg);
+				}
 			});
 
 			{
@@ -534,6 +577,78 @@ public class Library {
 
 		EVENT_TRACK_REMOVED.call(track);
 		reloadSelection();
+	}
+
+	public static List<Pair<Integer, String>> exportPositiveOptions() {
+		LinkedList<Pair<Integer, String>> toReturn = new LinkedList<>();
+		for(Filter filter : getFilters()) {
+			for(FilterOption option : filter.getOptions()) {
+				if(option.getState() == FilterOption.State.POSITIVE) {
+					toReturn.add(new Pair<>(filter.id, option.value));
+				}
+			}
+		}
+		return toReturn;
+	}
+
+	public static void importFilterOptions(List<Pair<Integer, String>> positive,
+			List<Pair<Integer, String>> negative) {
+		ScopedValue.where(Player.DONT_SEND_UPDATES, true).run(() -> {
+			collectReloads(() -> {
+				for(Filter filter : getFilters()) {
+					int id = filter.id;
+
+					runtimeOptions:
+					for(FilterOption option : filter.getOptions()) {
+						String value = option.value;
+
+						if(positive != null) {
+							for(Pair<Integer, String> positiveOption : positive) {
+								if(positiveOption.key != id || !Objects.equals(value, positiveOption.value)) {
+									continue;
+								}
+
+								option.setState(FilterOption.State.POSITIVE);
+								continue runtimeOptions;
+							}
+						}
+
+
+						boolean isNegative = false;
+						if(negative != null) {
+							for(Pair<Integer, String> negativeOption : negative) {
+								if(negativeOption.key != id || !Objects.equals(value, negativeOption.value)) {
+									continue;
+								}
+
+								option.setState(FilterOption.State.NEGATIVE);
+								continue runtimeOptions;
+							}
+						}
+
+						option.setState(FilterOption.State.NONE);
+					}
+				}
+			});
+		});
+		if(Player.shouldSendUpdate()) {
+			PlaybackUpdateMessage update = new PlaybackUpdateMessage();
+			update.positiveOptions = exportPositiveOptions();
+			update.negativeOptions = exportNegativeOptions();
+			Server.send(update);
+		}
+	}
+
+	public static List<Pair<Integer, String>> exportNegativeOptions() {
+		LinkedList<Pair<Integer, String>> toReturn = new LinkedList<>();
+		for(Filter filter : getFilters()) {
+			for(FilterOption option : filter.getOptions()) {
+				if(option.getState() == FilterOption.State.NEGATIVE) {
+					toReturn.add(new Pair<>(filter.id, option.value));
+				}
+			}
+		}
+		return toReturn;
 	}
 
 	public static Track getTrackByFilename(String filename) {

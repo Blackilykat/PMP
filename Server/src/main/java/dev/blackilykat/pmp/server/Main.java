@@ -24,6 +24,9 @@ import dev.blackilykat.pmp.messages.LoginAsNewDeviceRequest;
 import dev.blackilykat.pmp.messages.Message;
 import dev.blackilykat.pmp.server.handlers.LoginAsExistingDeviceRequestHandler;
 import dev.blackilykat.pmp.server.handlers.LoginAsNewDeviceRequestHandler;
+import dev.blackilykat.pmp.server.handlers.PlaybackControlMessageHandler;
+import dev.blackilykat.pmp.server.handlers.PlaybackOwnershipMessageHandler;
+import dev.blackilykat.pmp.server.handlers.PlaybackUpdateMessageHandler;
 import dev.blackilykat.pmp.util.LoggingProxy;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -93,6 +96,8 @@ public class Main {
 
 		registerHandlers();
 
+		Playback.init();
+
 		SSLServerSocket serverSocket = null;
 		try {
 			serverSocket = (SSLServerSocket) Encryption.getSslContext()
@@ -121,6 +126,9 @@ public class Main {
 	private static void registerHandlers() {
 		new LoginAsNewDeviceRequestHandler().register();
 		new LoginAsExistingDeviceRequestHandler().register();
+		new PlaybackControlMessageHandler().register();
+		new PlaybackOwnershipMessageHandler().register();
+		new PlaybackUpdateMessageHandler().register();
 
 		PMPConnection.EVENT_RECEIVING_MESSAGE.register(evt -> {
 			if(!(evt.connection instanceof ClientConnection connection)) {
