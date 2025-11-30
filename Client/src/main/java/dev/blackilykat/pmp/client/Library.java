@@ -17,11 +17,11 @@
 
 package dev.blackilykat.pmp.client;
 
-import dev.blackilykat.pmp.Filter;
-import dev.blackilykat.pmp.FilterOption;
+import dev.blackilykat.pmp.FilterInfo;
 import dev.blackilykat.pmp.Order;
 import dev.blackilykat.pmp.event.EventSource;
 import dev.blackilykat.pmp.event.RetroactiveEventSource;
+import dev.blackilykat.pmp.messages.FilterListMessage;
 import dev.blackilykat.pmp.messages.PlaybackControlMessage;
 import dev.blackilykat.pmp.messages.PlaybackUpdateMessage;
 import dev.blackilykat.pmp.util.Pair;
@@ -174,6 +174,10 @@ public class Library {
 		});
 
 		EVENT_FILTER_ADDED.call(filter);
+
+		if(Server.isLoggedIn()) {
+			Server.send(new FilterListMessage(exportFilters()));
+		}
 	}
 
 	public static void removeFilter(Filter filter) {
@@ -183,6 +187,10 @@ public class Library {
 		reloadSelection();
 
 		EVENT_FILTER_REMOVED.call(filter);
+
+		if(Server.isLoggedIn()) {
+			Server.send(new FilterListMessage(exportFilters()));
+		}
 	}
 
 	public static void moveFilter(Filter filter, int position) {
@@ -203,7 +211,63 @@ public class Library {
 
 		reloadSelection();
 
-		EVENT_FILTER_MOVED.call(new FilterMovedEvent(filter, oldPos, position));
+		EVENT_FILTER_MOVED.call(new FilterMovedEvent(filter, position));
+
+		if(Server.isLoggedIn()) {
+			Server.send(new FilterListMessage(exportFilters()));
+		}
+	}
+
+	public static void importFilters(List<FilterInfo> filterInfos) {
+		if(filterInfos == null) {
+			LOGGER.warn("Attempted import of null filters");
+			return;
+		}
+		List<Filter> newFilters = new LinkedList<>();
+		infoLoop:
+		for(FilterInfo filterInfo : filterInfos) {
+			for(Filter filter : filters) {
+				if(filterInfo.id() == filter.id) {
+					filter.key = filterInfo.key();
+					newFilters.add(filter);
+
+					continue infoLoop;
+				}
+			}
+			newFilters.add(new Filter(filterInfo.id(), filterInfo.key()));
+		}
+
+		for(Filter filter : filters) {
+			if(!newFilters.contains(filter)) {
+				EVENT_FILTER_REMOVED.call(filter);
+			}
+		}
+
+		for(Filter filter : newFilters) {
+			if(!filters.contains(filter)) {
+				EVENT_FILTER_ADDED.call(filter);
+			}
+		}
+
+		int i = -1;
+		for(Filter filter : newFilters) {
+			i++;
+
+			EVENT_FILTER_MOVED.call(new FilterMovedEvent(filter, i));
+		}
+		filters = newFilters;
+
+		ScopedValue.where(Player.DONT_SEND_UPDATES, true).run(() -> {
+			reloadSelection();
+		});
+	}
+
+	public static List<FilterInfo> exportFilters() {
+		List<FilterInfo> toReturn = new LinkedList<>();
+		for(Filter filter : filters) {
+			toReturn.add(new FilterInfo(filter.id, filter.key));
+		}
+		return toReturn;
 	}
 
 	public static List<Header> getHeaders() {
@@ -673,5 +737,5 @@ public class Library {
 
 	public record HeaderMovedEvent(Header header, int oldPosition, int newPosition) {}
 
-	public record FilterMovedEvent(Filter filter, int oldPosition, int newPosition) {}
+	public record FilterMovedEvent(Filter filter, int newPosition) {}
 }

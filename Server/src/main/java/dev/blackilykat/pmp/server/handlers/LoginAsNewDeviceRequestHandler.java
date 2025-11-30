@@ -80,6 +80,7 @@ public class LoginAsNewDeviceRequestHandler extends MessageHandler<LoginAsNewDev
 		connection.device = device;
 		LoginSuccessResponse response = new LoginSuccessResponse(message.requestId, device.id, device.getToken());
 		Playback.fillLoginSuccessResponse(response);
+		FilterListMessageHandler.fillLoginSuccessResponse(response);
 		connection.send(response);
 	}
 }

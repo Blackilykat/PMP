@@ -17,8 +17,8 @@
 
 package dev.blackilykat.pmp.client.gui;
 
-import dev.blackilykat.pmp.Filter;
-import dev.blackilykat.pmp.FilterOption;
+import dev.blackilykat.pmp.client.Filter;
+import dev.blackilykat.pmp.client.FilterOption;
 import dev.blackilykat.pmp.client.Library;
 import dev.blackilykat.pmp.client.gui.util.GUIUtils;
 import dev.blackilykat.pmp.client.gui.util.ThemedLabel;

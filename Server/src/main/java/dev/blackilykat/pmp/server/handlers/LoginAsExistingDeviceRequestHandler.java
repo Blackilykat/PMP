@@ -64,6 +64,7 @@ public class LoginAsExistingDeviceRequestHandler extends MessageHandler<LoginAsE
 					LoginSuccessResponse response = new LoginSuccessResponse(message.requestId, device.id,
 							device.getToken());
 					Playback.fillLoginSuccessResponse(response);
+					FilterListMessageHandler.fillLoginSuccessResponse(response);
 					connection.send(response);
 				} else {
 					connection.send(

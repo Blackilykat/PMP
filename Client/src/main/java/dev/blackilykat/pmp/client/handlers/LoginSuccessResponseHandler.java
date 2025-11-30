@@ -17,17 +17,21 @@
 
 package dev.blackilykat.pmp.client.handlers;
 
+import dev.blackilykat.pmp.FilterInfo;
 import dev.blackilykat.pmp.MessageHandler;
 import dev.blackilykat.pmp.PMPConnection;
 import dev.blackilykat.pmp.client.ClientStorage;
+import dev.blackilykat.pmp.client.Filter;
 import dev.blackilykat.pmp.client.Library;
 import dev.blackilykat.pmp.client.Player;
 import dev.blackilykat.pmp.client.Server;
+import dev.blackilykat.pmp.messages.FilterListMessage;
 import dev.blackilykat.pmp.messages.LoginSuccessResponse;
 import dev.blackilykat.pmp.messages.PlaybackOwnershipMessage;
 import dev.blackilykat.pmp.messages.PlaybackUpdateMessage;
 
 import java.time.Instant;
+import java.util.List;
 
 public class LoginSuccessResponseHandler extends MessageHandler<LoginSuccessResponse> {
 	public LoginSuccessResponseHandler() {
@@ -42,6 +46,15 @@ public class LoginSuccessResponseHandler extends MessageHandler<LoginSuccessResp
 		}
 		Server.deviceId = cs.getDeviceID();
 		cs.setToken(message.token);
+
+
+		// a nice side effect of this approach is that when the server first has empty filters, the first client to
+		// connect will send its filters as lastKnownServerFilters is also empty by default
+		if(!cs.getLastKnownServerFilters().equals(message.filters)) {
+			Library.importFilters(message.filters);
+		} else if(checkLocalFilterChanges(Library.getFilters(), message.filters)) {
+			connection.send(new FilterListMessage(Library.exportFilters()));
+		}
 
 		if(!Player.getPaused() && message.playbackOwner == null) {
 			Player.setPlaybackOwner(message.deviceId);
@@ -75,5 +88,22 @@ public class LoginSuccessResponseHandler extends MessageHandler<LoginSuccessResp
 				Library.importFilterOptions(message.positiveOptions, message.negativeOptions);
 			});
 		}
+	}
+
+	private static boolean checkLocalFilterChanges(List<Filter> local, List<FilterInfo> remote) {
+		if(local.size() != remote.size()) {
+			return true;
+		}
+		for(int i = 0; i < local.size(); i++) {
+			Filter localFilter = local.get(i);
+			FilterInfo remoteFilter = remote.get(i);
+			if(localFilter.id != remoteFilter.id()) {
+				return true;
+			}
+			if(!localFilter.key.equals(remoteFilter.key())) {
+				return true;
+			}
+		}
+		return false;
 	}
 }

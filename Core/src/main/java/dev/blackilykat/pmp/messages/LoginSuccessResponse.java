@@ -17,6 +17,7 @@
 
 package dev.blackilykat.pmp.messages;
 
+import dev.blackilykat.pmp.FilterInfo;
 import dev.blackilykat.pmp.RepeatOption;
 import dev.blackilykat.pmp.ShuffleOption;
 import dev.blackilykat.pmp.util.Pair;
@@ -46,6 +47,7 @@ public class LoginSuccessResponse extends Response {
 	public String track;
 	public List<Pair<Integer, String>> positiveOptions;
 	public List<Pair<Integer, String>> negativeOptions;
+	public List<FilterInfo> filters;
 
 	public LoginSuccessResponse(Integer requestId, Integer deviceId, String token) {
 		super(requestId);

@@ -15,10 +15,11 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package dev.blackilykat.pmp;
+package dev.blackilykat.pmp.client;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import dev.blackilykat.pmp.Storage;
 import dev.blackilykat.pmp.event.EventSource;
 
 import java.util.Collections;
@@ -37,10 +38,10 @@ public class Filter {
 	public final EventSource<OptionRemovedEvent> eventOptionRemoved = new EventSource<>();
 
 	public final int id;
-	public final String key;
 
 	@JsonIgnore
 	private final List<FilterOption> options = new LinkedList<>();
+	public String key;
 
 	public Filter(String key) {
 		this(Storage.getStorage().getAndIncrementCurrentFilterId(), key);

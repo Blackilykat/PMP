@@ -31,6 +31,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 		@Type(value = PlaybackControlMessage.class, name = PlaybackControlMessage.MESSAGE_TYPE),
 		@Type(value = PlaybackUpdateMessage.class, name = PlaybackUpdateMessage.MESSAGE_TYPE),
 		@Type(value = PlaybackOwnershipMessage.class, name = PlaybackOwnershipMessage.MESSAGE_TYPE),
+		@Type(value = FilterListMessage.class, name = FilterListMessage.MESSAGE_TYPE),
 		@Type(value = DisconnectMessage.class, name = DisconnectMessage.MESSAGE_TYPE),})
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public abstract class Message implements Cloneable {

@@ -18,6 +18,7 @@
 package dev.blackilykat.pmp.client;
 
 import dev.blackilykat.pmp.PMPConnection;
+import dev.blackilykat.pmp.client.handlers.FilterListMessageHandler;
 import dev.blackilykat.pmp.client.handlers.LoginFailResponseHandler;
 import dev.blackilykat.pmp.client.handlers.LoginSuccessResponseHandler;
 import dev.blackilykat.pmp.client.handlers.PlaybackControlMessageHandler;
@@ -221,5 +222,6 @@ public class Server {
 		new PlaybackControlMessageHandler().register();
 		new PlaybackOwnershipMessageHandler().register();
 		new PlaybackUpdateMessageHandler().register();
+		new FilterListMessageHandler().register();
 	}
 }

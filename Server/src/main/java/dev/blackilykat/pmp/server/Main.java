@@ -22,6 +22,7 @@ import dev.blackilykat.pmp.event.EventSource;
 import dev.blackilykat.pmp.messages.LoginAsExistingDeviceRequest;
 import dev.blackilykat.pmp.messages.LoginAsNewDeviceRequest;
 import dev.blackilykat.pmp.messages.Message;
+import dev.blackilykat.pmp.server.handlers.FilterListMessageHandler;
 import dev.blackilykat.pmp.server.handlers.LoginAsExistingDeviceRequestHandler;
 import dev.blackilykat.pmp.server.handlers.LoginAsNewDeviceRequestHandler;
 import dev.blackilykat.pmp.server.handlers.PlaybackControlMessageHandler;
@@ -129,6 +130,7 @@ public class Main {
 		new PlaybackControlMessageHandler().register();
 		new PlaybackOwnershipMessageHandler().register();
 		new PlaybackUpdateMessageHandler().register();
+		new FilterListMessageHandler().register();
 
 		PMPConnection.EVENT_RECEIVING_MESSAGE.register(evt -> {
 			if(!(evt.connection instanceof ClientConnection connection)) {

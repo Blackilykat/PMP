@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package dev.blackilykat.pmp;
+package dev.blackilykat.pmp.client;
 
 import dev.blackilykat.pmp.event.EventSource;
 

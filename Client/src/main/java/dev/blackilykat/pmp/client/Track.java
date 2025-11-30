@@ -19,8 +19,6 @@ package dev.blackilykat.pmp.client;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import dev.blackilykat.pmp.Filter;
-import dev.blackilykat.pmp.FilterOption;
 import dev.blackilykat.pmp.util.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;

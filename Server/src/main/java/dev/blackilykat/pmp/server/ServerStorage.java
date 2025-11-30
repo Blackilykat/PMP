@@ -21,6 +21,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
+import dev.blackilykat.pmp.FilterInfo;
 import dev.blackilykat.pmp.RepeatOption;
 import dev.blackilykat.pmp.ShuffleOption;
 import dev.blackilykat.pmp.Storage;
@@ -73,6 +74,7 @@ public class ServerStorage extends Storage {
 	private RepeatOption repeat = RepeatOption.ALL;
 	private ShuffleOption shuffle = ShuffleOption.OFF;
 	private long position = 0;
+	private List<FilterInfo> filters = List.of();
 
 
 	private ServerStorage() {
@@ -217,6 +219,15 @@ public class ServerStorage extends Storage {
 	public synchronized void setNegativeFilterOptions(List<Pair<Integer, String>> negativeFilterOptions) {
 		dirty = true;
 		this.negativeFilterOptions = new LinkedList<>(negativeFilterOptions);
+	}
+
+	public synchronized List<FilterInfo> getFilters() {
+		return Collections.unmodifiableList(filters);
+	}
+
+	public synchronized void setFilters(List<FilterInfo> filters) {
+		dirty = true;
+		this.filters = new LinkedList<>(filters);
 	}
 
 	public synchronized long getPosition() {

@@ -21,7 +21,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
-import dev.blackilykat.pmp.Filter;
+import dev.blackilykat.pmp.FilterInfo;
 import dev.blackilykat.pmp.RepeatOption;
 import dev.blackilykat.pmp.ShuffleOption;
 import dev.blackilykat.pmp.Storage;
@@ -85,6 +85,7 @@ public class ClientStorage extends Storage {
 	private String token = null;
 	private Integer deviceID = null;
 	private PlaybackInfo playbackInfo;
+	private List<FilterInfo> lastKnownServerFilters = List.of();
 
 	private ClientStorage() {
 		Timer savingTimer = new Timer("Client storage saving timer");
@@ -295,6 +296,15 @@ public class ClientStorage extends Storage {
 	public void setDeviceID(Integer deviceID) {
 		dirty = true;
 		this.deviceID = deviceID;
+	}
+
+	public synchronized List<FilterInfo> getLastKnownServerFilters() {
+		return Collections.unmodifiableList(lastKnownServerFilters);
+	}
+
+	public synchronized void setLastKnownServerFilters(List<FilterInfo> filters) {
+		dirty = true;
+		this.lastKnownServerFilters = new LinkedList<>(filters);
 	}
 
 	/**
