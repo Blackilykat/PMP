@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Blackilykat and contributors
+ * Copyright (C) 2026 Blackilykat and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -47,11 +47,13 @@ import java.util.TimerTask;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Consumer;
 
 public class PMPConnection {
 	public static final EventSource<ReceivingMessageEvent> EVENT_RECEIVING_MESSAGE = new EventSource<>();
 	public static final EventSource<PMPConnection> EVENT_DISCONNECTED = new EventSource<>();
+
+	public static final int DEFAULT_MESSAGE_PORT = 6803;
+	public static final int DEFAULT_FILE_PORT = 6804;
 
 	private static final int KEEPALIVE_MS = 10_000;
 	private static final int KEEPALIVE_MAX_MS = 30_000;
@@ -116,6 +118,9 @@ public class PMPConnection {
 	 * Adds a message to the message queue
 	 */
 	public void send(Message message) {
+		if(message instanceof Request request) {
+			request.setConnection(PMPConnection.this);
+		}
 		messageQueue.add(message);
 	}
 
@@ -287,11 +292,11 @@ public class PMPConnection {
 							if(message instanceof Response response) {
 								Request request = pendingRequests.get(response.requestId);
 								if(request != null) {
-									for(Consumer<Response> consumer : request.getResponseConsumers()) {
-										consumer.accept(response);
-									}
+									request.addResponse(response);
 
-									pendingRequests.remove(response.requestId);
+									if(response.isLastResponse()) {
+										pendingRequests.remove(response.requestId);
+									}
 								}
 							}
 
@@ -332,7 +337,8 @@ public class PMPConnection {
 								}
 							}
 
-							if(!foundHandler) {
+							// responses can have no handler but be handled through Request#takeResponse
+							if(!foundHandler && !(message instanceof Response)) {
 								LOGGER.warn("Unhandled message type {}", message.getClass().getSimpleName());
 							}
 						} catch(JsonProcessingException e) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Blackilykat and contributors
+ * Copyright (C) 2026 Blackilykat and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,34 +17,44 @@
 
 package dev.blackilykat.pmp;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import dev.blackilykat.pmp.util.Pair;
 
 import java.io.Serializable;
 import java.util.List;
 
-public class LibraryAction implements Serializable {
-	public String fileName;
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class Action implements Serializable {
+	public String filename;
 
 	public Type actionType;
 
 	public List<Pair<String, String>> newMetadata = null;
 
-	public LibraryAction(String fileName, Type actionType) {
+	public Action(String filename, Type actionType) {
 		if(actionType == Type.CHANGE_METADATA) {
 			throw new IllegalArgumentException("Wrong initializer for action type CHANGE_METADATA!");
 		}
-		this.fileName = fileName;
+		this.filename = filename;
 		this.actionType = actionType;
 	}
 
-	public LibraryAction(String fileName, List<Pair<String, String>> newMetadata) {
-		this.fileName = fileName;
+	public Action(String filename, List<Pair<String, String>> newMetadata) {
+		this.filename = filename;
 		this.actionType = Type.CHANGE_METADATA;
 		this.newMetadata = newMetadata;
 	}
 
-	public LibraryAction() {
-		this.fileName = "";
+	@JsonCreator
+	public Action() {
+		this.filename = "";
+	}
+
+	@Override
+	public String toString() {
+		return "Action{" + "actionType=" + actionType + ", filename='" + filename + '\'' + ", newMetadata="
+				+ newMetadata + '}';
 	}
 
 	public enum Type {

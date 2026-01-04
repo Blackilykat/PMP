@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2026 Blackilykat and contributors
+ * Copyright (C) 2025 Blackilykat and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,22 +15,18 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package dev.blackilykat.pmp.util;
+package dev.blackilykat.pmp.messages;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
+/**
+ * Request by the client to get a list of actions, from {@link #from} to the latest.
+ * <p>Direction: C2S
+ */
+public class GetActionsRequest extends Request {
+	public static final String MESSAGE_TYPE = "GetActionsRequest";
 
-import java.io.Serializable;
+	public int from;
 
-public class Pair<T, U> implements Serializable {
-	public T key;
-	public U value;
-
-	@JsonCreator
-	private Pair() {
-	}
-
-	public Pair(T key, U value) {
-		this.key = key;
-		this.value = value;
+	public GetActionsRequest(int from) {
+		this.from = from;
 	}
 }

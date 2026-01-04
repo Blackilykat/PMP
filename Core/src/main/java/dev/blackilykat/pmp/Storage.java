@@ -21,16 +21,6 @@ public abstract class Storage {
 
 	private static Storage storage = null;
 
-	public int getAndIncrementCurrentActionId() {
-		int id = getCurrentActionID();
-		setCurrentActionID(id + 1);
-		return id;
-	}
-
-	public abstract int getCurrentActionID();
-
-	public abstract void setCurrentActionID(int id);
-
 	public int getAndIncrementCurrentFilterId() {
 		int id = getCurrentFilterID();
 		setCurrentFilterID(id + 1);

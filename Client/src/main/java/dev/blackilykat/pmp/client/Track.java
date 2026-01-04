@@ -19,25 +19,20 @@ package dev.blackilykat.pmp.client;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import dev.blackilykat.pmp.FLACUtil;
 import dev.blackilykat.pmp.util.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.kc7bfi.jflac.FLACDecoder;
 import org.kc7bfi.jflac.metadata.Metadata;
 import org.kc7bfi.jflac.metadata.StreamInfo;
-import org.kc7bfi.jflac.metadata.VorbisComment;
-import org.kc7bfi.jflac.metadata.VorbisString;
 
 import javax.sound.sampled.AudioFormat;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.lang.reflect.Field;
-import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.zip.CRC32;
 import java.util.zip.CheckedInputStream;
 import java.util.zip.Checksum;
@@ -85,7 +80,7 @@ public class Track {
 			}
 		}
 
-		this.metadata = extractMetadata(metadata);
+		this.metadata = FLACUtil.extractMetadata(metadata);
 
 		while(is.available() > 0) {
 			//noinspection ResultOfMethodCallIgnored
@@ -159,64 +154,6 @@ public class Track {
 
 
 		return !hasKey && value.equals(Filter.OPTION_UNKNOWN);
-	}
-
-	/**
-	 * Extracts FLAC vorbis metadata from the given file
-	 *
-	 * @return the metadata, or null if the file is not a valid FLAC file
-	 */
-	public static List<Pair<String, String>> extractMetadata(File file) {
-		try(InputStream is = new FileInputStream(file)) {
-			FLACDecoder decoder = new FLACDecoder(is);
-			return extractMetadata(decoder.readMetadata());
-		} catch(IOException e) {
-			return null;
-		}
-	}
-
-	private static List<Pair<String, String>> extractMetadata(Metadata[] metadata) {
-		List<Pair<String, String>> list = new LinkedList<>();
-
-		// bs protected value with no getter
-		Field commentsField;
-		try {
-			commentsField = VorbisComment.class.getDeclaredField("comments");
-			commentsField.setAccessible(true);
-		} catch(NoSuchFieldException e) {
-			LOGGER.error("(Track#extractMetadata) This should've been unreachable", e);
-			commentsField = null;
-		}
-
-		if(commentsField != null) {
-			for(Metadata metadatum : metadata) {
-				if(!(metadatum instanceof VorbisComment comments)) {
-					continue;
-				}
-
-				VorbisString[] strings;
-				try {
-					strings = (VorbisString[]) commentsField.get(comments);
-				} catch(IllegalAccessException e) {
-					LOGGER.error("Shouldn't have been unable to get field value, skipping rest of metadata", e);
-					break;
-				}
-
-				for(VorbisString string : strings) {
-					String[] parts = string.toString().split("=");
-					if(parts.length < 2) {
-						LOGGER.warn("Ignoring metadatum without =: {}", string.toString());
-						continue;
-					}
-					Pair<String, String> pair = new Pair<>(parts[0],
-							Arrays.stream(parts).skip(1).collect(Collectors.joining("=")));
-
-					list.add(pair);
-				}
-			}
-		}
-
-		return list;
 	}
 
 	public static String makeFilename(List<Pair<String, String>> metadata) {

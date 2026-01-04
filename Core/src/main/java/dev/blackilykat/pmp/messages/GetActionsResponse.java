@@ -15,22 +15,19 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package dev.blackilykat.pmp.util;
+package dev.blackilykat.pmp.messages;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
+import dev.blackilykat.pmp.Action;
 
-import java.io.Serializable;
+import java.util.List;
 
-public class Pair<T, U> implements Serializable {
-	public T key;
-	public U value;
+public class GetActionsResponse extends Response {
+	public static final String MESSAGE_TYPE = "GetActionsResponse";
 
-	@JsonCreator
-	private Pair() {
-	}
+	public List<Action> actions;
 
-	public Pair(T key, U value) {
-		this.key = key;
-		this.value = value;
+	public GetActionsResponse(List<Action> actions, Integer requestId) {
+		this.actions = actions;
+		super(requestId);
 	}
 }

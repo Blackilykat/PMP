@@ -15,22 +15,23 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package dev.blackilykat.pmp.util;
+package dev.blackilykat.pmp.client.handlers;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
+import dev.blackilykat.pmp.MessageHandler;
+import dev.blackilykat.pmp.PMPConnection;
+import dev.blackilykat.pmp.client.ClientStorage;
+import dev.blackilykat.pmp.messages.ActionMessage;
 
-import java.io.Serializable;
-
-public class Pair<T, U> implements Serializable {
-	public T key;
-	public U value;
-
-	@JsonCreator
-	private Pair() {
+public class ActionMessageHandler extends MessageHandler<ActionMessage> {
+	public ActionMessageHandler() {
+		super(ActionMessage.class);
 	}
 
-	public Pair(T key, U value) {
-		this.key = key;
-		this.value = value;
+	@Override
+	public void run(PMPConnection connection, ActionMessage message) {
+		ClientStorage cs = ClientStorage.getInstance();
+		assert cs.getLastReceivedAction() + 1 == message.id;
+		cs.setLastReceivedAction(message.id);
+		cs.addActionToHandle(message.action);
 	}
 }

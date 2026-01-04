@@ -17,8 +17,11 @@
 
 package dev.blackilykat.pmp.messages;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 /**
- * Any message that responds to a {@link Request}.
+ * Any message that responds to a {@link Request}. There may be multiple responses for the same request if
+ * {@link #isLastResponse} is overridden in the Response.
  */
 public abstract class Response extends Message {
 	public Integer requestId;
@@ -26,5 +29,13 @@ public abstract class Response extends Message {
 	public Response(Integer requestId) {
 		super();
 		this.requestId = requestId;
+	}
+
+	/**
+	 * @return whether this is expected to be the last response to this request or if there are more after this.
+	 */
+	@JsonIgnore
+	public boolean isLastResponse() {
+		return true;
 	}
 }

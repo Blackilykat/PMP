@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Blackilykat and contributors
+ * Copyright (C) 2026 Blackilykat and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,9 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
+import dev.blackilykat.pmp.Action;
 import dev.blackilykat.pmp.FilterInfo;
+import dev.blackilykat.pmp.PMPConnection;
 import dev.blackilykat.pmp.RepeatOption;
 import dev.blackilykat.pmp.ShuffleOption;
 import dev.blackilykat.pmp.Storage;
@@ -30,6 +32,8 @@ import dev.blackilykat.pmp.util.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -46,6 +50,8 @@ import java.util.List;
 import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.BlockingDeque;
+import java.util.concurrent.LinkedBlockingDeque;
 
 public class ClientStorage extends Storage {
 	public static final EventSource<ClientStorage> EVENT_SAVING = new EventSource<>();
@@ -71,13 +77,12 @@ public class ClientStorage extends Storage {
 	// null: empty configuration is technically valid, but not default
 	private List<Header> headers = null;
 	private List<Filter> filters = null;
-	private int currentActionID = 0;
 	private int currentFilterID = 0;
 	private int currentSessionID = 0;
 	private int currentHeaderID = 0;
 	private String serverAddress = "localhost";
-	private int serverPort = 6803;
-	private int serverFilePort = 6804;
+	private int serverPort = PMPConnection.DEFAULT_MESSAGE_PORT;
+	private int serverFilePort = PMPConnection.DEFAULT_FILE_PORT;
 	/**
 	 * Base64 encoded serialized {@link Key} object
 	 */
@@ -86,6 +91,9 @@ public class ClientStorage extends Storage {
 	private Integer deviceID = null;
 	private PlaybackInfo playbackInfo;
 	private List<FilterInfo> lastKnownServerFilters = List.of();
+	private BlockingDeque<Action> actionsToHandle = new LinkedBlockingDeque<>();
+	private int lastReceivedAction = -1;
+	private BlockingDeque<Action> actionsToSend = new LinkedBlockingDeque<>();
 
 	private ClientStorage() {
 		Timer savingTimer = new Timer("Client storage saving timer");
@@ -99,23 +107,6 @@ public class ClientStorage extends Storage {
 				}
 			}
 		}, SAVING_INTERVAL_MS, SAVING_INTERVAL_MS);
-	}
-
-	@Override
-	@JsonIgnore
-	public int getAndIncrementCurrentActionId() {
-		return super.getAndIncrementCurrentActionId();
-	}
-
-	@Override
-	public synchronized int getCurrentActionID() {
-		return currentActionID;
-	}
-
-	@Override
-	public synchronized void setCurrentActionID(int id) {
-		dirty = true;
-		currentActionID = id;
 	}
 
 	@Override
@@ -305,6 +296,70 @@ public class ClientStorage extends Storage {
 	public synchronized void setLastKnownServerFilters(List<FilterInfo> filters) {
 		dirty = true;
 		this.lastKnownServerFilters = new LinkedList<>(filters);
+	}
+
+	public synchronized @Nullable Action peekActionsToHandle() {
+		return actionsToHandle.peek();
+	}
+
+	public synchronized void takeActionToHandle() {
+		dirty = true;
+		actionsToHandle.remove();
+	}
+
+	public @Nonnull Action peekActionsToHandleBlocking() throws InterruptedException {
+		// cannot replace with peek(), this needs to block
+
+		Action action = actionsToHandle.take();
+		actionsToHandle.addFirst(action);
+		return action;
+	}
+
+	public synchronized void addActionToHandle(Action action) {
+		dirty = true;
+		actionsToHandle.add(action);
+	}
+
+	public synchronized int getLastReceivedAction() {
+		return lastReceivedAction;
+	}
+
+	public synchronized void setLastReceivedAction(int lastReceivedAction) {
+		dirty = true;
+		this.lastReceivedAction = lastReceivedAction;
+	}
+
+	public synchronized void incrementLastReceivedAction() {
+		dirty = true;
+		this.lastReceivedAction++;
+	}
+
+	public synchronized @Nullable Action peekActionsToSend() {
+		return actionsToSend.peek();
+	}
+
+	public synchronized void takeActionToSend() {
+		dirty = true;
+		actionsToSend.remove();
+	}
+
+	public @Nonnull Action peekActionsToSendBlocking() throws InterruptedException {
+		Action action = actionsToSend.take();
+		actionsToSend.addFirst(action);
+		return action;
+	}
+
+	public synchronized void addActionToSend(Action action) {
+		dirty = true;
+		actionsToSend.add(action);
+	}
+
+	public synchronized Action[] viewAllActionsToSend() {
+		return actionsToSend.toArray(new Action[0]);
+	}
+
+	public synchronized Action[] viewAllActionsToHandle() {
+		return actionsToHandle.toArray(new Action[0]);
 	}
 
 	/**

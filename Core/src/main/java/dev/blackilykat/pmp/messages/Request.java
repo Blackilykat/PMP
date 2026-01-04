@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Blackilykat and contributors
+ * Copyright (C) 2026 Blackilykat and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,16 +18,22 @@
 package dev.blackilykat.pmp.messages;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import dev.blackilykat.pmp.PMPConnection;
+import dev.blackilykat.pmp.event.Listener;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.function.Consumer;
+import javax.annotation.Nonnull;
+import java.net.SocketException;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Any message that expects to receive a {@link Response}.
  */
 public abstract class Request extends Message {
+	private static final Logger LOGGER = LogManager.getLogger(Request.class);
 	private static int currentRequestId = 0;
 	/**
 	 * A number that uniquely identifies the request for the side that is sending it. Different sides may use the same
@@ -36,22 +42,59 @@ public abstract class Request extends Message {
 	public Integer requestId = null;
 
 	@JsonIgnore
-	private List<Consumer<Response>> responseConsumers = new LinkedList<>();
+	private BlockingQueue<Response> responses = new LinkedBlockingQueue<>();
+
+	@JsonIgnore
+	private PMPConnection connection = null;
 
 	public Request() {
 		super();
 	}
 
-	@JsonIgnore
-	public List<Consumer<Response>> getResponseConsumers() {
-		return Collections.unmodifiableList(responseConsumers);
+	public void addResponse(Response response) {
+		responses.add(response);
 	}
 
-	public void onResponse(Consumer<Response> consumer) {
-		responseConsumers.add(consumer);
+	/**
+	 * Takes a response from this message's queue and returns it. If the queue is empty, waits for the next response.
+	 *
+	 * @throws InterruptedException if the thread is interrupted
+	 * @throws SocketException if the server disconnects before sending the response or sends an unexpected one
+	 */
+	public @Nonnull <T extends Response> T takeResponse() throws InterruptedException, SocketException {
+		assert connection != null;
+		AtomicBoolean disconnected = new AtomicBoolean(false);
+
+		Thread currentThread = Thread.currentThread();
+
+		Listener<Void> disconnectListener = _ -> {
+			disconnected.set(true);
+			currentThread.interrupt();
+		};
+		connection.eventDisconnected.register(disconnectListener);
+
+		try {
+			Response response = responses.take();
+			//noinspection unchecked
+			return (T) response;
+		} catch(InterruptedException e) {
+			if(disconnected.get()) {
+				throw new SocketException(connection.name + " disconnected before sending response");
+			}
+			throw e;
+		} catch(ClassCastException e) {
+			throw new SocketException(connection.name + " sent unexpected response type: " + e.getMessage());
+		} finally {
+			connection.eventDisconnected.unregister(disconnectListener);
+		}
 	}
 
 	public void assignId() {
 		requestId = currentRequestId++;
+	}
+
+	@JsonIgnore
+	public void setConnection(PMPConnection connection) {
+		this.connection = connection;
 	}
 }

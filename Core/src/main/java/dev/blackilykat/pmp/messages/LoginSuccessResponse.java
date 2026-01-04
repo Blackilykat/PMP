@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Blackilykat and contributors
+ * Copyright (C) 2026 Blackilykat and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -49,10 +49,13 @@ public class LoginSuccessResponse extends Response {
 	public List<Pair<Integer, String>> negativeOptions;
 	public List<FilterInfo> filters;
 
-	public LoginSuccessResponse(Integer requestId, Integer deviceId, String token) {
+	public int lastActionId = -1;
+
+	public LoginSuccessResponse(Integer requestId, Integer deviceId, String token, int lastActionId) {
 		super(requestId);
 		this.token = token;
 		this.deviceId = deviceId;
+		this.lastActionId = lastActionId;
 		if(token == null) {
 			LOGGER.warn("Created login success response without token");
 		}

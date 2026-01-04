@@ -29,11 +29,15 @@ import dev.blackilykat.pmp.messages.FilterListMessage;
 import dev.blackilykat.pmp.messages.LoginSuccessResponse;
 import dev.blackilykat.pmp.messages.PlaybackOwnershipMessage;
 import dev.blackilykat.pmp.messages.PlaybackUpdateMessage;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.time.Instant;
 import java.util.List;
 
 public class LoginSuccessResponseHandler extends MessageHandler<LoginSuccessResponse> {
+	private static final Logger LOGGER = LogManager.getLogger(LoginSuccessResponseHandler.class);
+
 	public LoginSuccessResponseHandler() {
 		super(LoginSuccessResponse.class);
 	}
@@ -46,7 +50,6 @@ public class LoginSuccessResponseHandler extends MessageHandler<LoginSuccessResp
 		}
 		Server.deviceId = cs.getDeviceID();
 		cs.setToken(message.token);
-
 
 		// a nice side effect of this approach is that when the server first has empty filters, the first client to
 		// connect will send its filters as lastKnownServerFilters is also empty by default
@@ -88,6 +91,10 @@ public class LoginSuccessResponseHandler extends MessageHandler<LoginSuccessResp
 				Library.importFilterOptions(message.positiveOptions, message.negativeOptions);
 			});
 		}
+
+		Server.lastActionId = message.lastActionId;
+
+		Server.EVENT_LOGGED_IN.call(null);
 	}
 
 	private static boolean checkLocalFilterChanges(List<Filter> local, List<FilterInfo> remote) {

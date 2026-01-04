@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Blackilykat and contributors
+ * Copyright (C) 2026 Blackilykat and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -751,6 +751,9 @@ public class Player {
 
 		EVENT_TRACK_CHANGE.register(event -> {
 			if(!shouldSendUpdate()) {
+				return;
+			}
+			if(event.track == null) {
 				return;
 			}
 			PlaybackUpdateMessage msg = new PlaybackUpdateMessage();

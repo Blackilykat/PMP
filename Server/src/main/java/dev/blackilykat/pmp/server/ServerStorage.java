@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Blackilykat and contributors
+ * Copyright (C) 2026 Blackilykat and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
+import dev.blackilykat.pmp.Action;
 import dev.blackilykat.pmp.FilterInfo;
 import dev.blackilykat.pmp.RepeatOption;
 import dev.blackilykat.pmp.ShuffleOption;
@@ -61,7 +62,6 @@ public class ServerStorage extends Storage {
 	@JsonIgnore
 	private boolean dirty = true;
 
-	private int currentActionID = 0;
 	private int currentFilterID = 0;
 	private int currentSessionID = 1;
 	private int currentDeviceID = 0;
@@ -75,6 +75,9 @@ public class ServerStorage extends Storage {
 	private ShuffleOption shuffle = ShuffleOption.OFF;
 	private long position = 0;
 	private List<FilterInfo> filters = List.of();
+	private List<Track> tracks = List.of();
+	// index = action ID
+	private List<Action> actions = new LinkedList<>();
 
 
 	private ServerStorage() {
@@ -89,23 +92,6 @@ public class ServerStorage extends Storage {
 				}
 			}
 		}, SAVING_INTERVAL_MS, SAVING_INTERVAL_MS);
-	}
-
-	@Override
-	@JsonIgnore
-	public int getAndIncrementCurrentActionId() {
-		return super.getAndIncrementCurrentActionId();
-	}
-
-	@Override
-	public synchronized int getCurrentActionID() {
-		return currentActionID;
-	}
-
-	@Override
-	public synchronized void setCurrentActionID(int id) {
-		dirty = true;
-		currentActionID = id;
 	}
 
 	@Override
@@ -228,6 +214,33 @@ public class ServerStorage extends Storage {
 	public synchronized void setFilters(List<FilterInfo> filters) {
 		dirty = true;
 		this.filters = new LinkedList<>(filters);
+	}
+
+	public synchronized List<Track> getTracks() {
+		return Collections.unmodifiableList(tracks);
+	}
+
+	public synchronized void setTracks(List<Track> tracks) {
+		dirty = true;
+		this.tracks = new LinkedList<>(tracks);
+	}
+
+	public synchronized List<Action> getActions() {
+		return Collections.unmodifiableList(actions);
+	}
+
+	public synchronized void setActions(List<Action> actions) {
+		dirty = true;
+		this.actions = new LinkedList<>(actions);
+	}
+
+	public synchronized int nextActionId() {
+		return this.actions.size();
+	}
+
+	public synchronized void addAction(Action action) {
+		dirty = true;
+		this.actions.add(action);
 	}
 
 	public synchronized long getPosition() {

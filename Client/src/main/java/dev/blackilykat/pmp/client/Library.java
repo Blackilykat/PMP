@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Blackilykat and contributors
+ * Copyright (C) 2026 Blackilykat and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,6 +17,8 @@
 
 package dev.blackilykat.pmp.client;
 
+import dev.blackilykat.pmp.Action;
+import dev.blackilykat.pmp.FLACUtil;
 import dev.blackilykat.pmp.FilterInfo;
 import dev.blackilykat.pmp.Order;
 import dev.blackilykat.pmp.event.EventSource;
@@ -28,11 +30,14 @@ import dev.blackilykat.pmp.util.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import javax.annotation.Nullable;
+import javax.net.ssl.HttpsURLConnection;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -350,8 +355,8 @@ public class Library {
 		return Collections.unmodifiableList(filters);
 	}
 
-	public static Collection<Track> getAllTracks() {
-		return Collections.unmodifiableCollection(tracks.values());
+	public static Track[] getAllTracks() {
+		return tracks.values().toArray(new Track[0]);
 	}
 
 	public static List<Track> getSelectedTracks() {
@@ -599,7 +604,7 @@ public class Library {
 		if(file.isDirectory()) {
 			throw new IllegalArgumentException("File is a directory");
 		}
-		List<Pair<String, String>> metadata = Track.extractMetadata(file);
+		List<Pair<String, String>> metadata = FLACUtil.extractMetadata(file);
 		if(metadata == null) {
 			return false;
 		}
@@ -618,11 +623,15 @@ public class Library {
 			LOGGER.debug("Copied {} to {}", file, target);
 		}
 
-		Track track = new Track(target.toFile());
+		registerNewTrack(target.toFile());
+		return true;
+	}
+
+	public static void registerNewTrack(File file) throws IOException {
+		Track track = new Track(file);
 		tracks.put(track.getFile().getName(), track);
 		EVENT_TRACK_ADDED.call(track);
 		reloadSelection();
-		return true;
 	}
 
 	public static void removeTrack(Track track) {
@@ -715,7 +724,7 @@ public class Library {
 		return toReturn;
 	}
 
-	public static Track getTrackByFilename(String filename) {
+	public static @Nullable Track getTrackByFilename(String filename) {
 		return tracks.get(filename);
 	}
 
@@ -729,6 +738,62 @@ public class Library {
 	public static void collectReloads(Runnable runnable) {
 		ScopedValue.where(NO_RELOAD_SELECTION, true).run(runnable);
 		reloadSelection();
+	}
+
+
+	public static void handleAddAction(Action action) throws IOException {
+		File target = library.toPath().resolve(action.filename).toFile();
+		if(target.exists()) {
+			LOGGER.error("Received ADD action for track {} which already exists, ignoring", action.filename);
+			return;
+		}
+		handleReplaceAction(action);
+	}
+
+	public static void handleReplaceAction(Action action) throws IOException {
+		File target = library.toPath().resolve(action.filename).toFile();
+
+		HttpsURLConnection conn = Server.startTransferRequest("GET", action.filename);
+		int res = conn.getResponseCode();
+		if(res != 200) {
+			LOGGER.error("Got unexpected response {} while downloading track {}", res, action.filename);
+			throw new IllegalStateException(res + " response from server");
+		}
+
+		Path tmpTarget = new File(target.getAbsolutePath() + ".tmp").toPath();
+		Files.copy(conn.getInputStream(), tmpTarget, StandardCopyOption.REPLACE_EXISTING);
+		conn.getInputStream().close();
+
+		try {
+			// According to the javadocs, it is implementation specific whether the atomic move is allowed to override
+			// an existing file. This forces it to by deleting the file beforehand if it existed.
+			var _ = target.delete();
+			Files.move(tmpTarget, target.toPath(), StandardCopyOption.ATOMIC_MOVE);
+		} catch(IOException _) {
+			LOGGER.debug("Atomic move of {} to {} failed, using normal move", tmpTarget, target);
+			Files.move(tmpTarget, target.toPath());
+		}
+		tracks.remove(target.getName());
+		registerNewTrack(target);
+	}
+
+	public static void handleRemoveAction(Action action) throws IOException {
+		File target = library.toPath().resolve(action.filename).toFile();
+		if(!target.delete()) {
+			LOGGER.error("Failed to delete {}. Were permissions messed with?", target);
+			throw new IOException("Failed to delete file");
+		}
+
+		tracks.remove(target.getName());
+		reloadSelection();
+	}
+
+	public static void waitUntilLoaded() throws InterruptedException {
+		synchronized(INITIALIZED) {
+			while(!INITIALIZED.get()) {
+				INITIALIZED.wait();
+			}
+		}
 	}
 
 	public record SelectedTracksUpdatedEvent(List<Track> oldSelection, List<Track> newSelection) {}

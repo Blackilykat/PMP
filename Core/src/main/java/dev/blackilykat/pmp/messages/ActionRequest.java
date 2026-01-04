@@ -15,22 +15,20 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package dev.blackilykat.pmp.util;
+package dev.blackilykat.pmp.messages;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
+import dev.blackilykat.pmp.Action;
 
-import java.io.Serializable;
+/**
+ * Request from a client to perform an action.
+ * <p>Direction: C2S
+ */
+public class ActionRequest extends Request {
+	public static final String MESSAGE_TYPE = "ActionRequest";
 
-public class Pair<T, U> implements Serializable {
-	public T key;
-	public U value;
+	public Action action;
 
-	@JsonCreator
-	private Pair() {
-	}
-
-	public Pair(T key, U value) {
-		this.key = key;
-		this.value = value;
+	public ActionRequest(Action action) {
+		this.action = action;
 	}
 }

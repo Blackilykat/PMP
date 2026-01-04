@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Blackilykat and contributors
+ * Copyright (C) 2026 Blackilykat and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,9 @@ import dev.blackilykat.pmp.event.EventSource;
 import dev.blackilykat.pmp.messages.LoginAsExistingDeviceRequest;
 import dev.blackilykat.pmp.messages.LoginAsNewDeviceRequest;
 import dev.blackilykat.pmp.messages.Message;
+import dev.blackilykat.pmp.server.handlers.ActionRequestHandler;
 import dev.blackilykat.pmp.server.handlers.FilterListMessageHandler;
+import dev.blackilykat.pmp.server.handlers.GetActionsRequestHandler;
 import dev.blackilykat.pmp.server.handlers.LoginAsExistingDeviceRequestHandler;
 import dev.blackilykat.pmp.server.handlers.LoginAsNewDeviceRequestHandler;
 import dev.blackilykat.pmp.server.handlers.PlaybackControlMessageHandler;
@@ -43,7 +45,9 @@ public class Main {
 	private static final Logger LOGGER = LogManager.getLogger(Main.class);
 
 	static void main(String[] args) {
-
+		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+			EVENT_SHUTDOWN.call(null);
+		}));
 
 		try {
 			ServerStorage.load();
@@ -91,6 +95,8 @@ public class Main {
 			}
 		}
 
+		Library.init();
+
 		LoggingProxy.setUpProxies();
 
 		Encryption.init();
@@ -99,11 +105,18 @@ public class Main {
 
 		Playback.init();
 
+		try {
+			TransferHandler.init();
+		} catch(IOException e) {
+			LOGGER.fatal("Failed to start transfer server", e);
+			System.exit(1);
+		}
+
 		SSLServerSocket serverSocket = null;
 		try {
 			serverSocket = (SSLServerSocket) Encryption.getSslContext()
 					.getServerSocketFactory()
-					.createServerSocket(6803);
+					.createServerSocket(PMPConnection.DEFAULT_MESSAGE_PORT);
 		} catch(IOException e) {
 			LOGGER.fatal("Failed to create server socket", e);
 			System.exit(1);
@@ -131,6 +144,8 @@ public class Main {
 		new PlaybackOwnershipMessageHandler().register();
 		new PlaybackUpdateMessageHandler().register();
 		new FilterListMessageHandler().register();
+		new GetActionsRequestHandler().register();
+		new ActionRequestHandler().register();
 
 		PMPConnection.EVENT_RECEIVING_MESSAGE.register(evt -> {
 			if(!(evt.connection instanceof ClientConnection connection)) {

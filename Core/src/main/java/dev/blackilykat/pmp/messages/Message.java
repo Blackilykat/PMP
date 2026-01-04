@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Blackilykat and contributors
+ * Copyright (C) 2026 Blackilykat and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -32,6 +32,11 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 		@Type(value = PlaybackUpdateMessage.class, name = PlaybackUpdateMessage.MESSAGE_TYPE),
 		@Type(value = PlaybackOwnershipMessage.class, name = PlaybackOwnershipMessage.MESSAGE_TYPE),
 		@Type(value = FilterListMessage.class, name = FilterListMessage.MESSAGE_TYPE),
+		@Type(value = ActionMessage.class, name = ActionMessage.MESSAGE_TYPE),
+		@Type(value = ActionRequest.class, name = ActionRequest.MESSAGE_TYPE),
+		@Type(value = ActionResponse.class, name = ActionResponse.MESSAGE_TYPE),
+		@Type(value = GetActionsRequest.class, name = GetActionsRequest.MESSAGE_TYPE),
+		@Type(value = GetActionsResponse.class, name = GetActionsResponse.MESSAGE_TYPE),
 		@Type(value = DisconnectMessage.class, name = DisconnectMessage.MESSAGE_TYPE),})
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public abstract class Message implements Cloneable {
