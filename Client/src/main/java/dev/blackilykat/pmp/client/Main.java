@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Blackilykat and contributors
+ * Copyright (C) 2026 Blackilykat and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -53,6 +53,9 @@ public class Main {
 
 			Player.init();
 		}).start();
+
+		MPRISController.init();
+
 		MainWindow.main(args);
 
 		Server.connect();

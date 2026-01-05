@@ -31,6 +31,8 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-core:2.20.0'
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.20.0'
     implementation 'com.fasterxml.jackson.module:jackson-module-parameter-names:2.20.0'
+
+    implementation 'com.github.blackilykat:mpris-java:cc27ccc2605128b38bca00706f17776263c4bdb3'
 }
 
 jar {
