@@ -148,6 +148,12 @@ public class MPRISController {
 					LOGGER.error("Failed to emit shuffle event to MPRIS", e);
 				}
 			});
+
+			Main.EVENT_SHUTDOWN.register(_ -> {
+				if(albumArtTempFile != null) {
+					var _ = albumArtTempFile.toFile().delete();
+				}
+			});
 		} catch(DBusException e) {
 			// info because it may be expected for MPRIS not to work
 			LOGGER.info("Failed to start mpris", e);
