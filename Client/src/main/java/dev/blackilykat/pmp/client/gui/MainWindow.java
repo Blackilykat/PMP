@@ -19,6 +19,7 @@ package dev.blackilykat.pmp.client.gui;
 
 import dev.blackilykat.pmp.client.ClientStorage;
 import dev.blackilykat.pmp.client.Server;
+import dev.blackilykat.pmp.client.gui.laf.PMPLookAndFeel;
 import dev.blackilykat.pmp.client.gui.util.GUIUtils;
 import dev.blackilykat.pmp.client.gui.util.ThemedLabel;
 import dev.blackilykat.pmp.messages.LoginAsExistingDeviceRequest;
@@ -36,6 +37,7 @@ import javax.swing.SpringLayout;
 import javax.swing.SwingUtilities;
 import javax.swing.UIDefaults;
 import javax.swing.UIManager;
+import javax.swing.UnsupportedLookAndFeelException;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Font;
@@ -92,7 +94,6 @@ public class MainWindow extends JFrame {
 	}
 
 	public static void main(String[] args) {
-		System.setProperty("awt.useSystemAAFontSettings", "lcd");
 
 		SwingUtilities.invokeLater(() -> GUIUtils.markSwingThread());
 
@@ -142,6 +143,13 @@ public class MainWindow extends JFrame {
 
 
 	public static void setLookAndFeelDefaults() {
+		try {
+			UIManager.setLookAndFeel(new PMPLookAndFeel());
+		} catch(UnsupportedLookAndFeelException e) {
+			assert false;
+			throw new RuntimeException(e);
+		}
+
 		UIDefaults defaults = UIManager.getLookAndFeelDefaults();
 		defaults.put("MenuBar.background", Theme.selected.menuBarBackground);
 		defaults.put("MenuBar.foreground", Theme.selected.text);

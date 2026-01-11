@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Blackilykat and contributors
+ * Copyright (C) 2026 Blackilykat and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -174,17 +174,21 @@ public class Track {
 		StringBuilder builder = new StringBuilder();
 		builder.append(title).append("_").append(album).append("_").append(String.join("_", artists));
 
-		StringBuilder toReturn = new StringBuilder();
+		StringBuilder underscored = new StringBuilder();
 		builder.chars().forEachOrdered(i -> {
 			if(Character.UnicodeScript.of(i) != Character.UnicodeScript.COMMON || (i >= '0' && i <= '9')) {
-				toReturn.append((char) i);
+				underscored.append((char) i);
 			} else {
-				toReturn.append('_');
+				underscored.append('_');
 			}
 		});
-		toReturn.append(".flac");
 
-		return toReturn.toString();
+		String toReturn = underscored.toString();
+		if(toReturn.length() > 100) {
+			toReturn = toReturn.substring(0, 100);
+		}
+
+		return toReturn + ".flac";
 	}
 
 	public static class PlaybackInfo {
