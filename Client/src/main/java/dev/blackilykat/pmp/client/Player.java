@@ -315,6 +315,8 @@ public class Player {
 
 		Player.shuffle = shuffle;
 		EVENT_SHUFFLE_CHANGED.call(shuffle);
+
+		selectNextTrack();
 	}
 
 	public static RepeatOption getRepeat() {
@@ -335,6 +337,8 @@ public class Player {
 
 		Player.repeat = repeat;
 		EVENT_REPEAT_CHANGED.call(repeat);
+
+		selectNextTrack();
 	}
 
 	public static boolean getPaused() {
