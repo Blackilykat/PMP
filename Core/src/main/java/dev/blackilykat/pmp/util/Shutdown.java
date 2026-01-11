@@ -15,22 +15,35 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package dev.blackilykat.pmp.client.handlers;
+package dev.blackilykat.pmp.util;
 
-import dev.blackilykat.pmp.MessageHandler;
-import dev.blackilykat.pmp.PMPConnection;
-import dev.blackilykat.pmp.client.ClientStorage;
-import dev.blackilykat.pmp.client.Library;
-import dev.blackilykat.pmp.messages.FilterListMessage;
+import dev.blackilykat.pmp.event.EventSource;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
-public class FilterListMessageHandler extends MessageHandler<FilterListMessage> {
-	public FilterListMessageHandler() {
-		super(FilterListMessage.class);
+public class Shutdown {
+	public static final EventSource<Void> EVENT_SHUTDOWN = new EventSource<>();
+	private static final Logger LOGGER = LogManager.getLogger(Shutdown.class);
+	private static boolean shuttingDown = false;
+
+	public static void shutdown(boolean exit) {
+		if(shuttingDown) {
+			return;
+		}
+		shuttingDown = true;
+
+		LOGGER.info("Shutting down");
+
+		EVENT_SHUTDOWN.call(null);
+
+		if(exit) {
+			System.exit(0);
+		}
 	}
 
-	@Override
-	public void run(PMPConnection connection, FilterListMessage message) {
-		Library.importFilters(message.filters);
-		ClientStorage.MAIN.lastKnownServerFilters.set(message.filters);
+	static {
+		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+			shutdown(false);
+		}));
 	}
 }

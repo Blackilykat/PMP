@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Blackilykat and contributors
+ * Copyright (C) 2026 Blackilykat and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 
 package dev.blackilykat.pmp.client.gui;
 
+import dev.blackilykat.pmp.client.ClientStorage;
 import dev.blackilykat.pmp.client.Filter;
 import dev.blackilykat.pmp.client.FilterOption;
 import dev.blackilykat.pmp.client.Library;
@@ -47,7 +48,6 @@ import java.awt.Graphics;
 import java.awt.Point;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.util.List;
 import java.util.Random;
 
 public class FiltersPanel extends JPanel {
@@ -77,7 +77,7 @@ public class FiltersPanel extends JPanel {
 
 		add(noFiltersPanel);
 
-		for(Filter filter : Library.getFilters()) {
+		for(Filter filter : ClientStorage.MAIN.filters.get()) {
 			add(new FilterPanel(filter));
 		}
 		Library.EVENT_FILTER_ADDED.register(filter -> {
@@ -220,7 +220,7 @@ public class FiltersPanel extends JPanel {
 	public static JMenuItem buildMoveFilterUpMenuItem(Filter filter) {
 		JMenuItem item = new JMenuItem("Move " + filter.key + " up");
 		item.addActionListener(_ -> {
-			int pos = Library.getFilters().indexOf(filter);
+			int pos = ClientStorage.MAIN.filters.indexOf(filter);
 			if(pos < 1) {
 				return;
 			}
@@ -233,9 +233,8 @@ public class FiltersPanel extends JPanel {
 	public static JMenuItem buildMoveFilterDownMenuItem(Filter filter) {
 		JMenuItem item = new JMenuItem("Move " + filter.key + " down");
 		item.addActionListener(_ -> {
-			List<Filter> filters = Library.getFilters();
-			int pos = filters.indexOf(filter);
-			if(pos >= filters.size() - 1 || pos < 0) {
+			int pos = ClientStorage.MAIN.filters.indexOf(filter);
+			if(pos >= ClientStorage.MAIN.filters.size() - 1 || pos < 0) {
 				return;
 			}
 

@@ -15,22 +15,32 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package dev.blackilykat.pmp.client.handlers;
+package dev.blackilykat.pmp.storage;
 
-import dev.blackilykat.pmp.MessageHandler;
-import dev.blackilykat.pmp.PMPConnection;
-import dev.blackilykat.pmp.client.ClientStorage;
-import dev.blackilykat.pmp.client.Library;
-import dev.blackilykat.pmp.messages.FilterListMessage;
-
-public class FilterListMessageHandler extends MessageHandler<FilterListMessage> {
-	public FilterListMessageHandler() {
-		super(FilterListMessage.class);
+public class StoredInt extends Stored<Integer> {
+	public StoredInt(Storage storage, int initial) {
+		super(Integer.class, storage, initial);
 	}
 
 	@Override
-	public void run(PMPConnection connection, FilterListMessage message) {
-		Library.importFilters(message.filters);
-		ClientStorage.MAIN.lastKnownServerFilters.set(message.filters);
+	public void set(Integer newValue) {
+		if(newValue == null) {
+			throw new IllegalArgumentException("StoredInt does not support null values");
+		}
+		super.set(newValue);
+	}
+
+	public int getAndIncrement() {
+		synchronized(storage) {
+			storage.markDirty();
+			return value++;
+		}
+	}
+
+	public void increment() {
+		synchronized(storage) {
+			storage.markDirty();
+			value++;
+		}
 	}
 }

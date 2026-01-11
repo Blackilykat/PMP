@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Blackilykat and contributors
+ * Copyright (C) 2026 Blackilykat and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,7 +19,6 @@ package dev.blackilykat.pmp.client;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import dev.blackilykat.pmp.Storage;
 import dev.blackilykat.pmp.event.EventSource;
 
 import java.util.Collections;
@@ -44,7 +43,7 @@ public class Filter {
 	public String key;
 
 	public Filter(String key) {
-		this(Storage.getStorage().getAndIncrementCurrentFilterId(), key);
+		this(ClientStorage.MAIN.currentFilterID.getAndIncrement(), key);
 	}
 
 	@JsonCreator

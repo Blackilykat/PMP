@@ -104,9 +104,8 @@ public class TransferHandler implements HttpHandler {
 		InetSocketAddress address = exchange.getRemoteAddress();
 		String filename = exchange.getRequestURI().getPath().substring(1);
 
-		ServerStorage ss = ServerStorage.getInstance();
 		Device device = null;
-		for(var d : ss.getDevices()) {
+		for(var d : ServerStorage.SENSITIVE.devices.get()) {
 			if(d.id == deviceId) {
 				device = d;
 				break;
@@ -145,7 +144,7 @@ public class TransferHandler implements HttpHandler {
 		ObjectMapper om = new ObjectMapper();
 		// omit lastModified
 		om.addMixIn(Track.class, TrackMixin.class);
-		byte[] res = om.writeValueAsString(Library.TRACKS).getBytes(StandardCharsets.UTF_8);
+		byte[] res = om.writeValueAsString(ServerStorage.MAIN.tracks.values()).getBytes(StandardCharsets.UTF_8);
 		exchange.sendResponseHeaders(200, res.length);
 		OutputStream os = exchange.getResponseBody();
 		os.write(res);
@@ -181,9 +180,8 @@ public class TransferHandler implements HttpHandler {
 			return null;
 		}
 
-		ServerStorage ss = ServerStorage.getInstance();
 		boolean authorized = false;
-		for(Device device : ss.getDevices()) {
+		for(Device device : ServerStorage.SENSITIVE.devices.get()) {
 			if(device.id != claimedDeviceId) {
 				continue;
 			}

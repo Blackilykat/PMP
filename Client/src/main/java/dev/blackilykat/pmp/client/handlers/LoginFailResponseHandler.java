@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Blackilykat and contributors
+ * Copyright (C) 2026 Blackilykat and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,15 +34,14 @@ public class LoginFailResponseHandler extends MessageHandler<LoginFailResponse> 
 
 	@Override
 	public void run(PMPConnection connection, LoginFailResponse message) {
-		ClientStorage cs = ClientStorage.getInstance();
 		switch(message.reason) {
 			case INCORRECT_CREDENTIALS -> {
-				cs.setToken(null);
+				ClientStorage.SENSITIVE.token.set(null);
 				Server.EVENT_SHOULD_ASK_PASSWORD.call(null);
 			}
 			case NO_SUCH_DEVICE -> {
-				cs.setDeviceID(null);
-				cs.setToken(null);
+				ClientStorage.SENSITIVE.deviceID.set(null);
+				ClientStorage.SENSITIVE.token.set(null);
 				Server.EVENT_SHOULD_ASK_PASSWORD.call(null);
 			}
 			case BAD_REQUEST -> {

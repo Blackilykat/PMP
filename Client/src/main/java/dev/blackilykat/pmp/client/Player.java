@@ -699,28 +699,25 @@ public class Player {
 		};
 		audioThread.start();
 
-		{
-			ClientStorage cs = ClientStorage.getInstance();
-			ClientStorage.PlaybackInfo pi = cs.getPlaybackInfo();
-			loadPlaybackInfo(pi);
-		}
+		loadPlaybackInfo(ClientStorage.MAIN.playbackInfo.get());
 
-		ClientStorage.EVENT_MAYBE_SAVING.register(event -> {
-			ClientStorage cs = event.clientStorage;
-			ClientStorage.PlaybackInfo pi = cs.getPlaybackInfo();
+		ClientStorage.MAIN.eventMaybeSaving.register(s -> {
+			ClientStorage.Main main = (ClientStorage.Main) s;
+			ClientStorage.PlaybackInfo pi = main.playbackInfo.get();
 
 			if(!Player.paused.get() || !Player.getTrack().getFile().getName().equals(pi.track())
 					|| Player.getPosition() != pi.position() || Player.getRepeat() != pi.repeat()
 					|| Player.getShuffle() != pi.shuffle()) {
-				event.markDirty();
+				s.markDirty();
 			}
 
 			// filter options are unlikely to change alone and not computationally cheap, they're probably not worth
 			// checking
 		});
 
-		ClientStorage.EVENT_SAVING.register(storage -> {
-			storage.setPlaybackInfo(new ClientStorage.PlaybackInfo(
+		ClientStorage.MAIN.eventSaving.register(s -> {
+			ClientStorage.Main main = (ClientStorage.Main) s;
+			main.playbackInfo.set(new ClientStorage.PlaybackInfo(
 					Player.getTrack() == null ? null : Player.getTrack().getFile().getName(), Player.getPosition(),
 					Library.exportPositiveOptions(), Library.exportNegativeOptions(), Player.getRepeat(),
 					Player.getShuffle()));
@@ -812,7 +809,7 @@ public class Player {
 			return;
 		}
 
-		Track track = Library.getTrackByFilename(pi.track());
+		Track track = ClientStorage.MAIN.tracks.get(pi.track());
 
 		currentTrack = track;
 		load(track, false, false);

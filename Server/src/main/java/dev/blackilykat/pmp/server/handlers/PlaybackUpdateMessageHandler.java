@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Blackilykat and contributors
+ * Copyright (C) 2026 Blackilykat and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -40,28 +40,27 @@ public class PlaybackUpdateMessageHandler extends MessageHandler<PlaybackUpdateM
 			connection.send(new ErrorMessage("Only the playback owner can send playback updates."));
 			return;
 		}
-		ServerStorage ss = ServerStorage.getInstance();
 
 		if(message.playing != null) {
 			Playback.playing = message.playing;
 		}
 		if(message.shuffle != null) {
-			ss.setShuffle(message.shuffle);
+			ServerStorage.MAIN.shuffle.set(message.shuffle);
 		}
 		if(message.repeat != null) {
-			ss.setRepeat(message.repeat);
+			ServerStorage.MAIN.repeat.set(message.repeat);
 		}
 		if(message.track != null) {
-			ss.setTrack(message.track);
+			ServerStorage.MAIN.track.set(message.track);
 		}
 		if(message.positionOrEpoch != null) {
 			Playback.positionOrEpoch = message.positionOrEpoch;
 		}
 		if(message.negativeOptions != null) {
-			ss.setNegativeFilterOptions(message.negativeOptions);
+			ServerStorage.MAIN.negativeFilterOptions.set(message.negativeOptions);
 		}
 		if(message.positiveOptions != null) {
-			ss.setPositiveFilterOptions(message.positiveOptions);
+			ServerStorage.MAIN.positiveFilterOptions.set(message.positiveOptions);
 		}
 
 		Device.broadcastExcept(message, connection.device);

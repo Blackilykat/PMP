@@ -30,7 +30,6 @@ import dev.blackilykat.pmp.util.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import javax.annotation.Nullable;
 import javax.net.ssl.HttpsURLConnection;
 import java.io.File;
 import java.io.IOException;
@@ -40,11 +39,9 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -69,10 +66,7 @@ public class Library {
 	private static final AtomicBoolean INITIALIZED = new AtomicBoolean(false);
 
 	private static File library = null;
-	private static Map<String, Track> tracks = new HashMap<>();
 	private static List<Track> selectedTracks = new LinkedList<>();
-	private static List<Filter> filters = new LinkedList<>();
-	private static List<Header> headers = new LinkedList<>();
 	private static Header sortingHeader = null;
 	private static Order sortingOrder = Order.ASCENDING;
 
@@ -82,10 +76,10 @@ public class Library {
 		}
 		LOGGER.debug("Reloading selection");
 
-		Set<Track> selection = new HashSet<>(tracks.values());
+		Set<Track> selection = new HashSet<>(ClientStorage.MAIN.tracks.values());
 		Set<Track> newSelection = new HashSet<>();
 
-		for(Filter filter : filters) {
+		for(Filter filter : ClientStorage.MAIN.filters.get()) {
 			Set<String> foundValues = new HashSet<>();
 			foundValues.add(Filter.OPTION_EVERYTHING);
 			boolean anyUnknowns = false;
@@ -168,7 +162,7 @@ public class Library {
 
 	public static void addFilter(Filter filter) {
 		LOGGER.info("Adding filter {}", filter);
-		filters.add(filter);
+		ClientStorage.MAIN.filters.add(filter);
 
 		collectReloads(() -> {
 			FilterOption opt = new FilterOption(Filter.OPTION_EVERYTHING);
@@ -187,7 +181,7 @@ public class Library {
 
 	public static void removeFilter(Filter filter) {
 		LOGGER.info("Removing filter {}", filter);
-		filters.remove(filter);
+		ClientStorage.MAIN.filters.remove(filter);
 
 		reloadSelection();
 
@@ -199,20 +193,20 @@ public class Library {
 	}
 
 	public static void moveFilter(Filter filter, int position) {
-		if(position < 0 || position >= filters.size()) {
+		if(position < 0 || position >= ClientStorage.MAIN.filters.size()) {
 			throw new IndexOutOfBoundsException(
-					"Position " + position + " is out of bounds for size " + filters.size());
+					"Position " + position + " is out of bounds for size " + ClientStorage.MAIN.filters.size());
 		}
 
-		int oldPos = filters.indexOf(filter);
+		int oldPos = ClientStorage.MAIN.filters.indexOf(filter);
 		if(oldPos == -1) {
 			throw new IllegalArgumentException("Filter " + filter + " is not in filters");
 		}
 
 		LOGGER.info("Moving filter {} from {} to {}", filter, oldPos, position);
 
-		filters.remove(filter);
-		filters.add(position, filter);
+		ClientStorage.MAIN.filters.remove(filter);
+		ClientStorage.MAIN.filters.add(position, filter);
 
 		reloadSelection();
 
@@ -231,7 +225,7 @@ public class Library {
 		List<Filter> newFilters = new LinkedList<>();
 		infoLoop:
 		for(FilterInfo filterInfo : filterInfos) {
-			for(Filter filter : filters) {
+			for(Filter filter : ClientStorage.MAIN.filters.get()) {
 				if(filterInfo.id() == filter.id) {
 					filter.key = filterInfo.key();
 					newFilters.add(filter);
@@ -242,14 +236,14 @@ public class Library {
 			newFilters.add(new Filter(filterInfo.id(), filterInfo.key()));
 		}
 
-		for(Filter filter : filters) {
+		for(Filter filter : ClientStorage.MAIN.filters.get()) {
 			if(!newFilters.contains(filter)) {
 				EVENT_FILTER_REMOVED.call(filter);
 			}
 		}
 
 		for(Filter filter : newFilters) {
-			if(!filters.contains(filter)) {
+			if(!ClientStorage.MAIN.filters.contains(filter)) {
 				EVENT_FILTER_ADDED.call(filter);
 			}
 		}
@@ -260,7 +254,7 @@ public class Library {
 
 			EVENT_FILTER_MOVED.call(new FilterMovedEvent(filter, i));
 		}
-		filters = newFilters;
+		ClientStorage.MAIN.filters.set(newFilters);
 
 		ScopedValue.where(Player.DONT_SEND_UPDATES, true).run(() -> {
 			reloadSelection();
@@ -269,45 +263,36 @@ public class Library {
 
 	public static List<FilterInfo> exportFilters() {
 		List<FilterInfo> toReturn = new LinkedList<>();
-		for(Filter filter : filters) {
+		for(Filter filter : ClientStorage.MAIN.filters.get()) {
 			toReturn.add(new FilterInfo(filter.id, filter.key));
 		}
 		return toReturn;
 	}
 
-	public static List<Header> getHeaders() {
-		return Collections.unmodifiableList(headers);
-	}
-
 	public static void addHeader(Header header) {
 		LOGGER.info("Adding header {}", header);
 
-
-		headers.add(header);
-
-		ClientStorage.getInstance().setHeaders(headers);
+		ClientStorage.MAIN.headers.add(header);
 
 		EVENT_HEADER_ADDED.call(header);
 	}
 
 	public static void moveHeader(Header header, int position) {
-		if(!headers.contains(header)) {
+		if(!ClientStorage.MAIN.headers.contains(header)) {
 			throw new IllegalArgumentException(header + " is not in headers");
 		}
-		if(position < 0 || position >= headers.size()) {
+		if(position < 0 || position >= ClientStorage.MAIN.headers.size()) {
 			throw new IndexOutOfBoundsException(
-					"Position " + position + " out of bounds for " + headers.size() + " headers");
+					"Position " + position + " out of bounds for " + ClientStorage.MAIN.headers.size() + " headers");
 		}
 
 		LOGGER.debug("Moving {} to position {}", header, position);
 
-		int oldPosition = headers.indexOf(header);
+		int oldPosition = ClientStorage.MAIN.headers.indexOf(header);
 
-		headers.remove(header);
+		ClientStorage.MAIN.headers.remove(header);
 
-		headers.add(position, header);
-
-		ClientStorage.getInstance().setHeaders(headers);
+		ClientStorage.MAIN.headers.add(position, header);
 
 		EVENT_HEADER_MOVED.call(new HeaderMovedEvent(header, oldPosition, position));
 	}
@@ -316,20 +301,18 @@ public class Library {
 	 * @throws IllegalStateException if header is the last header
 	 */
 	public static void removeHeader(Header header) {
-		if(headers.size() == 1) {
+		if(ClientStorage.MAIN.headers.size() == 1) {
 			throw new IllegalStateException("Can't remove last header");
 		}
 
 		LOGGER.info("Removing header {}", header);
 
 		if(header == sortingHeader) {
-			sortingHeader = headers.getFirst();
+			sortingHeader = ClientStorage.MAIN.headers.getFirst();
 			sortingOrder = Order.ASCENDING;
 		}
 
-		headers.remove(header);
-
-		ClientStorage.getInstance().setHeaders(headers);
+		ClientStorage.MAIN.headers.remove(header);
 
 		EVENT_HEADER_REMOVED.call(header);
 		header.eventHeaderRemoved.call(null);
@@ -349,14 +332,6 @@ public class Library {
 
 	public static Order getSortingOrder() {
 		return sortingOrder;
-	}
-
-	public static List<Filter> getFilters() {
-		return Collections.unmodifiableList(filters);
-	}
-
-	public static Track[] getAllTracks() {
-		return tracks.values().toArray(new Track[0]);
 	}
 
 	public static List<Track> getSelectedTracks() {
@@ -380,69 +355,58 @@ public class Library {
 				throw new IllegalStateException("Library is a file");
 			}
 
-			List<Track> cache = ClientStorage.getInstance().getTrackCache();
-
 			File[] children = library.listFiles();
 			int totalCached = 0;
 			if(children != null) {
 				for(File file : children) {
-					boolean wasCached = false;
-					for(Track cached : cache) {
-						if(cached.getFile().getName().equals(file.getName())) {
-							if(file.lastModified() != cached.getLastModified()) {
-								break;
-							}
-							totalCached++;
-							wasCached = true;
-							tracks.put(file.getName(), cached);
-						}
-					}
-					if(!wasCached) {
+					if(!ClientStorage.MAIN.tracks.containsKey(file.getName())) {
 						LOGGER.warn("Track {} was not cached", file.getName());
 						try {
 							Track track = new Track(file);
-							tracks.put(file.getName(), track);
+							ClientStorage.MAIN.tracks.put(file.getName(), track);
 						} catch(IOException e) {
-							LOGGER.error("Error on track {}", file.getName());
+							LOGGER.error("Error loading {}", file.getName(), e);
 						}
+					} else if(ClientStorage.MAIN.tracks.get(file.getName()).getLastModified() != file.lastModified()) {
+						LOGGER.warn("Track {} was modified after it was cached", file.getName());
+						try {
+							Track track = new Track(file);
+							ClientStorage.MAIN.tracks.remove(file.getName());
+							ClientStorage.MAIN.tracks.put(file.getName(), track);
+						} catch(IOException e) {
+							LOGGER.error("Error reloading {}", file.getName(), e);
+						}
+					} else {
+						totalCached++;
+					}
+				}
+
+				for(Track track : ClientStorage.MAIN.tracks.values()) {
+					if(!track.getFile().exists()) {
+						LOGGER.warn("Cached track {} no longer exists", track.getFile().getName());
+						ClientStorage.MAIN.tracks.remove(track.getFile().getName());
 					}
 				}
 			}
+
+
 			LOGGER.info("{} tracks cached", totalCached);
 
-			ClientStorage.EVENT_MAYBE_SAVING.register(event -> {
-				ClientStorage storage = event.clientStorage;
 
-				// imperfect check but the computational effort is probably not worth it considering there is no data
-				// loss involved (and it usually saves on shutdown anyway)
-				if(storage.getTrackCache().size() != tracks.size()) {
-					event.markDirty();
-				}
-			});
-
-			ClientStorage.EVENT_SAVING.register(storage -> {
-				storage.setTrackCache(tracks.values().stream().toList());
-			});
-
-			ClientStorage storage = ClientStorage.getInstance();
-
-			List<Header> storedHeaders = storage.getHeaders();
-			if(storedHeaders == null) {
-				headers.add(new Header(0, "N°", "tracknumber"));
-				headers.add(new Header(1, "Title", "title"));
-				headers.add(new Header(2, "Artist", "artist"));
-				headers.add(new Header(3, "Duration", "duration"));
-				storage.setHeaders(headers);
-				storage.setCurrentHeaderID(4);
+			if(ClientStorage.MAIN.headers.empty()) {
+				ClientStorage.MAIN.headers.add(new Header(0, "N°", "tracknumber"));
+				ClientStorage.MAIN.headers.add(new Header(1, "Title", "title"));
+				ClientStorage.MAIN.headers.add(new Header(2, "Artist", "artist"));
+				ClientStorage.MAIN.headers.add(new Header(3, "Duration", "duration"));
+				ClientStorage.MAIN.currentHeaderID.set(4);
 			} else {
-				for(Header storedHeader : storedHeaders) {
-					storedHeader.updateType();
-					headers.add(storedHeader);
+				for(Header header : ClientStorage.MAIN.headers.get()) {
+					header.updateType();
 				}
 			}
-			LOGGER.debug("Headers: {}", headers);
+			LOGGER.debug("Headers: {}", ClientStorage.MAIN.headers.get());
 
-			sortingHeader = headers.getFirst();
+			sortingHeader = ClientStorage.MAIN.headers.getFirst();
 			sortingOrder = Order.ASCENDING;
 
 			Filter.EVENT_OPTION_CHANGED_STATE.register(evt -> {
@@ -555,43 +519,22 @@ public class Library {
 			});
 
 			{
-				List<Filter> storedFilters = storage.getFilters();
-				if(storedFilters == null) {
+				if(ClientStorage.MAIN.filters.empty()) {
 					addFilter(new Filter("artist"));
 					addFilter(new Filter("album"));
-
-					storage.setFilters(filters);
-				} else {
-					for(Filter filter : storedFilters) {
-						addFilter(filter);
-					}
 				}
+
+				collectReloads(() -> {
+					for(Filter filter : ClientStorage.MAIN.filters.get()) {
+						FilterOption opt = new FilterOption(Filter.OPTION_EVERYTHING);
+						filter.addOption(opt);
+						opt.setState(FilterOption.State.POSITIVE);
+					}
+					reloadSelection();
+				});
 			}
 
-			ClientStorage.EVENT_MAYBE_SAVING.register(event -> {
-				ClientStorage cs = event.clientStorage;
-
-				List<Filter> storedFilters = cs.getFilters();
-				if(storedFilters.size() != filters.size()) {
-					event.markDirty();
-					return;
-				}
-
-				for(int i = 0; i < storedFilters.size(); i++) {
-					Filter a = storedFilters.get(i);
-					Filter b = filters.get(i);
-					if(a.id != b.id || !a.key.equals(b.key)) {
-						event.markDirty();
-						return;
-					}
-				}
-			});
-
-			ClientStorage.EVENT_SAVING.register(cs -> {
-				cs.setFilters(filters);
-			});
-
-			EVENT_LOADED.call(tracks.values());
+			EVENT_LOADED.call(ClientStorage.MAIN.tracks.values());
 
 			LOGGER.info("Initialized library");
 		}
@@ -629,20 +572,19 @@ public class Library {
 
 	public static void registerNewTrack(File file) throws IOException {
 		Track track = new Track(file);
-		tracks.put(track.getFile().getName(), track);
+		ClientStorage.MAIN.tracks.put(track.getFile().getName(), track);
 		EVENT_TRACK_ADDED.call(track);
 		reloadSelection();
 	}
 
 	public static void removeTrack(Track track) {
-		if(!tracks.containsValue(track)) {
+		if(!ClientStorage.MAIN.tracks.containsValue(track)) {
 			throw new IllegalArgumentException("Track is not in library");
 		}
 
-		//noinspection LoggingSimilarMessage
 		LOGGER.info("Removing track {}", track.getFile());
 
-		tracks.remove(track.getFile().getName());
+		ClientStorage.MAIN.tracks.remove(track.getFile().getName());
 
 		if(!track.getFile().delete()) {
 			LOGGER.error("Failed to delete file {}", track.getFile());
@@ -654,7 +596,7 @@ public class Library {
 
 	public static List<Pair<Integer, String>> exportPositiveOptions() {
 		LinkedList<Pair<Integer, String>> toReturn = new LinkedList<>();
-		for(Filter filter : getFilters()) {
+		for(Filter filter : ClientStorage.MAIN.filters.get()) {
 			for(FilterOption option : filter.getOptions()) {
 				if(option.getState() == FilterOption.State.POSITIVE) {
 					toReturn.add(new Pair<>(filter.id, option.value));
@@ -668,7 +610,7 @@ public class Library {
 			List<Pair<Integer, String>> negative) {
 		ScopedValue.where(Player.DONT_SEND_UPDATES, true).run(() -> {
 			collectReloads(() -> {
-				for(Filter filter : getFilters()) {
+				for(Filter filter : ClientStorage.MAIN.filters.get()) {
 					int id = filter.id;
 
 					runtimeOptions:
@@ -714,7 +656,7 @@ public class Library {
 
 	public static List<Pair<Integer, String>> exportNegativeOptions() {
 		LinkedList<Pair<Integer, String>> toReturn = new LinkedList<>();
-		for(Filter filter : getFilters()) {
+		for(Filter filter : ClientStorage.MAIN.filters.get()) {
 			for(FilterOption option : filter.getOptions()) {
 				if(option.getState() == FilterOption.State.NEGATIVE) {
 					toReturn.add(new Pair<>(filter.id, option.value));
@@ -722,10 +664,6 @@ public class Library {
 			}
 		}
 		return toReturn;
-	}
-
-	public static @Nullable Track getTrackByFilename(String filename) {
-		return tracks.get(filename);
 	}
 
 	/**
@@ -773,7 +711,7 @@ public class Library {
 			LOGGER.debug("Atomic move of {} to {} failed, using normal move", tmpTarget, target);
 			Files.move(tmpTarget, target.toPath());
 		}
-		tracks.remove(target.getName());
+		ClientStorage.MAIN.tracks.remove(target.getName());
 		registerNewTrack(target);
 	}
 
@@ -784,7 +722,7 @@ public class Library {
 			throw new IOException("Failed to delete file");
 		}
 
-		tracks.remove(target.getName());
+		ClientStorage.MAIN.tracks.remove(target.getName());
 		reloadSelection();
 	}
 

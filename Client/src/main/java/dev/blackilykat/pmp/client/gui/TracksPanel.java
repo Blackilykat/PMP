@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Blackilykat and contributors
+ * Copyright (C) 2026 Blackilykat and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -120,7 +120,7 @@ public class TracksPanel extends JPanel {
 			}
 		});
 
-		for(Header header : Library.getHeaders()) {
+		for(Header header : ClientStorage.MAIN.headers.get()) {
 			addHeader(header);
 		}
 		updateTracks();
@@ -167,16 +167,14 @@ public class TracksPanel extends JPanel {
 	}
 
 	private void addHeader(Header header) {
-		Map<Integer, Integer> headerWidths = SwingStorage.getInstance().getHeaderWidths();
-		if(!headerWidths.containsKey(header.id)) {
+		if(!SwingStorage.MAIN.headerWidths.containsKey(header.id)) {
 			Integer width = INITIAL_HEADER_WIDTHS.get(header.type);
 			if(width == null) {
 				width = 400;
 				LOGGER.error("TracksPanel#addHeader: Unexpected null initial width for header type {}, "
 						+ "falling back to {}, this should be unreachable", header.type, width);
 			}
-			headerWidths.put(header.id, width);
-			SwingStorage.getInstance().setHeaderWidths(headerWidths);
+			SwingStorage.MAIN.headerWidths.put(header.id, width);
 		}
 
 		HeaderPanel hp = new HeaderPanel(headersPanel, this, header, headersPanel.getCount());
@@ -266,7 +264,7 @@ public class TracksPanel extends JPanel {
 			for(Track track : tracks) {
 				List<String> values = new LinkedList<>();
 
-				for(Header header : Library.getHeaders()) {
+				for(Header header : ClientStorage.MAIN.headers.get()) {
 					values.add(header.getStringValue(track));
 				}
 
@@ -314,8 +312,7 @@ public class TracksPanel extends JPanel {
 				return;
 			}
 
-			Header header = new Header(ClientStorage.getInstance().getAndIncrementCurrentHeaderId(), label.get(),
-					key.get());
+			Header header = new Header(ClientStorage.MAIN.currentHeaderID.getAndIncrement(), label.get(), key.get());
 
 
 			Library.addHeader(header);
@@ -482,7 +479,7 @@ public class TracksPanel extends JPanel {
 	private static JMenuItem buildRemoveTrackItem(Track track) {
 		JMenuItem item = new JMenuItem("Remove " + track.getTitle());
 		item.addActionListener(e -> {
-			if(SwingStorage.getInstance().getConfirmRemoveTrackPopup()) {
+			if(SwingStorage.MAIN.confirmRemoveTrackPopup.get()) {
 				JPanel panel = new JPanel();
 				panel.setLayout(new BoxLayout(panel, BoxLayout.PAGE_AXIS));
 
@@ -499,7 +496,7 @@ public class TracksPanel extends JPanel {
 				}
 
 				if(confirm.isSelected()) {
-					SwingStorage.getInstance().setConfirmRemoveTrackPopup(false);
+					SwingStorage.MAIN.confirmRemoveTrackPopup.set(false);
 				}
 			}
 
@@ -600,7 +597,7 @@ public class TracksPanel extends JPanel {
 			super();
 			setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
 
-			List<Header> headers = Library.getHeaders();
+			List<Header> headers = ClientStorage.MAIN.headers.get();
 			if(strings.size() != headers.size()) {
 				throw new IllegalArgumentException("Expected " + headers.size() + " values");
 			}
@@ -609,11 +606,9 @@ public class TracksPanel extends JPanel {
 					new Dimension(Theme.selected.trackPlayIconPadding * 2 + Theme.selected.trackPlayIconSize, 0)));
 
 
-			Map<Integer, Integer> headerWidths = SwingStorage.getInstance().getHeaderWidths();
-
 			for(int i = 0; i < headers.size(); i++) {
 				Header header = headers.get(i);
-				add(new TrackDataPanel(strings.get(i), headerWidths.get(header.id),
+				add(new TrackDataPanel(strings.get(i), SwingStorage.MAIN.headerWidths.get(header.id),
 						RIGHT_ALIGNED_TYPES.contains(header.type)));
 				add(Box.createRigidArea(new Dimension(Theme.selected.headerPadding * 2, 0)));
 			}
@@ -660,16 +655,14 @@ public class TracksPanel extends JPanel {
 		}
 
 		public void updateWidths() {
-			Map<Integer, Integer> headerWidths = SwingStorage.getInstance().getHeaderWidths();
-
 			int i = 0;
-			List<Header> headers = Library.getHeaders();
+			List<Header> headers = ClientStorage.MAIN.headers.get();
 			for(Component component : getComponents()) {
 				if(!(component instanceof TrackDataPanel dataPanel)) {
 					continue;
 				}
 
-				dataPanel.setWidth(headerWidths.get(headers.get(i).id));
+				dataPanel.setWidth(SwingStorage.MAIN.headerWidths.get(headers.get(i).id));
 
 				i++;
 			}
@@ -791,8 +784,7 @@ public class TracksPanel extends JPanel {
 		public HeaderPanel(HeadersPanel headersPanel, TracksPanel tp, Header header, int index) {
 			this.tp = tp;
 			this.headersPanel = headersPanel;
-			Map<Integer, Integer> headerWidths = SwingStorage.getInstance().getHeaderWidths();
-			this.width = headerWidths.get(header.id);
+			this.width = SwingStorage.MAIN.headerWidths.get(header.id);
 			this.header = header;
 			this.index = index;
 
@@ -893,15 +885,16 @@ public class TracksPanel extends JPanel {
 					int pad = Theme.selected.headerPadding * 2;
 					if(headersPanel.movingHeader == HeaderPanel.this) {
 						int i = HeaderPanel.this.index;
-						List<Header> h = Library.getHeaders();
+						List<Header> h = ClientStorage.MAIN.headers.get();
 
 						Header prev = i == 0 ? null : h.get(i - 1);
 						Header next = i == h.size() - 1 ? null : h.get(i + 1);
 
-						if(prev != null && e.getX() < -pad - headerWidths.get(prev.id) / 2) {
+						if(prev != null && e.getX() < -pad - SwingStorage.MAIN.headerWidths.get(prev.id) / 2) {
 							Library.moveHeader(header, HeaderPanel.this.index - 1);
 							ignoreNext = true;
-						} else if(next != null && e.getX() > width + pad + headerWidths.get(next.id) / 2) {
+						} else if(next != null
+								&& e.getX() > width + pad + SwingStorage.MAIN.headerWidths.get(next.id) / 2) {
 							Library.moveHeader(header, HeaderPanel.this.index + 1);
 							ignoreNext = true;
 						}
@@ -1042,13 +1035,10 @@ public class TracksPanel extends JPanel {
 
 				int offset = xOnScreen - lastX;
 
-				Map<Integer, Integer> headerWidths = SwingStorage.getInstance().getHeaderWidths();
-
-				headerWidths.put(headerPanel.header.id, headerWidths.get(headerPanel.header.id) + offset);
-				headerPanel.width = headerWidths.get(headerPanel.header.id);
+				SwingStorage.MAIN.headerWidths.put(headerPanel.header.id,
+						SwingStorage.MAIN.headerWidths.get(headerPanel.header.id) + offset);
+				headerPanel.width = SwingStorage.MAIN.headerWidths.get(headerPanel.header.id);
 				headerPanel.revalidate();
-
-				SwingStorage.getInstance().setHeaderWidths(headerWidths);
 
 				if(shouldUpdateTracks) {
 					lastWidthUpdate = now;

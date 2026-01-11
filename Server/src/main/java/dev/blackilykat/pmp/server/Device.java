@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Blackilykat and contributors
+ * Copyright (C) 2026 Blackilykat and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,6 @@ import dev.blackilykat.pmp.messages.Message;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 
@@ -47,8 +46,7 @@ public class Device {
 
 	public Device(String name) {
 		this.name = name;
-		ServerStorage ss = ServerStorage.getInstance();
-		this.id = ss.getAndIncrementCurrentDeviceId();
+		this.id = ServerStorage.MAIN.currentDeviceID.getAndIncrement();
 	}
 
 	@JsonCreator
@@ -80,11 +78,7 @@ public class Device {
 				token[i] = TOKEN_CHARSET.charAt(random.nextInt(TOKEN_CHARSET.length()));
 			}
 			this.token = new String(token);
-			try {
-				ServerStorage.doSave();
-			} catch(IOException e) {
-				LOGGER.error("Failed to forcefully save new token", e);
-			}
+			ServerStorage.SENSITIVE.markDirty();
 		} catch(NoSuchAlgorithmException e) {
 			String msg = "There are no SecureRandom algorithms supported by the JVM. This should never happen. Please "
 					+ "send this log to the developer.";
@@ -98,8 +92,7 @@ public class Device {
 	}
 
 	public static void broadcastExcept(Message message, Device ignoredDevice) {
-		ServerStorage ss = ServerStorage.getInstance();
-		for(Device device : ss.getDevices()) {
+		for(Device device : ServerStorage.SENSITIVE.devices.get()) {
 			if(device == ignoredDevice) {
 				continue;
 			}

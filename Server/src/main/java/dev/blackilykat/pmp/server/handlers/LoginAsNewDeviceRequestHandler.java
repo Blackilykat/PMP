@@ -29,9 +29,6 @@ import dev.blackilykat.pmp.server.ServerStorage;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.util.LinkedList;
-import java.util.List;
-
 public class LoginAsNewDeviceRequestHandler extends MessageHandler<LoginAsNewDeviceRequest> {
 	private static final Logger LOGGER = LogManager.getLogger(LoginAsNewDeviceRequestHandler.class);
 
@@ -54,8 +51,7 @@ public class LoginAsNewDeviceRequestHandler extends MessageHandler<LoginAsNewDev
 			return;
 		}
 
-		ServerStorage ss = ServerStorage.getInstance();
-		if(!message.password.equals(ss.getPassword())) {
+		if(!message.password.equals(ServerStorage.SENSITIVE.password.get())) {
 			connection.send(new LoginFailResponse(message.requestId, LoginFailResponse.Reason.INCORRECT_CREDENTIALS));
 
 			// Make brute-forcing attacks less viable. This sleeps in the specific client's input thread, no
@@ -68,18 +64,15 @@ public class LoginAsNewDeviceRequestHandler extends MessageHandler<LoginAsNewDev
 			return;
 		}
 
-		List<Device> devices = new LinkedList<>(ss.getDevices());
-
 		Device device = new Device(message.hostname);
 		device.rerollToken();
 		device.setClientConnection(connection);
 
-		devices.add(device);
-		ss.setDevices(devices);
+		ServerStorage.SENSITIVE.devices.add(device);
 
 		connection.device = device;
 		LoginSuccessResponse response = new LoginSuccessResponse(message.requestId, device.id, device.getToken(),
-				ss.nextActionId() - 1);
+				ServerStorage.MAIN.actions.size() - 1);
 		Playback.fillLoginSuccessResponse(response);
 		FilterListMessageHandler.fillLoginSuccessResponse(response);
 		connection.send(response);

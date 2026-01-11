@@ -42,12 +42,11 @@ public class LoginAsExistingDeviceRequestHandler extends MessageHandler<LoginAsE
 	public void run(PMPConnection pmpConnection, LoginAsExistingDeviceRequest message) {
 		ClientConnection connection = (ClientConnection) pmpConnection;
 
-		ServerStorage ss = ServerStorage.getInstance();
 		if(message.password == null && message.token == null) {
 			connection.send(new LoginFailResponse(message.requestId, LoginFailResponse.Reason.BAD_REQUEST));
 		}
 
-		List<Device> devices = ss.getDevices();
+		List<Device> devices = ServerStorage.SENSITIVE.devices.get();
 
 		for(Device device : devices) {
 			if(device.id == message.deviceId) {
@@ -56,13 +55,13 @@ public class LoginAsExistingDeviceRequestHandler extends MessageHandler<LoginAsE
 							LoginFailResponse.Reason.DEVICE_ALREADY_CONNECTED));
 					return;
 				}
-				if((message.password != null && message.password.equals(ss.getPassword()) || (message.token != null
-						&& message.token.equals(device.getToken())))) {
+				if((message.password != null && message.password.equals(ServerStorage.SENSITIVE.password.get()) || (
+						message.token != null && message.token.equals(device.getToken())))) {
 					device.rerollToken();
 					device.setClientConnection(connection);
 					connection.device = device;
 					LoginSuccessResponse response = new LoginSuccessResponse(message.requestId, device.id,
-							device.getToken(), ss.nextActionId() - 1);
+							device.getToken(), ServerStorage.MAIN.actions.size() - 1);
 					Playback.fillLoginSuccessResponse(response);
 					FilterListMessageHandler.fillLoginSuccessResponse(response);
 					connection.send(response);

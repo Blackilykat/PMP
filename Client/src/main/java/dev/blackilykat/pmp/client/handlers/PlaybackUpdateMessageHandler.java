@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Blackilykat and contributors
+ * Copyright (C) 2026 Blackilykat and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@ package dev.blackilykat.pmp.client.handlers;
 
 import dev.blackilykat.pmp.MessageHandler;
 import dev.blackilykat.pmp.PMPConnection;
+import dev.blackilykat.pmp.client.ClientStorage;
 import dev.blackilykat.pmp.client.Library;
 import dev.blackilykat.pmp.client.Player;
 import dev.blackilykat.pmp.client.Server;
@@ -68,7 +69,7 @@ public class PlaybackUpdateMessageHandler extends MessageHandler<PlaybackUpdateM
 				}
 			}
 			if(message.track != null) {
-				Player.load(Library.getTrackByFilename(message.track), false, playing);
+				Player.load(ClientStorage.MAIN.tracks.get(message.track), false, playing);
 			} else if(Boolean.TRUE.equals(message.playing)) {
 				Player.play();
 			} else if(Boolean.FALSE.equals(message.playing)) {

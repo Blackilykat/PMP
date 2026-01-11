@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Blackilykat and contributors
+ * Copyright (C) 2026 Blackilykat and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,6 +25,8 @@ import dev.blackilykat.pmp.server.ClientConnection;
 import dev.blackilykat.pmp.server.Device;
 import dev.blackilykat.pmp.server.ServerStorage;
 
+import java.util.LinkedList;
+
 public class FilterListMessageHandler extends MessageHandler<FilterListMessage> {
 	public FilterListMessageHandler() {
 		super(FilterListMessage.class);
@@ -37,10 +39,10 @@ public class FilterListMessageHandler extends MessageHandler<FilterListMessage> 
 		}
 		Device.broadcastExcept(message, connection.device);
 
-		ServerStorage.getInstance().setFilters(message.filters);
+		ServerStorage.MAIN.filters.set(message.filters);
 	}
 
 	public static void fillLoginSuccessResponse(LoginSuccessResponse response) {
-		response.filters = ServerStorage.getInstance().getFilters();
+		response.filters = new LinkedList<>(ServerStorage.MAIN.filters.get());
 	}
 }

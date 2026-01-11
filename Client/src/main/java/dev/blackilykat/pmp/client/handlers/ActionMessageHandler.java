@@ -29,9 +29,8 @@ public class ActionMessageHandler extends MessageHandler<ActionMessage> {
 
 	@Override
 	public void run(PMPConnection connection, ActionMessage message) {
-		ClientStorage cs = ClientStorage.getInstance();
-		assert cs.getLastReceivedAction() + 1 == message.id;
-		cs.setLastReceivedAction(message.id);
-		cs.addActionToHandle(message.action);
+		assert ClientStorage.MAIN.lastReceivedAction.get() + 1 == message.id;
+		ClientStorage.MAIN.lastReceivedAction.set(message.id);
+		ClientStorage.MAIN.actionsToHandle.add(message.action);
 	}
 }

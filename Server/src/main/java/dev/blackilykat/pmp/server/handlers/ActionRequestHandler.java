@@ -110,11 +110,10 @@ public class ActionRequestHandler extends MessageHandler<ActionRequest> {
 		}
 		connection.send(new ActionResponse(request.requestId, ActionResponse.Type.APPROVED, null));
 		Library.onSuccessfulAction(() -> {
-			ServerStorage ss = ServerStorage.getInstance();
-			int id = ss.nextActionId();
+			int id = ServerStorage.MAIN.actions.size();
 			connection.send(new ActionResponse(request.requestId, ActionResponse.Type.COMPLETED, id));
 			Device.broadcastExcept(new ActionMessage(request.action, id), connection.device);
-			ss.addAction(request.action);
+			ServerStorage.MAIN.actions.add(request.action);
 		});
 	}
 
@@ -132,11 +131,10 @@ public class ActionRequestHandler extends MessageHandler<ActionRequest> {
 			return;
 		}
 
-		ServerStorage ss = ServerStorage.getInstance();
-		int id = ss.nextActionId();
+		int id = ServerStorage.MAIN.actions.size();
 		connection.send(new ActionResponse(request.requestId, ActionResponse.Type.COMPLETED, id));
 		Device.broadcastExcept(new ActionMessage(request.action, id), connection.device);
-		ss.addAction(request.action);
+		ServerStorage.MAIN.actions.add(request.action);
 	}
 
 	private static void handleChangeMetadataRequest(ClientConnection connection, ActionRequest request) {

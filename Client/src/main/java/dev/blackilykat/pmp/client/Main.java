@@ -18,7 +18,6 @@
 package dev.blackilykat.pmp.client;
 
 import dev.blackilykat.pmp.client.gui.MainWindow;
-import dev.blackilykat.pmp.event.EventSource;
 import dev.blackilykat.pmp.util.LoggingProxy;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -27,9 +26,7 @@ import java.io.IOException;
 
 public class Main {
 	public static final Logger LOGGER = LogManager.getLogger(Main.class);
-	public static final EventSource<Void> EVENT_SHUTDOWN = new EventSource<>();
 
-	private static boolean shuttingDown = false;
 
 	static void main(String[] args) {
 		logDebugSystemInfo();
@@ -37,9 +34,6 @@ public class Main {
 
 		LoggingProxy.setUpProxies();
 
-		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-			shutdown(false);
-		}));
 
 		try {
 			ClientStorage.load();
@@ -61,20 +55,6 @@ public class Main {
 		Server.connect();
 	}
 
-	public static void shutdown(boolean exit) {
-		if(shuttingDown) {
-			return;
-		}
-		shuttingDown = true;
-
-		EVENT_SHUTDOWN.call(null);
-
-		LOGGER.info("Shutting down");
-
-		if(exit) {
-			System.exit(0);
-		}
-	}
 
 	private static void logDebugSystemInfo() {
 		LOGGER.debug("java.vm.vendor: {}", System.getProperty("java.vm.vendor"));

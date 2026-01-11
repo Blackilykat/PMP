@@ -15,22 +15,30 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package dev.blackilykat.pmp.client.handlers;
+package dev.blackilykat.pmp.util;
 
-import dev.blackilykat.pmp.MessageHandler;
-import dev.blackilykat.pmp.PMPConnection;
-import dev.blackilykat.pmp.client.ClientStorage;
-import dev.blackilykat.pmp.client.Library;
-import dev.blackilykat.pmp.messages.FilterListMessage;
+import javax.annotation.Nonnull;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 
-public class FilterListMessageHandler extends MessageHandler<FilterListMessage> {
-	public FilterListMessageHandler() {
-		super(FilterListMessage.class);
+public record ParType(Type ownerType, Type rawType, Type[] actualTypeArguments) implements ParameterizedType {
+
+	public ParType(Type rawType, Type[] actualTypeArguments) {
+		this(null, rawType, actualTypeArguments);
 	}
 
 	@Override
-	public void run(PMPConnection connection, FilterListMessage message) {
-		Library.importFilters(message.filters);
-		ClientStorage.MAIN.lastKnownServerFilters.set(message.filters);
+	public @Nonnull Type[] getActualTypeArguments() {
+		return actualTypeArguments;
+	}
+
+	@Override
+	public @Nonnull Type getRawType() {
+		return rawType;
+	}
+
+	@Override
+	public Type getOwnerType() {
+		return ownerType;
 	}
 }

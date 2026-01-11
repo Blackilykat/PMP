@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Blackilykat and contributors
+ * Copyright (C) 2026 Blackilykat and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -44,18 +44,17 @@ public class LoginSuccessResponseHandler extends MessageHandler<LoginSuccessResp
 
 	@Override
 	public void run(PMPConnection connection, LoginSuccessResponse message) {
-		ClientStorage cs = ClientStorage.getInstance();
 		if(message.deviceId != null) {
-			cs.setDeviceID(message.deviceId);
+			ClientStorage.SENSITIVE.deviceID.set(message.deviceId);
 		}
-		Server.deviceId = cs.getDeviceID();
-		cs.setToken(message.token);
+		Server.deviceId = ClientStorage.SENSITIVE.deviceID.get();
+		ClientStorage.SENSITIVE.token.set(message.token);
 
 		// a nice side effect of this approach is that when the server first has empty filters, the first client to
 		// connect will send its filters as lastKnownServerFilters is also empty by default
-		if(!cs.getLastKnownServerFilters().equals(message.filters)) {
+		if(!ClientStorage.MAIN.lastKnownServerFilters.get().equals(message.filters)) {
 			Library.importFilters(message.filters);
-		} else if(checkLocalFilterChanges(Library.getFilters(), message.filters)) {
+		} else if(checkLocalFilterChanges(ClientStorage.MAIN.filters.get(), message.filters)) {
 			connection.send(new FilterListMessage(Library.exportFilters()));
 		}
 
@@ -74,7 +73,7 @@ public class LoginSuccessResponseHandler extends MessageHandler<LoginSuccessResp
 		} else {
 			ScopedValue.where(Player.DONT_SEND_UPDATES, true).run(() -> {
 				Player.setPlaybackOwner(message.playbackOwner);
-				Player.load(Library.getTrackByFilename(message.track), false, false);
+				Player.load(ClientStorage.MAIN.tracks.get(message.track), false, false);
 				if(message.playing) {
 					Player.seek(Instant.now().toEpochMilli() - message.positionOrEpoch);
 					Player.play();

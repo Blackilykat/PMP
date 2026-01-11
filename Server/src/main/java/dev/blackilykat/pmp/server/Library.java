@@ -28,13 +28,10 @@ import java.io.InputStream;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class Library {
 	public static final File LIBRARY = new File("library");
-	public static final List<Track> TRACKS = new LinkedList<>();
 	private static final Logger LOGGER = LogManager.getLogger(Library.class);
 	private static final AtomicReference<PendingAction> PENDING_ACTION = new AtomicReference<>(null);
 	private static Runnable onSuccessfulAction = null;
@@ -50,33 +47,19 @@ public class Library {
 			var _ = LIBRARY.mkdirs();
 		}
 
-		ServerStorage ss = ServerStorage.getInstance();
-		List<Track> cache = ss.getTracks();
-
 		try {
 			File[] filesInLibraryDir = LIBRARY.listFiles();
 			assert filesInLibraryDir != null;
 			int cachedCount = 0;
 			for(File file : filesInLibraryDir) {
-				boolean foundCached = false;
-				for(Track cached : cache) {
-					if(!file.getName().equals(cached.filename)) {
-						continue;
-					}
-					if(file.lastModified() != cached.lastModified) {
-						cached.reload();
-						changesSinceLastSave = true;
-						LOGGER.warn("Track {} had an outdated cache", file.getName());
-					} else {
-						cachedCount++;
-					}
-					TRACKS.add(cached);
-					foundCached = true;
-					break;
-				}
-				if(!foundCached) {
-					TRACKS.add(new Track(file));
+				if(!ServerStorage.MAIN.tracks.containsKey(file.getName())) {
 					LOGGER.warn("Track {} not cached", file.getName());
+					ServerStorage.MAIN.tracks.put(file.getName(), new Track(file));
+				} else if(ServerStorage.MAIN.tracks.get(file.getName()).lastModified != file.lastModified()) {
+					LOGGER.warn("Track {} had outdated cache", file.getName());
+					ServerStorage.MAIN.tracks.put(file.getName(), new Track(file));
+				} else {
+					cachedCount++;
 				}
 			}
 
@@ -85,17 +68,6 @@ public class Library {
 			LOGGER.fatal("Failed to read library", e);
 			System.exit(1);
 		}
-
-		ServerStorage.EVENT_MAYBE_SAVING.register(evt -> {
-			if(changesSinceLastSave) {
-				evt.markDirty();
-			}
-		});
-
-		ServerStorage.EVENT_SAVING.register(storage -> {
-			changesSinceLastSave = false;
-			storage.setTracks(TRACKS);
-		});
 	}
 
 	/**
@@ -128,8 +100,7 @@ public class Library {
 
 			Track track = new Track(filename, target.lastModified(), tmpTrack.checksum, tmpTrack.metadata);
 
-			TRACKS.add(track);
-			changesSinceLastSave = true;
+			ServerStorage.MAIN.tracks.put(filename, track);
 		} catch(IOException e) {
 			var _ = tmpFile.delete();
 			throw new IllegalArgumentException("Not a valid FLAC file");
@@ -137,13 +108,7 @@ public class Library {
 	}
 
 	public static void remove(String filename) throws IOException {
-		Track target = null;
-		for(Track track : TRACKS) {
-			if(track.filename.equals(filename)) {
-				target = track;
-				break;
-			}
-		}
+		Track target = ServerStorage.MAIN.tracks.get(filename);
 
 		if(target == null) {
 			throw new FileNotFoundException();
@@ -152,7 +117,7 @@ public class Library {
 			throw new IOException("Failed to delete file");
 		}
 
-		TRACKS.remove(target);
+		ServerStorage.MAIN.tracks.remove(filename);
 	}
 
 	/**

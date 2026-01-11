@@ -57,13 +57,13 @@ public class Main {
 		}
 
 		{
-			ServerStorage ss = ServerStorage.getInstance();
 			boolean passwordArg = Arrays.stream(args).toList().contains("--password");
-			if(passwordArg || ss.getPassword() == null) {
+			if(passwordArg || ServerStorage.SENSITIVE.password.get() == null) {
 				Console console = System.console();
 				if(console == null) {
 					LOGGER.fatal(
-							"Need a real terminal to ask password, or \"password\" to have a value in storage.json");
+							"Need a real terminal to ask password, or \"password\" to have a value in "
+									+ ".sensitive_server.json");
 					System.exit(1);
 				}
 
@@ -76,15 +76,8 @@ public class Main {
 						System.out.println("Passwords entered do not match!");
 						continue;
 					}
-					ss.setPassword(first);
+					ServerStorage.SENSITIVE.password.set(first);
 					break;
-				}
-
-				try {
-					ServerStorage.doSave();
-				} catch(IOException e) {
-					LOGGER.fatal("Failed to save new password to storage", e);
-					System.exit(1);
 				}
 
 				LOGGER.info("Saved new password");

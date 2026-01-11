@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Blackilykat and contributors
+ * Copyright (C) 2026 Blackilykat and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@ public class Playback {
 
 
 	public static void init() {
-		positionOrEpoch = ServerStorage.getInstance().getPosition();
+		positionOrEpoch = ServerStorage.MAIN.position.get();
 
 		PMPConnection.EVENT_DISCONNECTED.register(pmpConn -> {
 			if(!(pmpConn instanceof ClientConnection connection)) {
@@ -56,34 +56,34 @@ public class Playback {
 			Device.broadcast(update);
 		});
 
-		ServerStorage.EVENT_MAYBE_SAVING.register(event -> {
+		ServerStorage.MAIN.eventMaybeSaving.register(storage -> {
 			if(playing) {
-				event.markDirty();
+				storage.markDirty();
 				return;
 			}
-			if(positionOrEpoch != event.serverStorage.getPosition()) {
-				event.markDirty();
+			if(positionOrEpoch != ((ServerStorage.Main) storage).position.get()) {
+				storage.markDirty();
 			}
 		});
 
-		ServerStorage.EVENT_SAVING.register(storage -> {
+		ServerStorage.MAIN.eventSaving.register(s -> {
+			ServerStorage.Main main = (ServerStorage.Main) s;
 			if(playing) {
-				storage.setPosition(Instant.now().toEpochMilli() - positionOrEpoch);
+				main.position.set(Instant.now().toEpochMilli() - positionOrEpoch);
 			} else {
-				storage.setPosition(positionOrEpoch);
+				main.position.set(positionOrEpoch);
 			}
 		});
 	}
 
 	public static void fillLoginSuccessResponse(LoginSuccessResponse response) {
-		ServerStorage ss = ServerStorage.getInstance();
 		response.playbackOwner = owner == null ? null : owner.id;
 		response.playing = playing;
-		response.track = ss.getTrack();
+		response.track = ServerStorage.MAIN.track.get();
 		response.positionOrEpoch = positionOrEpoch;
-		response.positiveOptions = ss.getPositiveFilterOptions();
-		response.negativeOptions = ss.getNegativeFilterOptions();
-		response.repeat = ss.getRepeat();
-		response.shuffle = ss.getShuffle();
+		response.positiveOptions = ServerStorage.MAIN.positiveFilterOptions.get();
+		response.negativeOptions = ServerStorage.MAIN.positiveFilterOptions.get();
+		response.repeat = ServerStorage.MAIN.repeat.get();
+		response.shuffle = ServerStorage.MAIN.shuffle.get();
 	}
 }

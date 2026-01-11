@@ -19,6 +19,7 @@ package dev.blackilykat.pmp.client;
 
 import dev.blackilykat.pmp.ShuffleOption;
 import dev.blackilykat.pmp.util.Pair;
+import dev.blackilykat.pmp.util.Shutdown;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.freedesktop.dbus.DBusPath;
@@ -52,7 +53,7 @@ public class MPRISController {
 		try {
 			mpris = new MPRISBuilder()
 
-					.setCanQuit(true).setOnQuit(() -> Main.shutdown(true))
+					.setCanQuit(true).setOnQuit(() -> Shutdown.shutdown(true))
 
 					.setCanRaise(false)
 
@@ -149,7 +150,7 @@ public class MPRISController {
 				}
 			});
 
-			Main.EVENT_SHUTDOWN.register(_ -> {
+			Shutdown.EVENT_SHUTDOWN.register(_ -> {
 				if(albumArtTempFile != null) {
 					var _ = albumArtTempFile.toFile().delete();
 				}

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Blackilykat and contributors
+ * Copyright (C) 2026 Blackilykat and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,12 +18,12 @@
 package dev.blackilykat.pmp.client.gui;
 
 import dev.blackilykat.pmp.client.ClientStorage;
-import dev.blackilykat.pmp.client.Main;
 import dev.blackilykat.pmp.client.Server;
 import dev.blackilykat.pmp.client.gui.util.GUIUtils;
 import dev.blackilykat.pmp.client.gui.util.ThemedLabel;
 import dev.blackilykat.pmp.messages.LoginAsExistingDeviceRequest;
 import dev.blackilykat.pmp.messages.LoginAsNewDeviceRequest;
+import dev.blackilykat.pmp.util.Shutdown;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -110,7 +110,7 @@ public class MainWindow extends JFrame {
 		mainWindow.addWindowListener(new WindowAdapter() {
 			@Override
 			public void windowClosing(WindowEvent e) {
-				Main.shutdown(true);
+				Shutdown.shutdown(true);
 			}
 		});
 
@@ -131,8 +131,7 @@ public class MainWindow extends JFrame {
 
 			String password = new String(passwordField.getPassword());
 
-			ClientStorage cs = ClientStorage.getInstance();
-			Integer deviceId = cs.getDeviceID();
+			Integer deviceId = ClientStorage.SENSITIVE.deviceID.get();
 			if(deviceId == null) {
 				Server.send(new LoginAsNewDeviceRequest(password, "host"));
 			} else {

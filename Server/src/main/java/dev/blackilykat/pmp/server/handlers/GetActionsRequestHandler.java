@@ -34,8 +34,7 @@ public class GetActionsRequestHandler extends MessageHandler<GetActionsRequest> 
 
 	@Override
 	public void run(PMPConnection connection, GetActionsRequest message) {
-		ServerStorage ss = ServerStorage.getInstance();
-		List<Action> allActions = ss.getActions();
+		List<Action> allActions = ServerStorage.MAIN.actions.get();
 		try {
 			connection.send(
 					new GetActionsResponse(allActions.subList(message.from, allActions.size()), message.requestId));

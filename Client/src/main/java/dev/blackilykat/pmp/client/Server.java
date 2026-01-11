@@ -88,7 +88,6 @@ public class Server {
 	private static List<TrackElement> serverTracks = null;
 
 	public static void connect() {
-		ClientStorage cs = ClientStorage.getInstance();
 		if(sslContext == null) {
 			try {
 				sslContext = SSLContext.getInstance("TLS");
@@ -102,10 +101,10 @@ public class Server {
 											+ chain.length);
 						}
 
-						Key serverKey = cs.getServerPublicKey();
+						Key serverKey = ClientStorage.SENSITIVE.serverPublicKey.getDecoded();
 
 						if(serverKey == null) {
-							cs.setServerPublicKey(chain[0].getPublicKey());
+							ClientStorage.SENSITIVE.serverPublicKey.setDecoded(chain[0].getPublicKey());
 						} else {
 							if(!serverKey.equals(chain[0].getPublicKey())) {
 								throw new CertificateException("Mismatching public keys");
@@ -130,8 +129,8 @@ public class Server {
 			}
 		}
 
-		String address = cs.getServerAddress();
-		int port = cs.getServerPort();
+		String address = ClientStorage.MAIN.serverAddress.get();
+		int port = ClientStorage.MAIN.serverPort.get();
 
 		synchronized(connectionLock) {
 			if(connection != null) {
@@ -159,8 +158,8 @@ public class Server {
 					scheduleReconnect();
 				});
 
-				Integer deviceId = cs.getDeviceID();
-				String token = cs.getToken();
+				Integer deviceId = ClientStorage.SENSITIVE.deviceID.get();
+				String token = ClientStorage.SENSITIVE.token.get();
 				if(deviceId != null && token != null) {
 					connection.send(LoginAsExistingDeviceRequest.newWithToken(token, deviceId));
 				} else {
@@ -206,10 +205,9 @@ public class Server {
 	}
 
 	public static void setAddress(String address, int port, int filePort) {
-		ClientStorage cs = ClientStorage.getInstance();
-		cs.setServerAddress(address);
-		cs.setServerPort(port);
-		cs.setServerFilePort(filePort);
+		ClientStorage.MAIN.serverAddress.set(address);
+		ClientStorage.MAIN.serverPort.set(port);
+		ClientStorage.MAIN.serverFilePort.set(filePort);
 	}
 
 	public static void send(Message message) {
@@ -256,14 +254,15 @@ public class Server {
 	 * @param target URL path with or without the leading slash
 	 */
 	public static HttpsURLConnection startTransferRequest(String method, String target) throws IOException {
-		ClientStorage cs = ClientStorage.getInstance();
 		if(!target.startsWith("/")) {
 			target = '/' + target;
 		}
 		target = URLEncoder.encode(target, StandardCharsets.UTF_8).replace("%2F", "/");
 		URL url;
 		try {
-			url = URI.create("https://" + cs.getServerAddress() + ":" + cs.getServerFilePort() + target).toURL();
+			url = URI.create(
+					"https://" + ClientStorage.MAIN.serverAddress.get() + ":" + ClientStorage.MAIN.serverFilePort.get()
+							+ target).toURL();
 		} catch(MalformedURLException e) {
 			LOGGER.error("(Server#makeTransferRequest) malformed URL, this should've been unreachable", e);
 			assert false;
@@ -274,20 +273,13 @@ public class Server {
 		conn.setSSLSocketFactory(sslContext.getSocketFactory());
 		// The expected certificate was checked in the socket factory. Hostname is irrelevant, skip this check.
 		conn.setHostnameVerifier((_, _) -> true);
-		conn.setRequestProperty("device", String.valueOf(cs.getDeviceID()));
-		conn.setRequestProperty("token", cs.getToken());
+		conn.setRequestProperty("device", String.valueOf(ClientStorage.SENSITIVE.deviceID.get()));
+		conn.setRequestProperty("token", ClientStorage.SENSITIVE.token.get());
 		conn.setRequestMethod(method);
 		if(method.equals("PUT") || method.equals("POST")) {
 			conn.setDoOutput(true);
 		}
 		return conn;
-	}
-
-	/**
-	 * Performs the HTTP request to the / endpoint to get the server's track list and stores it. This must run before
-	 * the action threads start.
-	 */
-	public static void doTracklistRequest() throws IOException {
 	}
 
 	private static class ActionHandlingThread extends Thread {
@@ -300,14 +292,12 @@ public class Server {
 			ScopedValue.where(HANDLING_ACTION, true).run(() -> {
 
 				try {
-					ClientStorage cs = ClientStorage.getInstance();
-
 					{
-						Action action = cs.peekActionsToHandle();
+						Action action = ClientStorage.MAIN.actionsToHandle.peek();
 						while(action != null) {
 							boolean skip = false;
 							if(action.actionType == Action.Type.ADD || action.actionType == Action.Type.REPLACE) {
-								for(Action viewing : cs.viewAllActionsToHandle()) {
+								for(Action viewing : ClientStorage.MAIN.actionsToHandle.viewAll()) {
 									if(viewing != action && (viewing.actionType == Action.Type.REPLACE
 											|| viewing.actionType == Action.Type.REMOVE) && viewing.filename.equals(
 											action.filename)) {
@@ -319,16 +309,16 @@ public class Server {
 							if(skip) {
 								LOGGER.info("Skipping {} action of track {} because it was removed or replaced in a "
 										+ "later action", action.actionType, action.filename);
-								cs.takeActionToHandle();
+								ClientStorage.MAIN.actionsToHandle.take();
 							} else {
 								LOGGER.info("(non-blocking) Handling {} action of track {}", action.actionType,
 										action.filename);
 								handleAction(action);
-								cs.takeActionToHandle();
+								ClientStorage.MAIN.actionsToHandle.take();
 								LOGGER.info("(non-blocking) Handled {} action of track {}", action.actionType,
 										action.filename);
 							}
-							action = cs.peekActionsToHandle();
+							action = ClientStorage.MAIN.actionsToHandle.peek();
 						}
 					}
 
@@ -337,10 +327,10 @@ public class Server {
 						assert serverTracks != null;
 
 						for(TrackElement serverTrack : serverTracks) {
-							Track clientTrack = Library.getTrackByFilename(serverTrack.filename);
+							Track clientTrack = ClientStorage.MAIN.tracks.get(serverTrack.filename);
 							if(clientTrack == null) {
 								boolean toBeDeleted = false;
-								for(Action actionToSend : cs.viewAllActionsToSend()) {
+								for(Action actionToSend : ClientStorage.MAIN.actionsToSend.viewAll()) {
 									if(actionToSend.actionType == Action.Type.REMOVE && actionToSend.filename.equals(
 											serverTrack.filename)) {
 										toBeDeleted = true;
@@ -363,10 +353,10 @@ public class Server {
 
 					LOGGER.info("Listening for further actions to handle");
 					while(!Thread.interrupted()) {
-						Action action = cs.peekActionsToHandleBlocking();
+						Action action = ClientStorage.MAIN.actionsToHandle.blockingPeek();
 						LOGGER.info("Handling {} action of track {}", action.actionType, action.filename);
 						handleAction(action);
-						cs.takeActionToHandle();
+						ClientStorage.MAIN.actionsToHandle.take();
 						LOGGER.info("Handled {} action of track {}", action.actionType, action.filename);
 					}
 				} catch(IOException e) {
@@ -406,20 +396,19 @@ public class Server {
 		@Override
 		public void run() {
 			try {
-				ClientStorage cs = ClientStorage.getInstance();
 				{
-					Action action = cs.peekActionsToSend();
+					Action action = ClientStorage.MAIN.actionsToSend.peek();
 					while(action != null) {
 						LOGGER.info("(non-blocking) Sending {} action of track {}", action.actionType,
 								action.filename);
 						sendAction(action);
-						cs.takeActionToSend();
-						action = cs.peekActionsToSend();
+						ClientStorage.MAIN.actionsToSend.take();
+						action = ClientStorage.MAIN.actionsToSend.peek();
 					}
 				}
 
 				clientTrackLoop:
-				for(Track clientTrack : Library.getAllTracks()) {
+				for(Track clientTrack : ClientStorage.MAIN.tracks.values()) {
 					String filename = clientTrack.getFile().getName();
 					for(TrackElement serverTrack : serverTracks) {
 						if(filename.equals(serverTrack.filename)) {
@@ -427,7 +416,7 @@ public class Server {
 						}
 					}
 
-					for(Action action : cs.viewAllActionsToHandle()) {
+					for(Action action : ClientStorage.MAIN.actionsToHandle.viewAll()) {
 						if(action.actionType == Action.Type.REMOVE && action.filename.equals(filename)) {
 							continue clientTrackLoop;
 						}
@@ -439,10 +428,10 @@ public class Server {
 
 				LOGGER.info("Listening for further actions to send");
 				while(!Thread.interrupted()) {
-					Action action = cs.peekActionsToSendBlocking();
+					Action action = ClientStorage.MAIN.actionsToSend.blockingPeek();
 					LOGGER.info("Sending {} action of track {}", action.actionType, action.filename);
 					sendAction(action);
-					cs.takeActionToSend();
+					ClientStorage.MAIN.actionsToSend.take();
 				}
 			} catch(IOException e) {
 				LOGGER.debug("(AST) Network fail reason", e);
@@ -468,7 +457,7 @@ public class Server {
 		private static void sendAddReplaceAction(Action action) throws InterruptedException, IOException {
 			assert action.actionType == Action.Type.ADD || action.actionType == Action.Type.REPLACE;
 
-			Track track = Library.getTrackByFilename(action.filename);
+			Track track = ClientStorage.MAIN.tracks.get(action.filename);
 
 			if(track == null) {
 				LOGGER.warn("Tried to send {} on null track {}, skipping", action.actionType, action.filename);
@@ -510,17 +499,15 @@ public class Server {
 				return;
 			}
 
-			ClientStorage cs = ClientStorage.getInstance();
-
 			if(res.actionId == null) {
 				send(new ErrorMessage("COMPLETED response without actionId"));
-				cs.incrementLastReceivedAction();
+				ClientStorage.MAIN.lastReceivedAction.increment();
 				return;
 			}
 
-			assert res.actionId == cs.getLastReceivedAction() + 1;
+			assert res.actionId == ClientStorage.MAIN.lastReceivedAction.get() + 1;
 
-			cs.setLastReceivedAction(res.actionId);
+			ClientStorage.MAIN.lastReceivedAction.set(res.actionId);
 		}
 
 		private static void sendRemoveAction(Action action) throws SocketException, InterruptedException {
@@ -546,17 +533,15 @@ public class Server {
 
 			assert res.type == ActionResponse.Type.COMPLETED;
 
-			ClientStorage cs = ClientStorage.getInstance();
-
 			if(res.actionId == null) {
 				send(new ErrorMessage("COMPLETED response without actionId"));
-				cs.incrementLastReceivedAction();
+				ClientStorage.MAIN.lastReceivedAction.increment();
 				return;
 			}
 
-			assert res.actionId == cs.getLastReceivedAction() + 1;
+			assert res.actionId == ClientStorage.MAIN.lastReceivedAction.get() + 1;
 
-			cs.setLastReceivedAction(res.actionId);
+			ClientStorage.MAIN.lastReceivedAction.set(res.actionId);
 		}
 	}
 
@@ -566,21 +551,21 @@ public class Server {
 			try {
 				Library.waitUntilLoaded();
 
-				ClientStorage cs = ClientStorage.getInstance();
+				int lra = ClientStorage.MAIN.lastReceivedAction.get();
 
 				// lastActionId is set while handling LoginSuccessResponse, which happens right before this thread
 				// starts. If the id in storage is -1, the client is connecting for the first time to the server and
 				// should rely on comparing libraries instead of reading the action history
-				if(cs.getLastReceivedAction() != -1 && lastActionId > cs.getLastReceivedAction()) {
-					GetActionsRequest req = new GetActionsRequest(cs.getLastReceivedAction() + 1);
+				if(lra != -1 && lastActionId > lra) {
+					GetActionsRequest req = new GetActionsRequest(lra + 1);
 					send(req);
 					GetActionsResponse res = req.takeResponse();
 
 					for(Action action : res.actions) {
-						cs.addActionToHandle(action);
+						ClientStorage.MAIN.actionsToHandle.add(action);
 					}
 				}
-				cs.setLastReceivedAction(lastActionId);
+				ClientStorage.MAIN.lastReceivedAction.set(lastActionId);
 
 				HttpsURLConnection tracksRequest = startTransferRequest("GET", "/");
 				if(tracksRequest.getResponseCode() != 200) {
@@ -644,8 +629,7 @@ public class Server {
 
 			LOGGER.debug("Added track {}, here a trace", track.getTitle(), new Throwable());
 
-			ClientStorage cs = ClientStorage.getInstance();
-			cs.addActionToSend(new Action(track.getFile().getName(), Action.Type.ADD));
+			ClientStorage.MAIN.actionsToSend.add(new Action(track.getFile().getName(), Action.Type.ADD));
 		});
 
 		Library.EVENT_TRACK_REMOVED.register(track -> {
@@ -653,8 +637,7 @@ public class Server {
 				return;
 			}
 
-			ClientStorage cs = ClientStorage.getInstance();
-			cs.addActionToSend(new Action(track.getFile().getName(), Action.Type.REMOVE));
+			ClientStorage.MAIN.actionsToSend.add(new Action(track.getFile().getName(), Action.Type.REMOVE));
 		});
 	}
 }

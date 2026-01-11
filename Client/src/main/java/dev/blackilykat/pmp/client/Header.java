@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Blackilykat and contributors
+ * Copyright (C) 2026 Blackilykat and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -67,7 +67,7 @@ public class Header {
 		} else if(key.equalsIgnoreCase("tracknumber")) {
 			type = Type.TRACKNUMBER;
 		} else {
-			for(Track track : Library.getAllTracks()) {
+			for(Track track : ClientStorage.MAIN.tracks.values()) {
 				for(Pair<String, String> metadatum : track.metadata) {
 					if(!metadatum.key.equalsIgnoreCase(key)) {
 						continue;
@@ -89,6 +89,7 @@ public class Header {
 							Double.parseDouble(metadatum.value);
 						} catch(NumberFormatException e) {
 							type = Type.STRING;
+							break;
 						}
 					}
 				}
