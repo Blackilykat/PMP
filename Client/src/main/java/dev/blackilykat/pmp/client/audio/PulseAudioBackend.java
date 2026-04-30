@@ -28,12 +28,23 @@ import org.apache.logging.log4j.Logger;
 import javax.naming.OperationNotSupportedException;
 import java.io.IOException;
 
-public class PulseAudioBackend extends AudioBackend {
+public class PulseAudioBackend extends ConvertingAudioBackend {
+	private static final int SAMPLE_RATE = 44100;
+	private static final int CHANNELS = 2;
+	private static final int BITS_PER_SAMPLE = 16;
+	private static final boolean LITTLE_ENDIAN = true;
+	private static final SampleFormat SAMPLE_FORMAT = SampleFormat.S16LE;
+
 	private static final Logger LOGGER = LogManager.getLogger(PulseAudioBackend.class);
 	protected PASimple paSimple;
 
+	public PulseAudioBackend() {
+		super(SAMPLE_RATE, CHANNELS, BITS_PER_SAMPLE, LITTLE_ENDIAN);
+	}
+
 	@Override
 	public void setupTrack(Track track) throws IOException {
+		super.setupTrack(track);
 		if(paSimple != null) {
 			try {
 				paSimple.drain();
@@ -45,26 +56,8 @@ public class PulseAudioBackend extends AudioBackend {
 		Track.PlaybackInfo info = track.getPlaybackInfo();
 		try {
 			paSimple = new PASimple(null, "PMP", false, null, track.getTitle(),
-					new SampleSpec(switch(info.getBitsPerSample()) {
-						case 8 -> SampleFormat.U8;
-						case 16 -> SampleFormat.S16LE;
-						case 24 -> SampleFormat.S24LE;
-						case 32 -> SampleFormat.S32LE;
-						default -> throw new IOException(
-								"Pulse audio backend does not support " + info.getBitsPerSample() + " bits per "
-										+ "sample");
-					}, info.getSampleRate(), (short) info.getChannels()), null);
+					new SampleSpec(SAMPLE_FORMAT, SAMPLE_RATE, (short) CHANNELS), null);
 		} catch(OperationNotSupportedException e) {
-			throw new IOException(e);
-		}
-	}
-
-	@Override
-	public void write(byte[] pcm, int offset, int length) throws IOException {
-		LOGGER.debug("Writing {} bytes ({})", length, pcm.length);
-		try {
-			paSimple.write(pcm, offset, length);
-		} catch(PulseAudioException e) {
 			throw new IOException(e);
 		}
 	}
@@ -78,8 +71,12 @@ public class PulseAudioBackend extends AudioBackend {
 	}
 
 	@Override
-	public void frameAlign() throws IOException {
-		flush();
+	public void writeConverted(byte[] pcm, int offset, int length) throws IOException {
+		try {
+			paSimple.write(pcm, offset, length);
+		} catch(PulseAudioException e) {
+			throw new IOException(e);
+		}
 	}
 
 	@Override
@@ -92,9 +89,6 @@ public class PulseAudioBackend extends AudioBackend {
 
 	@Override
 	public void flush() throws IOException {
-		if(true) {
-			return;
-		}
 		try {
 			if(paSimple != null) {
 				paSimple.flush();

@@ -546,7 +546,7 @@ public class Player {
 			@Override
 			public void run() {
 				if(AudioBackend.backend == null) {
-					if(PASimple.isPulseSupported() && false) {
+					if(PASimple.isPulseSupported()) {
 						AudioBackend.backend = new PulseAudioBackend();
 						LOGGER.info("Using PulseAudio backend");
 					} else {
