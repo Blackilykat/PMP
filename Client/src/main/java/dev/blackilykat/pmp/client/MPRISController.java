@@ -155,9 +155,9 @@ public class MPRISController {
 					var _ = albumArtTempFile.toFile().delete();
 				}
 			});
-		} catch(DBusException e) {
+		} catch(DBusException | NoClassDefFoundError e) {
 			// info because it may be expected for MPRIS not to work
-			LOGGER.info("Failed to start mpris", e);
+			LOGGER.info("Failed to start mpris ({})", e.getClass().getSimpleName());
 		}
 	}
 }

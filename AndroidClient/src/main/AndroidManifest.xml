@@ -1,0 +1,35 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+
+    <application android:label="PMP" android:name=".PMPApplication">
+        <activity
+                android:name=".MainActivity"
+                android:label="Change me (main activity)"
+                android:exported="true"
+                android:theme="@style/AppTheme">
+
+            <intent-filter android:label="PMP">
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+
+
+            <intent-filter
+                    android:autoVerify="true"
+                    android:order="2">
+                <action android:name="android.intent.action.VIEW"/>
+
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+
+                <data android:scheme="https"/>
+                <data android:scheme="http"/>
+                <data android:path="/"/>
+                <data android:host="storage-api.instantappsample.com"/>
+            </intent-filter>
+
+        </activity>
+    </application>
+</manifest>

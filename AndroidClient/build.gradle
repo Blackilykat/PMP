@@ -1,0 +1,74 @@
+plugins {
+    id 'com.android.application' version '8.13.0'
+    id 'org.jetbrains.kotlin.android' version '2.3.20'
+}
+
+group = 'dev.blackilykat'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+
+    maven {
+        url 'https://jitpack.io'
+    }
+
+    google()
+}
+
+dependencies {
+    implementation(project(':Core')) {
+        exclude group: 'org.slf4j'
+        exclude group: 'org.ow2.asm'
+        exclude group: 'org.jetbrains'
+    }
+    implementation(project(':Client')) {
+        exclude group: 'org.slf4j'
+        exclude group: 'org.ow2.asm'
+        exclude group: 'org.jetbrains'
+    }
+
+    implementation 'androidx.appcompat:appcompat:1.7.1'
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
+
+    runtimeOnly 'com.celeral:log4j2-android:1.0.0'
+}
+
+kotlin {
+    jvmToolchain(25)
+}
+
+android {
+    namespace 'dev.blackilykat.pmp.client.android'
+
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'dev.blackilykat.pmp'
+
+        minSdk 36
+
+        targetSdk 36
+
+        versionCode 1
+
+        versionName "1.0"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+
+    packaging {
+        resources {
+            pickFirsts += '/META-INF/FastDoubleParser-LICENSE'
+            pickFirsts += '/META-INF/FastDoubleParser-NOTICE'
+            pickFirsts += '/META-INF/native-image/org.apache.logging.log4j/log4j-api/resource-config.json'
+            pickFirsts += '/META-INF/DEPENDENCIES'
+            pickFirsts += '/Log4j-charsets.properties'
+            pickFirsts += '/META-INF/thirdparty-LICENSE'
+        }
+    }
+}

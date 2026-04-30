@@ -37,6 +37,7 @@ import dev.blackilykat.pmp.messages.GetActionsResponse;
 import dev.blackilykat.pmp.messages.LoginAsExistingDeviceRequest;
 import dev.blackilykat.pmp.messages.Message;
 import dev.blackilykat.pmp.util.Pair;
+import dev.blackilykat.pmp.util.ScopedValue;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 

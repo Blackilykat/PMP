@@ -25,6 +25,7 @@ import dev.blackilykat.pmp.client.Player;
 import dev.blackilykat.pmp.client.Server;
 import dev.blackilykat.pmp.messages.ErrorMessage;
 import dev.blackilykat.pmp.messages.PlaybackUpdateMessage;
+import dev.blackilykat.pmp.util.ScopedValue;
 
 import java.time.Instant;
 import java.util.Objects;

@@ -20,6 +20,7 @@ package dev.blackilykat.pmp.storage;
 import dev.blackilykat.pmp.util.ParType;
 
 import java.lang.reflect.Type;
+import java.util.List;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
 
@@ -60,10 +61,9 @@ public class StoredBlockingDeque<T> extends Stored<BlockingDeque<T>> {
 		value.remove();
 	}
 
-	public T[] viewAll() {
+	public List<T> viewAll() {
 		synchronized(storage) {
-			//noinspection unchecked (cannot write new T[0])
-			return (T[]) value.toArray();
+			return value.stream().toList();
 		}
 	}
 }

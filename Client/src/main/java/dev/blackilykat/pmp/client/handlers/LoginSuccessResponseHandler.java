@@ -29,6 +29,7 @@ import dev.blackilykat.pmp.messages.FilterListMessage;
 import dev.blackilykat.pmp.messages.LoginSuccessResponse;
 import dev.blackilykat.pmp.messages.PlaybackOwnershipMessage;
 import dev.blackilykat.pmp.messages.PlaybackUpdateMessage;
+import dev.blackilykat.pmp.util.ScopedValue;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 

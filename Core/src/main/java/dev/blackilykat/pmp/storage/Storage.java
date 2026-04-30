@@ -26,6 +26,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 import dev.blackilykat.pmp.event.EventSource;
+import dev.blackilykat.pmp.util.Globals;
+import dev.blackilykat.pmp.util.ScopedValue;
 import dev.blackilykat.pmp.util.Shutdown;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -92,7 +94,7 @@ public abstract class Storage {
 	protected synchronized void save() throws IOException {
 		LOGGER.info("Saving {} storage", this.getClass().getName());
 
-		File file = new File(name + ".json");
+		File file = new File(Globals.dataRoot, name + ".json");
 
 		if(file.isDirectory()) {
 			throw new IOException(name + ".json is a directory");
@@ -104,7 +106,7 @@ public abstract class Storage {
 
 		// cannot use File#createTempFile because that might put it in ram and defeat the purpose of a temp file
 		do {
-			tmpFile = new File("." + name + "." + random.nextLong() + ".json");
+			tmpFile = new File(Globals.dataRoot, "." + name + "." + random.nextLong() + ".json");
 		} while(tmpFile.exists());
 
 		eventSaving.call(this);
@@ -113,7 +115,10 @@ public abstract class Storage {
 
 		Files.move(tmpFile.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING);
 		if(name.startsWith(".")) {
-			Files.setAttribute(file.toPath(), "dos:hidden", true);
+			try {
+				Files.setAttribute(file.toPath(), "dos:hidden", true);
+			} catch(UnsupportedOperationException _) {
+			}
 		}
 
 		dirty = false;
@@ -129,8 +134,9 @@ public abstract class Storage {
 	public static <T extends Storage> T load(String name, Class<T> clazz) throws IOException {
 		LOGGER.info("Loading {} storage", name);
 
+		File file = new File(Globals.dataRoot, name + ".json");
 
-		File file = new File(name + ".json");
+		LOGGER.debug("Attempting to load {} storage at {}", name, file.getAbsolutePath());
 
 		AtomicReference<T> toReturn = new AtomicReference<>(null);
 		AtomicReference<IOException> exe = new AtomicReference<>(null);
@@ -174,7 +180,7 @@ public abstract class Storage {
 					}
 				}
 			} catch(NoSuchMethodException | IllegalAccessException | InvocationTargetException | ClassCastException |
-					InstantiationException e) {
+			        InstantiationException e) {
 				LOGGER.error("Tried to load a bad storage class", e);
 				throw new IllegalArgumentException("Bad storage class");
 			}

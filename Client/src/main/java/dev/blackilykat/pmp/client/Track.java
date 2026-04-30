@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Blackilykat and contributors
+ * Copyright (C) 2026 Blackilykat and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +27,6 @@ import org.kc7bfi.jflac.FLACDecoder;
 import org.kc7bfi.jflac.metadata.Metadata;
 import org.kc7bfi.jflac.metadata.StreamInfo;
 
-import javax.sound.sampled.AudioFormat;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -123,14 +122,6 @@ public class Track {
 
 	public PlaybackInfo getPlaybackInfo() {
 		return playbackInfo;
-	}
-
-	@JsonIgnore
-	public AudioFormat getAudioFormat() {
-		return new AudioFormat(AudioFormat.Encoding.PCM_SIGNED, playbackInfo.getSampleRate(),
-				playbackInfo.getBitsPerSample(), playbackInfo.getChannels(),
-				playbackInfo.getBitsPerSample() * playbackInfo.getChannels() / 8,
-				(float) playbackInfo.getSampleRate() / playbackInfo.getChannels(), false);
 	}
 
 	public boolean matches(FilterOption option) {
@@ -252,6 +243,12 @@ public class Track {
 
 		public long getTotalSamples() {
 			return totalSamples;
+		}
+
+		public int msToBytes(long ms) {
+			int val = (int) ((sampleRate * bitsPerSample * channels * ms) / 8000);
+			val -= val % (bitsPerSample * channels / 8);
+			return val;
 		}
 	}
 }

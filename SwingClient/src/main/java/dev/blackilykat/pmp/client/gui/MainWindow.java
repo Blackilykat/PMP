@@ -18,6 +18,7 @@
 package dev.blackilykat.pmp.client.gui;
 
 import dev.blackilykat.pmp.client.ClientStorage;
+import dev.blackilykat.pmp.client.Main;
 import dev.blackilykat.pmp.client.Server;
 import dev.blackilykat.pmp.client.gui.util.GUIUtils;
 import dev.blackilykat.pmp.client.gui.util.ThemedLabel;
@@ -92,6 +93,8 @@ public class MainWindow extends JFrame {
 	}
 
 	public static void main(String[] args) {
+		Main.main(args);
+
 		System.setProperty("awt.useSystemAAFontSettings", "lcd");
 
 		SwingUtilities.invokeLater(() -> GUIUtils.markSwingThread());

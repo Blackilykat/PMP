@@ -26,7 +26,9 @@ import dev.blackilykat.pmp.event.RetroactiveEventSource;
 import dev.blackilykat.pmp.messages.FilterListMessage;
 import dev.blackilykat.pmp.messages.PlaybackControlMessage;
 import dev.blackilykat.pmp.messages.PlaybackUpdateMessage;
+import dev.blackilykat.pmp.util.Globals;
 import dev.blackilykat.pmp.util.Pair;
+import dev.blackilykat.pmp.util.ScopedValue;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -346,7 +348,8 @@ public class Library {
 			INITIALIZED.set(true);
 			LOGGER.info("Initializing library");
 
-			library = new File("library");
+			library = Globals.library;
+			LOGGER.debug("Attempting to load library at {}", library.getAbsolutePath());
 			if(!library.exists()) {
 				var _ = library.mkdirs();
 			}
@@ -381,7 +384,7 @@ public class Library {
 					}
 				}
 
-				for(Track track : ClientStorage.MAIN.tracks.values()) {
+				for(Track track : ClientStorage.MAIN.tracks.values().toArray(new Track[0])) {
 					if(!track.getFile().exists()) {
 						LOGGER.warn("Cached track {} no longer exists", track.getFile().getName());
 						ClientStorage.MAIN.tracks.remove(track.getFile().getName());

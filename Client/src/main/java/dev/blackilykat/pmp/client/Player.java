@@ -18,11 +18,11 @@
 package dev.blackilykat.pmp.client;
 
 import dev.blackilykat.jpasimple.PASimple;
-import dev.blackilykat.jpasimple.PulseAudioException;
-import dev.blackilykat.jpasimple.SampleFormat;
-import dev.blackilykat.jpasimple.SampleSpec;
 import dev.blackilykat.pmp.RepeatOption;
 import dev.blackilykat.pmp.ShuffleOption;
+import dev.blackilykat.pmp.client.audio.AudioBackend;
+import dev.blackilykat.pmp.client.audio.LineAudioBackend;
+import dev.blackilykat.pmp.client.audio.PulseAudioBackend;
 import dev.blackilykat.pmp.event.EventSource;
 import dev.blackilykat.pmp.event.RetroactiveEventSource;
 import dev.blackilykat.pmp.messages.PlaybackControlMessage;
@@ -30,6 +30,7 @@ import dev.blackilykat.pmp.messages.PlaybackOwnershipMessage;
 import dev.blackilykat.pmp.messages.PlaybackUpdateMessage;
 import dev.blackilykat.pmp.util.OverridingSingleThreadExecutor;
 import dev.blackilykat.pmp.util.Pair;
+import dev.blackilykat.pmp.util.ScopedValue;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.kc7bfi.jflac.FLACDecoder;
@@ -41,14 +42,6 @@ import org.kc7bfi.jflac.util.ByteData;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import javax.naming.OperationNotSupportedException;
-import javax.sound.sampled.AudioFormat;
-import javax.sound.sampled.AudioInputStream;
-import javax.sound.sampled.AudioSystem;
-import javax.sound.sampled.DataLine;
-import javax.sound.sampled.Line;
-import javax.sound.sampled.LineUnavailableException;
-import javax.sound.sampled.SourceDataLine;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InterruptedIOException;
@@ -82,17 +75,13 @@ public class Player {
 	public static final EventSource<Long> EVENT_SEEK = new EventSource<>();
 	public static final EventSource<Integer> EVENT_PLAYBACK_OWNER_CHANGED = new EventSource<>();
 	public static final ScopedValue<Boolean> DONT_SEND_UPDATES = ScopedValue.newInstance();
-	private static final Logger LOGGER = LogManager.getLogger(Player.class);
-	private static final ScopedValue<Boolean> APPLYING_SESSION = ScopedValue.newInstance();
-	private static final AudioFormat PLAYBACK_AUDIO_FORMAT = new AudioFormat(AudioFormat.Encoding.PCM_SIGNED, 44100,
-			16,
-			2, 4, 44100, false);
-
 	/**
 	 * Buffer size when playing the already loaded audio. Too high values can make pausing unresponsive. Too low values
 	 * can make audio choppy in some circumstances.
 	 */
-	private static final int PLAYBACK_BUFFER_SIZE = 8192;
+	public static final int PLAYBACK_BUFFER_SIZE = 8192;
+	private static final Logger LOGGER = LogManager.getLogger(Player.class);
+	private static final ScopedValue<Boolean> APPLYING_SESSION = ScopedValue.newInstance();
 	/**
 	 * Cooldown multiplier when writing to audio lines. Cooldown is calculated using buffer size and audio format. This
 	 * multiplier is then applied to leave some wiggle room and allow the audio backend to build a small buffer.
@@ -103,8 +92,7 @@ public class Player {
 	 * take
 	 * longer to start playing.
 	 */
-	private static final int LOADING_BUFFER_SIZE =
-			(int) PLAYBACK_AUDIO_FORMAT.getSampleRate() * PLAYBACK_AUDIO_FORMAT.getChannels();
+	private static final int LOADING_BUFFER_SIZE = 88200;
 
 	private static final OverridingSingleThreadExecutor DECODING_EXECUTOR = new OverridingSingleThreadExecutor();
 	private static final OverridingSingleThreadExecutor LOADING_EXECUTOR = new OverridingSingleThreadExecutor();
@@ -136,8 +124,6 @@ public class Player {
 	 * @see #seek(long)
 	 */
 	private static long playbackPosition = 0;
-	private static PASimple paStream = null;
-	private static SourceDataLine line = null;
 
 	public static boolean shouldSendControl() {
 		return !DONT_SEND_UPDATES.orElse(false) && Server.isLoggedIn() && playbackOwner.get() != null
@@ -175,7 +161,7 @@ public class Player {
 			paused.set(false);
 			paused.notifyAll();
 		}
-		PROGRESS_EXECUTOR.value = PROGRESS_EXECUTOR.key.scheduleAtFixedRate(() -> {
+		PROGRESS_EXECUTOR.value = PROGRESS_EXECUTOR.key.scheduleWithFixedDelay(() -> {
 			EVENT_PROGRESS.call(getPosition());
 		}, 50, 50, TimeUnit.MILLISECONDS);
 		EVENT_PLAY_PAUSE.call(false);
@@ -367,15 +353,12 @@ public class Player {
 		Consumer<Integer> onPcmLoad = null;
 		if(loadAudio) {
 			onPcmLoad = bytes -> {
-				if(bytes >= PLAYBACK_AUDIO_FORMAT.getSampleRate() * PLAYBACK_AUDIO_FORMAT.getChannels()
-						&& firstLoad.getAndSet(false)) {
+				if(bytes >= 88200 && firstLoad.getAndSet(false)) {
 
-					if(paStream != null) {
-						try {
-							paStream.flush();
-						} catch(PulseAudioException e) {
-							LOGGER.error("Failed to drain paStream", e);
-						}
+					try {
+						AudioBackend.backend.flush();
+					} catch(IOException e) {
+						LOGGER.warn("Failed to flush audio backend", e);
 					}
 					if(startPlaying) {
 						play();
@@ -430,10 +413,8 @@ public class Player {
 						if(pcmDataFuture != null) {
 							LOGGER.debug("Streaminfo: {}", streamInfo);
 							// These are inter-channel samples, meaning they're really just frames
-							int size = (int) (streamInfo.getTotalSamples() * PLAYBACK_AUDIO_FORMAT.getFrameSize()
-									* PLAYBACK_AUDIO_FORMAT.getSampleRate() / streamInfo.getSampleRate());
-
-							size -= size % PLAYBACK_AUDIO_FORMAT.getFrameSize();
+							int size = (int) streamInfo.getTotalSamples() * streamInfo.getChannels()
+									* streamInfo.getBitsPerSample() / 8;
 
 							synchronized(pcmData) {
 								pcmData.set(new byte[size]);
@@ -509,14 +490,11 @@ public class Player {
 
 					byte[] pcm = pcmData.get();
 
-					AudioInputStream original = new AudioInputStream(pipeIn, track.getAudioFormat(),
-							track.getPlaybackInfo().getTotalSamples());
-					AudioInputStream converted = AudioSystem.getAudioInputStream(PLAYBACK_AUDIO_FORMAT, original);
 					int processed = 0;
 					byte[] buffer = new byte[LOADING_BUFFER_SIZE];
 
 					while(processed < pcm.length) {
-						int read = converted.read(buffer);
+						int read = pipeIn.read(buffer);
 
 						// It is unclear why, but sometimes reading from converted gives an amount of bytes different
 						// from
@@ -567,37 +545,21 @@ public class Player {
 		audioThread = new Thread("Audio") {
 			@Override
 			public void run() {
-				try {
-					paStream = new PASimple(null, "PMP", false, null, "Playback",
-							new SampleSpec(SampleFormat.S16LE, (int) PLAYBACK_AUDIO_FORMAT.getSampleRate(),
-									(short) PLAYBACK_AUDIO_FORMAT.getChannels()), null);
-					LOGGER.info("Using PulseAudio");
-				} catch(OperationNotSupportedException ex) {
-					LOGGER.info("Using SourceDataLine");
-
-					Line.Info info = new DataLine.Info(SourceDataLine.class, PLAYBACK_AUDIO_FORMAT,
-							PLAYBACK_BUFFER_SIZE);
-
-					try {
-						line = (SourceDataLine) AudioSystem.getLine(info);
-						line.open(PLAYBACK_AUDIO_FORMAT, PLAYBACK_BUFFER_SIZE);
-						line.start();
-					} catch(LineUnavailableException e) {
-						LOGGER.error("Line unavailable (cannot play audio)", e);
-						return;
+				if(AudioBackend.backend == null) {
+					if(PASimple.isPulseSupported() && false) {
+						AudioBackend.backend = new PulseAudioBackend();
+						LOGGER.info("Using PulseAudio backend");
+					} else {
+						AudioBackend.backend = new LineAudioBackend();
+						LOGGER.info("Using Line audio backend");
 					}
 				}
 
 				int framePosition;
 
-				double msPerWrite =
-						1000 / ((PLAYBACK_AUDIO_FORMAT.getFrameRate() * PLAYBACK_AUDIO_FORMAT.getChannels() * (
-								PLAYBACK_AUDIO_FORMAT.getSampleSizeInBits() / 8.0)) / PLAYBACK_BUFFER_SIZE);
-				LOGGER.debug("Ms per write: {}", msPerWrite);
-
-				long writeCooldown = (long) (msPerWrite * PLAYBACK_WRITE_COOLDOWN_MULTIPLIER);
-
 				long lastWrite;
+
+				Track prevTrack = null;
 
 				try {
 					mainLoop:
@@ -625,7 +587,22 @@ public class Player {
 							continue;
 						}
 
-						framePosition = msToPlaybackBytes(getPosition());
+						if(currentTrack != prevTrack) {
+							AudioBackend.backend.setupTrack(currentTrack);
+						}
+						prevTrack = currentTrack;
+
+						Track.PlaybackInfo info = currentTrack.getPlaybackInfo();
+						double msPerWrite =
+								1000 / ((info.getSampleRate() * info.getChannels() * (info.getBitsPerSample() / 8.0))
+										/ PLAYBACK_BUFFER_SIZE);
+						LOGGER.debug("Ms per write: {}", msPerWrite);
+
+						long writeCooldown = (long) (msPerWrite * PLAYBACK_WRITE_COOLDOWN_MULTIPLIER);
+
+						framePosition = info.msToBytes(getPosition());
+
+						AudioBackend.backend.frameAlign();
 
 						double totalOffset = 0;
 						lastWrite = System.nanoTime();
@@ -641,18 +618,14 @@ public class Player {
 							totalOffset += msPerWrite - (lastWriteDiff / 1_000_000.0);
 							lastWrite = now;
 
-							int latency = 0;
-							if(paStream != null) {
-								latency = msToPlaybackBytes(paStream.getLatency() / 1_000);
-							}
+							int latency = info.msToBytes(AudioBackend.backend.getLatency());
 
-
-							int expectedPos = msToPlaybackBytes(getPosition());
+							int expectedPos = info.msToBytes(getPosition());
 
 
 							EVENT_PLAYBACK_DEBUG_INFO.call(
-									new PlaybackDebugInfoEvent(paStream != null, latency, framePosition, expectedPos,
-											pcm.length, PLAYBACK_BUFFER_SIZE, msPerWrite, totalOffset));
+									new PlaybackDebugInfoEvent(latency, framePosition, expectedPos, pcm.length,
+											PLAYBACK_BUFFER_SIZE, msPerWrite, totalOffset));
 
 
 							if(totalOffset < 0) {
@@ -660,6 +633,7 @@ public class Player {
 										expectedPos, -totalOffset);
 								totalOffset = 0;
 								framePosition = expectedPos;
+								AudioBackend.backend.frameAlign();
 							}
 
 							if(framePosition >= pcm.length) {
@@ -668,23 +642,13 @@ public class Player {
 							}
 
 							if(framePosition + PLAYBACK_BUFFER_SIZE > pcm.length) {
-								if(paStream != null) {
-									paStream.write(pcm, framePosition, pcm.length - framePosition);
-								} else {
-									assert line != null;
-									line.write(pcm, framePosition, pcm.length - framePosition);
-								}
+								AudioBackend.backend.write(pcm, framePosition, pcm.length - framePosition);
 
 								next();
 								break;
 							}
 
-							if(paStream != null) {
-								paStream.write(pcm, framePosition, PLAYBACK_BUFFER_SIZE);
-							} else {
-								assert line != null;
-								line.write(pcm, framePosition, PLAYBACK_BUFFER_SIZE);
-							}
+							AudioBackend.backend.write(pcm, framePosition, PLAYBACK_BUFFER_SIZE);
 
 							framePosition += PLAYBACK_BUFFER_SIZE;
 						}
@@ -692,12 +656,10 @@ public class Player {
 					}
 				} catch(InterruptedException e) {
 					LOGGER.warn("Stopping audio thread due to interrupt");
-				} catch(PulseAudioException e) {
-					LOGGER.error("Unexpected PulseAudio error", e);
+				} catch(Exception e) {
+					LOGGER.error("Unexpected exception playing audio", e);
 				} finally {
-					if(paStream != null) {
-						paStream.close();
-					}
+					AudioBackend.backend.close();
 				}
 			}
 		};
@@ -799,13 +761,6 @@ public class Player {
 				setPlaybackOwner(null);
 			}
 		});
-	}
-
-	private static int msToPlaybackBytes(long ms) {
-		int val = ((int) ((PLAYBACK_AUDIO_FORMAT.getFrameRate() * PLAYBACK_AUDIO_FORMAT.getSampleSizeInBits()
-				* PLAYBACK_AUDIO_FORMAT.getChannels() * ms) / 8000));
-		val -= val % PLAYBACK_AUDIO_FORMAT.getFrameSize();
-		return val;
 	}
 
 	public static void loadPlaybackInfo(ClientStorage.PlaybackInfo pi) {
@@ -923,6 +878,6 @@ public class Player {
 
 	public record CurrentTrackLoadEvent(Integer loaded, Integer total) {}
 
-	public record PlaybackDebugInfoEvent(boolean pulse, int latency, int framePosition, int expectedPos,
-			int trackLength, int bufferSize, double expectedWriteTime, double totalOffset) {}
+	public record PlaybackDebugInfoEvent(int latency, int framePosition, int expectedPos, int trackLength,
+			int bufferSize, double expectedWriteTime, double totalOffset) {}
 }

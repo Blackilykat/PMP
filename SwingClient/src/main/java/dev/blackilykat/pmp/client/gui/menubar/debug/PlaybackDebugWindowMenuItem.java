@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Blackilykat and contributors
+ * Copyright (C) 2026 Blackilykat and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
 package dev.blackilykat.pmp.client.gui.menubar.debug;
 
 import dev.blackilykat.pmp.client.Player;
+import dev.blackilykat.pmp.client.audio.AudioBackend;
 import dev.blackilykat.pmp.client.gui.Theme;
 import dev.blackilykat.pmp.client.gui.util.GUIUtils;
 import dev.blackilykat.pmp.client.gui.util.ThemedLabel;
@@ -49,9 +50,9 @@ public class PlaybackDebugWindowMenuItem extends JMenuItem {
 			Container content = window.getContentPane();
 			BoxLayout layout = new BoxLayout(content, BoxLayout.PAGE_AXIS);
 			content.setLayout(layout);
-			ThemedLabel pulse = new ThemedLabel("Pulse: ?");
-			pulse.setAlignmentX(0);
-			content.add(pulse);
+			ThemedLabel backend = new ThemedLabel("Pulse: ?");
+			backend.setAlignmentX(0);
+			content.add(backend);
 			ThemedLabel framePosition = new ThemedLabel("Frame position: ?");
 			framePosition.setAlignmentX(0);
 			content.add(framePosition);
@@ -77,10 +78,10 @@ public class PlaybackDebugWindowMenuItem extends JMenuItem {
 			positionPanel.setAlignmentX(0);
 			content.add(positionPanel);
 
-			JButton printButton = new JButton("Print");
+			JButton printButton = new JButton("Log");
 			printButton.addActionListener(ae -> {
 				LOGGER.debug("Logging playback debug info");
-				LOGGER.debug(pulse.getText());
+				LOGGER.debug(backend.getText());
 				LOGGER.debug(framePosition.getText());
 				LOGGER.debug(latency.getText());
 				LOGGER.debug(expectedPos.getText());
@@ -93,7 +94,7 @@ public class PlaybackDebugWindowMenuItem extends JMenuItem {
 
 			Listener<Player.PlaybackDebugInfoEvent> listener = event -> {
 				GUIUtils.runOnSwingThread(() -> {
-					pulse.setText("Pulse: " + event.pulse());
+					backend.setText("Backend: " + AudioBackend.backend.getClass().getSimpleName());
 					framePosition.setText("Frame position: " + event.framePosition());
 					latency.setText("Latency: " + event.latency());
 					expectedPos.setText("Expected pos: " + event.expectedPos());

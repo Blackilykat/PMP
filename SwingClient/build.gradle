@@ -14,21 +14,18 @@ repositories {
 }
 
 dependencies {
-    implementation project(':Core')
+    implementation project(':Client')
 
     implementation platform('org.apache.logging.log4j:log4j-bom:2.25.1')
-    implementation 'org.apache.logging.log4j:log4j-api'
-    implementation 'org.slf4j:slf4j-api:1.7.36'
+    implementation 'org.apache.logging.log4j:log4j-slf4j-impl'
 
-    implementation 'com.github.drogatkin:JustFLAC:85f0934'
-
-    implementation 'dev.blackilykat:JPASimple:1.1'
+    implementation 'com.github.weisj:jsvg:2.0.0'
 
     implementation 'com.fasterxml.jackson.core:jackson-core:2.20.0'
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.20.0'
     implementation 'com.fasterxml.jackson.module:jackson-module-parameter-names:2.20.0'
 
-    compileOnly 'com.github.blackilykat:mpris-java:cc27ccc2605128b38bca00706f17776263c4bdb3'
+    implementation 'com.github.blackilykat:mpris-java:cc27ccc2605128b38bca00706f17776263c4bdb3'
 }
 
 jar {

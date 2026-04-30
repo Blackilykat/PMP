@@ -17,7 +17,6 @@
 
 package dev.blackilykat.pmp.client;
 
-import dev.blackilykat.pmp.client.gui.MainWindow;
 import dev.blackilykat.pmp.util.LoggingProxy;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -28,7 +27,7 @@ public class Main {
 	public static final Logger LOGGER = LogManager.getLogger(Main.class);
 
 
-	static void main(String[] args) {
+	public static void main(String[] args) {
 		logDebugSystemInfo();
 		LOGGER.info("Starting client");
 
@@ -46,13 +45,11 @@ public class Main {
 			Library.init();
 
 			Player.init();
+
+			Server.connect();
 		}).start();
 
 		MPRISController.init();
-
-		MainWindow.main(args);
-
-		Server.connect();
 	}
 
 
