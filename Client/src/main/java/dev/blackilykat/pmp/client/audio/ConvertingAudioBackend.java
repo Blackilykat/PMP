@@ -96,11 +96,11 @@ public abstract class ConvertingAudioBackend extends AudioBackend {
 				continue;
 			}
 
-			int newLeftSample = (int) (lastLeftSample * position + currentLeftSample * (1 - position));
+			int newLeftSample = (int) (lastLeftSample * (1 - position) + currentLeftSample * position);
 
 			int newRightSample = 0;
 			if(info.getChannels() == 2) {
-				newRightSample = (int) (lastRightSample * position + currentRightSample * (1 - position));
+				newRightSample = (int) (lastRightSample * (1 - position) + currentRightSample * position);
 			}
 
 			if(shift > 0) {
