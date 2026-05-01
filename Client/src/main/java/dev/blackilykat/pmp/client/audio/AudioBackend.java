@@ -30,9 +30,10 @@ public abstract class AudioBackend {
 	 */
 	abstract public void setupTrack(Track track) throws IOException;
 
-	/**
-	 * Write PCM data to the backend. Must block.
-	 */
+	/// Write PCM data to the backend. Must block.
+	///
+	/// Implementations can expect pcm to be the same byte array for the same track. The array only changes between two
+	/// calls when {@link #setupTrack} is called between them.
 	abstract public void write(byte[] pcm, int offset, int length) throws IOException;
 
 	/**

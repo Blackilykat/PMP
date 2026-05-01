@@ -66,26 +66,26 @@ public class Track {
 		lastModified = file.lastModified();
 
 		Checksum sum = new CRC32();
-		CheckedInputStream is = new CheckedInputStream(new FileInputStream(file), sum);
+		try(CheckedInputStream is = new CheckedInputStream(new FileInputStream(file), sum)) {
+			FLACDecoder decoder = new FLACDecoder(is);
+			Metadata[] metadata = decoder.readMetadata();
 
-		FLACDecoder decoder = new FLACDecoder(is);
-		Metadata[] metadata = decoder.readMetadata();
-
-		for(Metadata metadatum : metadata) {
-			if(metadatum instanceof StreamInfo streamInfo) {
-				this.playbackInfo = new PlaybackInfo(streamInfo);
-				durationSeconds = streamInfo.getTotalSamples() / (double) streamInfo.getSampleRate();
-				break;
+			for(Metadata metadatum : metadata) {
+				if(metadatum instanceof StreamInfo streamInfo) {
+					this.playbackInfo = new PlaybackInfo(streamInfo);
+					durationSeconds = streamInfo.getTotalSamples() / (double) streamInfo.getSampleRate();
+					break;
+				}
 			}
-		}
 
-		this.metadata = FLACUtil.extractMetadata(metadata);
+			this.metadata = FLACUtil.extractMetadata(metadata);
 
-		while(is.available() > 0) {
-			//noinspection ResultOfMethodCallIgnored
-			is.read(checksumBuffer);
+			while(is.available() > 0) {
+				//noinspection ResultOfMethodCallIgnored
+				is.read(checksumBuffer);
+			}
+			checksum = sum.getValue();
 		}
-		checksum = sum.getValue();
 	}
 
 	@JsonCreator

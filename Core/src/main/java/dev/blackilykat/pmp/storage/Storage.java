@@ -66,7 +66,7 @@ public abstract class Storage {
 	public Storage(String name) {
 		this.name = name;
 
-		Shutdown.EVENT_SHUTDOWN.register(v -> {
+		Shutdown.EVENT_MAY_SHUTDOWN_SOON.register(v -> {
 			try {
 				if(dirty) {
 					save();

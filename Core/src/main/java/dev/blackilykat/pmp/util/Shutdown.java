@@ -22,9 +22,26 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 public class Shutdown {
+	/**
+	 * Event called when the program shuts down. This is not guaranteed to be called in every platform (i.e. Android
+	 * does not offer a callback on shutdown)
+	 *
+	 * @see #EVENT_MAY_SHUTDOWN_SOON
+	 */
 	public static final EventSource<Void> EVENT_SHUTDOWN = new EventSource<>();
+	/**
+	 * Event called when either the program is shutting down or it may shut down soon. This should be used to save data
+	 * to disk, but it should not close any resources that may be needed later. It may be called multiple times during
+	 * the execution of the program.
+	 */
+	public static final EventSource<Void> EVENT_MAY_SHUTDOWN_SOON = new EventSource<>();
 	private static final Logger LOGGER = LogManager.getLogger(Shutdown.class);
 	private static boolean shuttingDown = false;
+
+	public static void mayShutdownSoon() {
+		LOGGER.info("May shut down soon");
+		EVENT_MAY_SHUTDOWN_SOON.call(null);
+	}
 
 	public static void shutdown(boolean exit) {
 		if(shuttingDown) {
@@ -34,6 +51,7 @@ public class Shutdown {
 
 		LOGGER.info("Shutting down");
 
+		EVENT_MAY_SHUTDOWN_SOON.call(null);
 		EVENT_SHUTDOWN.call(null);
 
 		if(exit) {

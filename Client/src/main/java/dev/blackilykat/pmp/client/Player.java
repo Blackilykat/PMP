@@ -139,7 +139,14 @@ public class Player {
 		if(DONT_SEND_UPDATES.orElse(false)) {
 			return;
 		}
-		if(Server.isLoggedIn() && playbackOwner.get() == null) {
+
+		if(playbackOwner.get() == null) {
+			takeOwnership();
+		}
+	}
+
+	public static void takeOwnership() {
+		if(Server.isLoggedIn()) {
 			setPlaybackOwner(Server.deviceId);
 			Server.send(new PlaybackOwnershipMessage());
 		}

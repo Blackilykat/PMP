@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Blackilykat and contributors
+ * Copyright (C) 2026 Blackilykat and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,4 +17,7 @@
 
 package dev.blackilykat.pmp;
 
-public record FilterInfo(int id, String key) {}
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+// This record failed deserializing on android without the annotations. Don't know why, but these have to stay.
+public record FilterInfo(@JsonProperty("id") int id, @JsonProperty("key") String key) {}

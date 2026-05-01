@@ -17,6 +17,7 @@
 
 package dev.blackilykat.pmp.client;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.blackilykat.pmp.Action;
 import dev.blackilykat.pmp.FilterInfo;
 import dev.blackilykat.pmp.PMPConnection;
@@ -54,7 +55,7 @@ public class ClientStorage {
 		public StoredList<Filter> filters = new StoredList<>(Filter.class, this);
 		public StoredInt currentFilterID = new StoredInt(this, 0);
 		public StoredInt currentHeaderID = new StoredInt(this, 0);
-		public Stored<String> serverAddress = new Stored<>(String.class, this, "localhost");
+		public Stored<String> serverAddress = new Stored<>(String.class, this, "192.168.1.105");
 		public StoredInt serverPort = new StoredInt(this, PMPConnection.DEFAULT_MESSAGE_PORT);
 		public StoredInt serverFilePort = new StoredInt(this, PMPConnection.DEFAULT_FILE_PORT);
 		public Stored<PlaybackInfo> playbackInfo = new Stored<>(PlaybackInfo.class, this, null);
@@ -80,6 +81,9 @@ public class ClientStorage {
 	}
 
 	// playing is not here because it should never be playing at startup
-	public record PlaybackInfo(String track, long position, List<Pair<Integer, String>> positiveFilterOptions,
-			List<Pair<Integer, String>> negativeFilterOptions, RepeatOption repeat, ShuffleOption shuffle) {}
+	// This record failed to serialize on android. Don't know why, but these have to stay.
+	public record PlaybackInfo(@JsonProperty("track") String track, @JsonProperty("position") long position,
+			@JsonProperty("positiveFilterOptions") List<Pair<Integer, String>> positiveFilterOptions,
+			@JsonProperty("negativeFilterOptions") List<Pair<Integer, String>> negativeFilterOptions,
+			@JsonProperty("repeat") RepeatOption repeat, @JsonProperty("shuffle") ShuffleOption shuffle) {}
 }
