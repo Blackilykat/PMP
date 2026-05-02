@@ -18,14 +18,41 @@
 package dev.blackilykat.pmp.client.android
 
 import android.app.Application
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.Intent
+import dev.blackilykat.pmp.client.Server
+import dev.blackilykat.pmp.client.audio.AudioBackend
+import dev.blackilykat.pmp.messages.LoginAsNewDeviceRequest
+import dev.blackilykat.pmp.util.Globals
+import java.io.File
 
 class PMPApplication : Application() {
-    companion object {
-        var instance: PMPApplication? = null;
-    }
-
     override fun onCreate() {
         super.onCreate()
-        instance = this;
+
+        Globals.dataRoot = getExternalFilesDir(null)
+        Globals.library = File(Globals.dataRoot, "library")
+
+        AudioBackend.backend = AndroidAudioBackend();
+
+        Server.EVENT_SHOULD_ASK_PASSWORD.register {
+            Server.send(LoginAsNewDeviceRequest("mypassword", "android"))
+        }
+
+        setupChannel()
+
+        startService(Intent(this, PMPService::class.java))
+    }
+
+    private fun setupChannel() {
+
+        val name = "Service notification"
+        val descriptionText = "Notifies you when the app is running in the background"
+        val importance = NotificationManager.IMPORTANCE_DEFAULT
+        val mChannel = NotificationChannel("serviceNotification", name, importance)
+        mChannel.description = descriptionText
+        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.createNotificationChannel(mChannel)
     }
 }

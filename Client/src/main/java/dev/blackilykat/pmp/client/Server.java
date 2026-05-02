@@ -409,7 +409,7 @@ public class Server {
 				}
 
 				clientTrackLoop:
-				for(Track clientTrack : ClientStorage.MAIN.tracks.values()) {
+				for(Track clientTrack : ClientStorage.MAIN.tracks.values().toArray(new Track[0])) {
 					String filename = clientTrack.getFile().getName();
 					for(TrackElement serverTrack : serverTracks) {
 						if(filename.equals(serverTrack.filename)) {

@@ -62,7 +62,7 @@ android {
     defaultConfig {
         applicationId 'dev.blackilykat.pmp'
 
-        minSdk 33
+        minSdk 36
 
         targetSdk 36
 
@@ -74,6 +74,10 @@ android {
     buildTypes {
         release {
             minifyEnabled false
+            signingConfig signingConfigs.debug
+        }
+        debug {
+            applicationIdSuffix '.debug'
         }
     }
 
