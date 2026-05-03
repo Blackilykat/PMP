@@ -20,8 +20,6 @@ package dev.blackilykat.pmp.client.android
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import dev.blackilykat.pmp.client.android.theme.PMPTheme
 import dev.blackilykat.pmp.util.Shutdown
 
@@ -44,9 +42,4 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
     }
-}
-
-@Composable
-fun TestText() {
-    Text("PMP")
 }

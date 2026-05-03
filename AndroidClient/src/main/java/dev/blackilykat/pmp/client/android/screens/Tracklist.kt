@@ -17,6 +17,7 @@
 
 package dev.blackilykat.pmp.client.android.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -27,19 +28,77 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import dev.blackilykat.pmp.Order
+import dev.blackilykat.pmp.client.Library
 import dev.blackilykat.pmp.client.Player
 import dev.blackilykat.pmp.client.Track
 import dev.blackilykat.pmp.client.android.Mutables
 import dev.blackilykat.pmp.client.android.PlayBar
-import dev.blackilykat.pmp.client.android.TestText
+import dev.blackilykat.pmp.client.android.R
+import dev.blackilykat.pmp.client.android.util.BoxedDropdownMenu
+import dev.blackilykat.pmp.client.android.util.BoxedDropdownMenuItem
 
 @Composable
 fun Tracklist(paddingValues: PaddingValues) {
-    Surface(modifier = Modifier.padding(paddingValues)) {
+    Surface(modifier = Modifier.padding(bottom = paddingValues.calculateBottomPadding())) {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
-            topBar = { TestText() },
+            topBar = {
+                val headers by Mutables.headers
+                val sortingHeader by Mutables.sortingHeader
+                val sortingOrder by Mutables.sortingOrder
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = paddingValues.calculateTopPadding())
+                        .background(MaterialTheme.colorScheme.surfaceContainer)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(5.dp),
+                    ) {
+                        BoxedDropdownMenu(
+                            modifier = Modifier.weight(1f),
+                            items = headers.map {
+                                BoxedDropdownMenuItem(
+                                    onSelected = { Library.setSorting(it, Order.ASCENDING) },
+                                    selected = sortingHeader == it
+                                ) {
+                                    Text("Sort by ${it.label}")
+                                }
+                            }
+                        )
+
+                        Spacer(Modifier.width(5.dp))
+
+                        Button(
+                            modifier = Modifier.height(IntrinsicSize.Max),
+                            onClick = {
+                                Library.setSorting(
+                                    Library.getSortingHeader(),
+                                    when (Library.getSortingOrder()) {
+                                        Order.ASCENDING -> Order.DESCENDING
+                                        Order.DESCENDING -> Order.ASCENDING
+                                    }
+                                )
+                            }
+                        ) {
+                            when (sortingOrder) {
+                                Order.ASCENDING -> Icon(
+                                    painter = painterResource(R.drawable.sort_ascending),
+                                    contentDescription = "Sort: ascending"
+                                )
+
+                                Order.DESCENDING -> Icon(
+                                    painter = painterResource(R.drawable.sort_descending),
+                                    contentDescription = "Sort: descending"
+                                )
+                            }
+                        }
+                    }
+                }
+            },
             bottomBar = { PlayBar() },
             content = { padding ->
                 Surface(

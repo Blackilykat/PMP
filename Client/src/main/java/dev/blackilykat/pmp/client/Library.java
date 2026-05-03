@@ -54,6 +54,7 @@ public class Library {
 	public static final EventSource<Filter> EVENT_FILTER_REMOVED = new EventSource<>();
 	public static final EventSource<Track> EVENT_TRACK_ADDED = new EventSource<>();
 	public static final EventSource<Track> EVENT_TRACK_REMOVED = new EventSource<>();
+	public static final EventSource<List<Header>> EVENT_HEADERS_UPDATED = new RetroactiveEventSource<>();
 	public static final EventSource<Header> EVENT_HEADER_ADDED = new EventSource<>();
 	public static final EventSource<Header> EVENT_HEADER_REMOVED = new EventSource<>();
 	public static final EventSource<HeaderMovedEvent> EVENT_HEADER_MOVED = new EventSource<>();
@@ -277,6 +278,7 @@ public class Library {
 		ClientStorage.MAIN.headers.add(header);
 
 		EVENT_HEADER_ADDED.call(header);
+		EVENT_HEADERS_UPDATED.call(ClientStorage.MAIN.headers.get());
 	}
 
 	public static void moveHeader(Header header, int position) {
@@ -297,6 +299,7 @@ public class Library {
 		ClientStorage.MAIN.headers.add(position, header);
 
 		EVENT_HEADER_MOVED.call(new HeaderMovedEvent(header, oldPosition, position));
+		EVENT_HEADERS_UPDATED.call(ClientStorage.MAIN.headers.get());
 	}
 
 	/**
@@ -318,6 +321,7 @@ public class Library {
 
 		EVENT_HEADER_REMOVED.call(header);
 		header.eventHeaderRemoved.call(null);
+		EVENT_HEADERS_UPDATED.call(ClientStorage.MAIN.headers.get());
 	}
 
 	public static void setSorting(Header header, Order order) {
@@ -538,6 +542,7 @@ public class Library {
 			}
 
 			EVENT_LOADED.call(ClientStorage.MAIN.tracks.values());
+			EVENT_HEADERS_UPDATED.call(ClientStorage.MAIN.headers.get());
 
 			LOGGER.info("Initialized library");
 		}

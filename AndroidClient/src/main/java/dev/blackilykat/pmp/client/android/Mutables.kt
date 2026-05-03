@@ -22,9 +22,7 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import dev.blackilykat.pmp.RepeatOption
 import dev.blackilykat.pmp.ShuffleOption
-import dev.blackilykat.pmp.client.Library
-import dev.blackilykat.pmp.client.Player
-import dev.blackilykat.pmp.client.Track
+import dev.blackilykat.pmp.client.*
 
 class Mutables {
     companion object {
@@ -36,12 +34,21 @@ class Mutables {
         @SuppressLint("MutableCollectionMutableState") // the list gets manually updated through the listener
         val tracks = mutableStateOf(Library.getSelectedTracks())
 
+        val headers: MutableState<List<Header>> = mutableStateOf(ClientStorage.MAIN.headers.get())
+        val sortingHeader = mutableStateOf(Library.getSortingHeader())
+        val sortingOrder = mutableStateOf(Library.getSortingOrder())
+
         init {
             Player.EVENT_PLAY_PAUSE.register { playing.value = !it }
             Player.EVENT_SHUFFLE_CHANGED.register { shuffle.value = it }
             Player.EVENT_REPEAT_CHANGED.register { repeat.value = it }
             Player.EVENT_TRACK_CHANGE.register { currentTrack.value = it.track }
             Library.EVENT_SELECTED_TRACKS_UPDATED.register { tracks.value = it.newSelection }
+            Library.EVENT_SORTING_HEADER_UPDATED.register {
+                sortingHeader.value = it.header
+                sortingOrder.value = it.order
+            }
+            Library.EVENT_HEADERS_UPDATED.register { headers.value = it }
         }
     }
 }
