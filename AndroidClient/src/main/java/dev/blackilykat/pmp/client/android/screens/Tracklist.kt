@@ -18,7 +18,6 @@
 package dev.blackilykat.pmp.client.android.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -26,10 +25,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import dev.blackilykat.pmp.Order
 import dev.blackilykat.pmp.client.Library
 import dev.blackilykat.pmp.client.Player
@@ -127,31 +130,104 @@ fun Tracklist(paddingValues: PaddingValues) {
 fun Track(track: Track) {
     val playing by Mutables.currentTrack
     Surface(
-        color = MaterialTheme.colorScheme.secondaryContainer,
+        color = if (playing == track) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer,
         modifier = Modifier
             .fillMaxWidth()
             .padding(5.dp)
-            .clip(RoundedCornerShape(5.dp))
-            .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.secondary,
-                shape = RoundedCornerShape(5.dp)
-            ),
+            .clip(RoundedCornerShape(5.dp)),
         onClick = {
             Player.play(track)
         }
     ) {
-        Column(
-            modifier = Modifier.padding(5.dp)
-        ) {
-            if (playing == track) {
-                Text("(playing)")
+        Row {
+            Column(
+                modifier = Modifier.padding(10.dp).weight(1f)
+            ) {
+                Row(
+                ) {
+                    Text(
+                        text = track.title,
+                        modifier = Modifier.weight(1f),
+                        fontSize = 6.em
+                    )
+
+                    Text(
+                        text = formatSeconds(track.durationSeconds.toLong()),
+                        fontSize = 5.em,
+                        textAlign = TextAlign.Right,
+                    )
+                }
+
+                val artists = track.metadata.filter { it.key.lowercase() == "artist" }.joinToString { it.value }
+                Text(
+                    text = artists,
+                    fontSize = 4.em,
+                )
             }
-            Text(track.title)
-
-            val artists = track.metadata.filter { it.key.lowercase() == "artist" }.joinToString { it.value }
-
-            Text(artists)
+            TrackMenu(track)
         }
+    }
+}
+
+@Composable
+fun TrackMenu(track: Track) {
+    val menuExpanded = remember { mutableStateOf(false) }
+    val deletePopupShown = remember { mutableStateOf(false) }
+
+    if (deletePopupShown.value) {
+        AlertDialog(
+            onDismissRequest = {
+                deletePopupShown.value = false
+            },
+            icon = {
+                Icon(painter = painterResource(R.drawable.delete), contentDescription = "delete")
+            },
+            title = { Text("Delete ${track.title}?") },
+            text = { Text("Are you sure you want to delete ${track.title}? This action is unrecoverable.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        Library.removeTrack(track)
+                        deletePopupShown.value = false
+                        menuExpanded.value = false
+                    }
+                ) {
+                    Text("Confirm")
+                }
+            },
+            dismissButton = {
+                Button(
+                    onClick = {
+                        deletePopupShown.value = false
+                        menuExpanded.value = false
+                    }
+                ) {
+                    Text("Dismiss")
+                }
+            }
+        )
+    }
+
+    IconButton(
+        onClick = {
+            menuExpanded.value = true
+        }
+    ) {
+        DropdownMenu(
+            expanded = menuExpanded.value,
+            onDismissRequest = { menuExpanded.value = false }
+        ) {
+            DropdownMenuItem(
+                text = { Text("Delete") },
+                onClick = {
+                    deletePopupShown.value = true
+                }
+            )
+        }
+
+        Icon(
+            painter = painterResource(R.drawable.dots_vertical),
+            contentDescription = "more"
+        )
     }
 }
