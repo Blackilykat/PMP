@@ -19,6 +19,7 @@ package dev.blackilykat.pmp.client.android
 
 import android.annotation.SuppressLint
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import dev.blackilykat.pmp.RepeatOption
 import dev.blackilykat.pmp.ShuffleOption
@@ -53,11 +54,22 @@ class Mutables {
             updateSelectedFilterOptions()
         }
 
+        val albumArt: MutableState<ByteArray?> = mutableStateOf(null)
+        val position = mutableLongStateOf(0)
+
         init {
             Player.EVENT_PLAY_PAUSE.register { playing.value = !it }
             Player.EVENT_SHUFFLE_CHANGED.register { shuffle.value = it }
             Player.EVENT_REPEAT_CHANGED.register { repeat.value = it }
-            Player.EVENT_TRACK_CHANGE.register { currentTrack.value = it.track }
+            Player.EVENT_TRACK_CHANGE.register {
+                currentTrack.value = it.track
+                it.picture.thenAccept { data ->
+                    albumArt.value = data
+                }
+            }
+            Player.EVENT_PROGRESS.register {
+                position.value = it
+            }
             Library.EVENT_SELECTED_TRACKS_UPDATED.register { tracks.value = it.newSelection }
             Library.EVENT_SORTING_HEADER_UPDATED.register {
                 sortingHeader.value = it.header
@@ -71,18 +83,6 @@ class Mutables {
             Filter.EVENT_OPTION_CHANGED_STATE.register {
                 if (it.filter != selectedFilter.value) return@register
 
-                /*
-                var index = -1
-                selectedFilterOptions.forEachIndexed { i, optionAndState ->
-                    if (optionAndState.option != it) return@forEachIndexed
-                    index = i
-                }
-
-                if (index != -1) {
-                    selectedFilterOptions[index] = OptionAndState(it.option, it.newState)
-
-                }
-                 */
                 updateSelectedFilterOptions()
 
             }

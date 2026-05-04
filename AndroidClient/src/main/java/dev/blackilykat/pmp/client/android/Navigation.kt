@@ -18,6 +18,8 @@
 package dev.blackilykat.pmp.client.android
 
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -35,6 +37,7 @@ import dev.blackilykat.pmp.RepeatOption
 import dev.blackilykat.pmp.ShuffleOption
 import dev.blackilykat.pmp.client.Player
 import dev.blackilykat.pmp.client.android.screens.Filters
+import dev.blackilykat.pmp.client.android.screens.Playback
 import dev.blackilykat.pmp.client.android.screens.Tracklist
 
 class Screen(val name: String, val route: String, @DrawableRes val icon: Int)
@@ -84,13 +87,11 @@ fun Navigation() {
         NavHost(
             navController = navController,
             startDestination = "tracklist",
+            enterTransition = { EnterTransition.None },
+            exitTransition = { ExitTransition.None },
         ) {
             composable("playback") {
-                Column(verticalArrangement = Arrangement.Center, modifier = Modifier.fillMaxHeight()) {
-                    Row(horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
-                        Text("TODO: playback")
-                    }
-                }
+                Playback(paddingValues)
             }
             composable("tracklist") {
                 Tracklist(paddingValues)

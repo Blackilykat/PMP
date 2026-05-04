@@ -40,12 +40,11 @@ dependencies {
 
     implementation 'androidx.activity:activity-compose'
 
-    implementation 'androidx.compose.material3:material3'
+    implementation 'androidx.compose.material3:material3:1.5.0-alpha18'
 
     implementation 'androidx.compose.ui:ui-tooling-preview'
     debugImplementation 'androidx.compose.ui:ui-tooling'
 
-    //TODO: might not need this
     implementation 'androidx.compose.material3.adaptive:adaptive'
 
     runtimeOnly 'com.celeral:log4j2-android:1.0.0'
