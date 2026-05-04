@@ -52,6 +52,7 @@ public class Library {
 	public static final RetroactiveEventSource<Collection<Track>> EVENT_LOADED = new RetroactiveEventSource<>();
 	public static final EventSource<Filter> EVENT_FILTER_ADDED = new EventSource<>();
 	public static final EventSource<Filter> EVENT_FILTER_REMOVED = new EventSource<>();
+	public static final EventSource<List<Filter>> EVENT_FILTERS_UPDATED = new EventSource<>();
 	public static final EventSource<Track> EVENT_TRACK_ADDED = new EventSource<>();
 	public static final EventSource<Track> EVENT_TRACK_REMOVED = new EventSource<>();
 	public static final EventSource<List<Header>> EVENT_HEADERS_UPDATED = new RetroactiveEventSource<>();
@@ -176,6 +177,7 @@ public class Library {
 		});
 
 		EVENT_FILTER_ADDED.call(filter);
+		EVENT_FILTERS_UPDATED.call(ClientStorage.MAIN.filters.get());
 
 		if(Server.isLoggedIn()) {
 			Server.send(new FilterListMessage(exportFilters()));
@@ -189,6 +191,7 @@ public class Library {
 		reloadSelection();
 
 		EVENT_FILTER_REMOVED.call(filter);
+		EVENT_FILTERS_UPDATED.call(ClientStorage.MAIN.filters.get());
 
 		if(Server.isLoggedIn()) {
 			Server.send(new FilterListMessage(exportFilters()));
@@ -214,6 +217,7 @@ public class Library {
 		reloadSelection();
 
 		EVENT_FILTER_MOVED.call(new FilterMovedEvent(filter, position));
+		EVENT_FILTERS_UPDATED.call(ClientStorage.MAIN.filters.get());
 
 		if(Server.isLoggedIn()) {
 			Server.send(new FilterListMessage(exportFilters()));
@@ -258,6 +262,8 @@ public class Library {
 			EVENT_FILTER_MOVED.call(new FilterMovedEvent(filter, i));
 		}
 		ClientStorage.MAIN.filters.set(newFilters);
+
+		EVENT_FILTERS_UPDATED.call(newFilters);
 
 		ScopedValue.where(Player.DONT_SEND_UPDATES, true).run(() -> {
 			reloadSelection();

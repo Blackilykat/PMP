@@ -23,6 +23,9 @@ import androidx.compose.runtime.mutableStateOf
 import dev.blackilykat.pmp.RepeatOption
 import dev.blackilykat.pmp.ShuffleOption
 import dev.blackilykat.pmp.client.*
+import dev.blackilykat.pmp.event.Listener
+
+class OptionAndState(val option: FilterOption, var state: FilterOption.State)
 
 class Mutables {
     companion object {
@@ -38,6 +41,18 @@ class Mutables {
         val sortingHeader = mutableStateOf(Library.getSortingHeader())
         val sortingOrder = mutableStateOf(Library.getSortingOrder())
 
+        val filters: MutableState<List<Filter>> = mutableStateOf(ClientStorage.MAIN.filters.get())
+        val selectedFilter: MutableState<Filter> = mutableStateOf(filters.value.first())
+        val selectedFilterOptions: MutableState<List<OptionAndState>> = mutableStateOf(emptyList())
+
+        val selectedFilterAddListener: Listener<Filter.OptionAddedEvent> = {
+            updateSelectedFilterOptions()
+        }
+
+        val selectedFilterRemoveListener: Listener<Filter.OptionRemovedEvent> = {
+            updateSelectedFilterOptions()
+        }
+
         init {
             Player.EVENT_PLAY_PAUSE.register { playing.value = !it }
             Player.EVENT_SHUFFLE_CHANGED.register { shuffle.value = it }
@@ -49,6 +64,46 @@ class Mutables {
                 sortingOrder.value = it.order
             }
             Library.EVENT_HEADERS_UPDATED.register { headers.value = it }
+            Library.EVENT_FILTERS_UPDATED.register { filters.value = it }
+
+            selectedFilter.value.eventOptionAdded.register(selectedFilterAddListener)
+            selectedFilter.value.eventOptionRemoved.register(selectedFilterRemoveListener)
+            Filter.EVENT_OPTION_CHANGED_STATE.register {
+                if (it.filter != selectedFilter.value) return@register
+
+                /*
+                var index = -1
+                selectedFilterOptions.forEachIndexed { i, optionAndState ->
+                    if (optionAndState.option != it) return@forEachIndexed
+                    index = i
+                }
+
+                if (index != -1) {
+                    selectedFilterOptions[index] = OptionAndState(it.option, it.newState)
+
+                }
+                 */
+                updateSelectedFilterOptions()
+
+            }
+
+            updateSelectedFilterOptions()
+        }
+
+        fun setSelectedFilter(newValue: Filter) {
+            selectedFilter.value.eventOptionAdded.unregister(selectedFilterAddListener)
+            selectedFilter.value.eventOptionRemoved.unregister(selectedFilterRemoveListener)
+
+            selectedFilter.value = newValue
+
+            newValue.eventOptionAdded.unregister(selectedFilterAddListener)
+            newValue.eventOptionRemoved.unregister(selectedFilterRemoveListener)
+
+            updateSelectedFilterOptions()
+        }
+
+        fun updateSelectedFilterOptions() {
+            selectedFilterOptions.value = selectedFilter.value.options.map { OptionAndState(it, it.state) }
         }
     }
 }

@@ -50,10 +50,11 @@ fun Tracklist(paddingValues: PaddingValues) {
                 val sortingHeader by Mutables.sortingHeader
                 val sortingOrder by Mutables.sortingOrder
                 Surface(
+                    color = MaterialTheme.colorScheme.surfaceContainer,
                     modifier = Modifier
+                        .background(MaterialTheme.colorScheme.surfaceContainer)
                         .fillMaxWidth()
                         .padding(top = paddingValues.calculateTopPadding())
-                        .background(MaterialTheme.colorScheme.surfaceContainer)
                 ) {
                     Row(
                         modifier = Modifier.padding(5.dp),
@@ -72,7 +73,7 @@ fun Tracklist(paddingValues: PaddingValues) {
 
                         Spacer(Modifier.width(5.dp))
 
-                        Button(
+                        IconButton(
                             modifier = Modifier.height(IntrinsicSize.Max),
                             onClick = {
                                 Library.setSorting(

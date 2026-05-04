@@ -34,6 +34,7 @@ import androidx.navigation.compose.rememberNavController
 import dev.blackilykat.pmp.RepeatOption
 import dev.blackilykat.pmp.ShuffleOption
 import dev.blackilykat.pmp.client.Player
+import dev.blackilykat.pmp.client.android.screens.Filters
 import dev.blackilykat.pmp.client.android.screens.Tracklist
 
 class Screen(val name: String, val route: String, @DrawableRes val icon: Int)
@@ -95,11 +96,7 @@ fun Navigation() {
                 Tracklist(paddingValues)
             }
             composable("filters") {
-                Column(verticalArrangement = Arrangement.Center, modifier = Modifier.fillMaxHeight()) {
-                    Row(horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
-                        Text("TODO: filters")
-                    }
-                }
+                Filters(paddingValues)
             }
             composable("settings") {
 
