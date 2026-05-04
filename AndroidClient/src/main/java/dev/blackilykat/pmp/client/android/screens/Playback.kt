@@ -224,7 +224,7 @@ fun Playback(paddingValues: PaddingValues) {
                                 ),
                                 thumb = {
                                     SliderDefaults.Thumb(
-                                        interactionSource = MutableInteractionSource(),
+                                        interactionSource = remember { MutableInteractionSource() },
                                         thumbSize = DpSize(20.dp, 20.dp),
                                     )
                                 }
