@@ -6,7 +6,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
 
-    <application android:label="PMP" android:name=".PMPApplication">
+    <application android:label="PMP" android:icon="@mipmap/ic_launcher" android:name=".PMPApplication">
         <service
                 android:name=".PMPService"
                 android:foregroundServiceType="mediaPlayback"
@@ -16,7 +16,7 @@
 
         <activity
                 android:name=".MainActivity"
-                android:label="Change me (main activity)"
+                android:label="PMP"
                 android:exported="true"
                 android:theme="@style/AppTheme">
 

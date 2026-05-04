@@ -40,7 +40,7 @@ class PMPService : Service() {
             .setContentTitle("PMP")
             .setContentText("PMP is running in the background.")
             .setCategory(Notification.CATEGORY_SERVICE)
-            .setSmallIcon(R.drawable.baseline_music_note_24)
+            .setSmallIcon(R.drawable.pmp)
             .build()
 
         ServiceCompat.startForeground(this, 100, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
