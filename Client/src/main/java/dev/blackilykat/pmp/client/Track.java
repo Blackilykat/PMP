@@ -40,6 +40,15 @@ public class Track {
 	private static final Logger LOGGER = LogManager.getLogger(Track.class);
 	private static final byte[] checksumBuffer = new byte[1048576];
 	public List<Pair<String, String>> metadata;
+	/// All "artist" metadata values in [#metadata]. Reduntant for performance in UI.
+	@JsonIgnore
+	private List<String> artists = List.of();
+	/// "album" value in [#metadata]. Reduntant for performance in UI.
+	@JsonIgnore
+	private String album = "";
+	/// "title" value in [#metadata], or name based on file name if not present.
+	@JsonIgnore
+	private String title = "";
 	private PlaybackInfo playbackInfo;
 	private File file;
 	private long lastModified;
@@ -80,6 +89,8 @@ public class Track {
 
 			this.metadata = FLACUtil.extractMetadata(metadata);
 
+			updateMetadataRedundancies();
+
 			while(is.available() > 0) {
 				//noinspection ResultOfMethodCallIgnored
 				is.read(checksumBuffer);
@@ -92,8 +103,39 @@ public class Track {
 	private Track() {
 	}
 
+	private void updateMetadataRedundancies() {
+		this.artists = this.metadata.stream()
+				.filter(pair -> pair.key.equalsIgnoreCase("artist"))
+				.map(pair -> pair.value)
+				.toList();
+
+		this.album = this.metadata.stream()
+				.filter(pair -> pair.key.equalsIgnoreCase("album"))
+				.map(pair -> pair.value)
+				.findFirst()
+				.orElse(null);
+
+		this.title = this.metadata.stream()
+				.filter(pair -> pair.key.equalsIgnoreCase("title"))
+				.map(pair -> pair.value)
+				.findFirst()
+				.orElse(file != null ? file.getName().substring(0, file.getName().length() - 4) : "?");
+	}
+
+	private void setMetadata(List<Pair<String, String>> metadata) {
+		this.metadata = metadata;
+		updateMetadataRedundancies();
+	}
+
 	public File getFile() {
 		return file;
+	}
+
+	private void setFile(File file) {
+		this.file = file;
+		if(this.metadata != null) {
+			updateMetadataRedundancies();
+		}
 	}
 
 	public long getChecksum() {
@@ -106,14 +148,17 @@ public class Track {
 
 	@JsonIgnore
 	public String getTitle() {
-		for(Pair<String, String> metadatum : metadata) {
-			// assuming there is only one title
-			if(metadatum.key.equalsIgnoreCase("title")) {
-				return metadatum.value;
-			}
-		}
+		return title;
+	}
 
-		return file.getName().substring(0, file.getName().length() - 4);
+	@JsonIgnore
+	public String getAlbum() {
+		return album;
+	}
+
+	@JsonIgnore
+	public List<String> getArtists() {
+		return artists;
 	}
 
 	public double getDurationSeconds() {

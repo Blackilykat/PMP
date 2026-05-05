@@ -677,8 +677,9 @@ public class Player {
 		ClientStorage.MAIN.eventMaybeSaving.register(s -> {
 			ClientStorage.Main main = (ClientStorage.Main) s;
 			ClientStorage.PlaybackInfo pi = main.playbackInfo.get();
+			Track track = Player.getTrack();
 
-			if(!Player.paused.get() || !Player.getTrack().getFile().getName().equals(pi.track())
+			if(!Player.paused.get() || !(track != null && track.getFile().getName().equals(pi.track()))
 					|| Player.getPosition() != pi.position() || Player.getRepeat() != pi.repeat()
 					|| Player.getShuffle() != pi.shuffle()) {
 				s.markDirty();

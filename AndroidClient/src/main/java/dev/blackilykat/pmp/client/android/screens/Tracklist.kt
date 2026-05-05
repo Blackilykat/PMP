@@ -174,10 +174,7 @@ fun Track(track: Track) {
     }
 }
 
-fun artistsString(track: Track?): String = track?.metadata
-    ?.filter { it.key.lowercase() == "artist" }
-    ?.joinToString { it.value }
-    ?: ""
+fun artistsString(track: Track?): String = track?.artists?.joinToString() ?: ""
 
 @Composable
 fun TrackMenu(track: Track) {

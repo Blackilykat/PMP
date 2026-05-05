@@ -43,7 +43,7 @@ class Mutables {
         val sortingOrder = mutableStateOf(Library.getSortingOrder())
 
         val filters: MutableState<List<Filter>> = mutableStateOf(ClientStorage.MAIN.filters.get())
-        val selectedFilter: MutableState<Filter> = mutableStateOf(filters.value.first())
+        val selectedFilter: MutableState<Filter?> = mutableStateOf(filters.value.firstOrNull())
         val selectedFilterOptions: MutableState<List<OptionAndState>> = mutableStateOf(emptyList())
 
         val selectedFilterAddListener: Listener<Filter.OptionAddedEvent> = {
@@ -68,7 +68,7 @@ class Mutables {
                 }
             }
             Player.EVENT_PROGRESS.register {
-                position.value = it
+                position.longValue = it
             }
             Library.EVENT_SELECTED_TRACKS_UPDATED.register { tracks.value = it.newSelection }
             Library.EVENT_SORTING_HEADER_UPDATED.register {
@@ -78,8 +78,8 @@ class Mutables {
             Library.EVENT_HEADERS_UPDATED.register { headers.value = it }
             Library.EVENT_FILTERS_UPDATED.register { filters.value = it }
 
-            selectedFilter.value.eventOptionAdded.register(selectedFilterAddListener)
-            selectedFilter.value.eventOptionRemoved.register(selectedFilterRemoveListener)
+            selectedFilter.value?.eventOptionAdded?.register(selectedFilterAddListener)
+            selectedFilter.value?.eventOptionRemoved?.register(selectedFilterRemoveListener)
             Filter.EVENT_OPTION_CHANGED_STATE.register {
                 if (it.filter != selectedFilter.value) return@register
 
@@ -91,8 +91,8 @@ class Mutables {
         }
 
         fun setSelectedFilter(newValue: Filter) {
-            selectedFilter.value.eventOptionAdded.unregister(selectedFilterAddListener)
-            selectedFilter.value.eventOptionRemoved.unregister(selectedFilterRemoveListener)
+            selectedFilter.value?.eventOptionAdded?.unregister(selectedFilterAddListener)
+            selectedFilter.value?.eventOptionRemoved?.unregister(selectedFilterRemoveListener)
 
             selectedFilter.value = newValue
 
@@ -103,7 +103,9 @@ class Mutables {
         }
 
         fun updateSelectedFilterOptions() {
-            selectedFilterOptions.value = selectedFilter.value.options.map { OptionAndState(it, it.state) }
+            selectedFilter.value?.let { selectedFilter ->
+                selectedFilterOptions.value = selectedFilter.options.map { OptionAndState(it, it.state) }
+            }
         }
     }
 }

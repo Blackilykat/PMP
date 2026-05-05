@@ -31,17 +31,6 @@ dependencies {
     compileOnly 'com.github.blackilykat:mpris-java:cc27ccc2605128b38bca00706f17776263c4bdb3'
 }
 
-jar {
-    manifest {
-        attributes 'Main-Class': 'dev.blackilykat.pmp.client.Main'
-    }
-    from {
-        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
-    }
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    dependsOn('dependencies')
-}
-
 gradle.projectsEvaluated {
     tasks.withType(JavaCompile).tap {
         configureEach {

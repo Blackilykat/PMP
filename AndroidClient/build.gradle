@@ -27,6 +27,7 @@ dependencies {
         exclude group: 'org.slf4j'
         exclude group: 'org.ow2.asm'
         exclude group: 'org.jetbrains'
+        exclude group: 'dev.blackilykat', module: 'JPASimple'
     }
 
     implementation 'androidx.appcompat:appcompat:1.7.1'
@@ -46,6 +47,10 @@ dependencies {
     debugImplementation 'androidx.compose.ui:ui-tooling'
 
     implementation 'androidx.compose.material3.adaptive:adaptive'
+
+    implementation 'com.fasterxml.jackson.core:jackson-core:2.20.0'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.20.0'
+    implementation 'com.fasterxml.jackson.module:jackson-module-parameter-names:2.20.0'
 
     runtimeOnly 'com.celeral:log4j2-android:1.0.0'
 }
@@ -73,8 +78,12 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled false
-            signingConfig signingConfigs.debug
+            minifyEnabled true
+            shrinkResources = true
+
+            proguardFiles(
+                    'proguard-rules.pro'
+            )
         }
         debug {
             applicationIdSuffix '.debug'

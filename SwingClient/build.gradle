@@ -14,6 +14,7 @@ repositories {
 }
 
 dependencies {
+    implementation project(':Core')
     implementation project(':Client')
 
     implementation platform('org.apache.logging.log4j:log4j-bom:2.25.1')
