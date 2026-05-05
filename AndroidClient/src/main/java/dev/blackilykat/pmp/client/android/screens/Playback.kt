@@ -47,10 +47,6 @@ fun Playback(paddingValues: PaddingValues) {
     val albumArt by Mutables.albumArt
     val position by Mutables.position
 
-    val artists = track?.let { track ->
-        track.metadata.filter { it.key.lowercase() == "artist" }.joinToString { it.value }
-    } ?: ""
-
     Scaffold(
         modifier = Modifier.padding(bottom = paddingValues.calculateBottomPadding()),
         bottomBar = {
@@ -271,7 +267,7 @@ fun Playback(paddingValues: PaddingValues) {
                 )
 
                 Text(
-                    text = artists,
+                    text = artistsString(track),
                     fontSize = 6.em,
                     textAlign = TextAlign.Center,
                     lineHeight = 1.em,

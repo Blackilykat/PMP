@@ -27,18 +27,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
 import dev.blackilykat.pmp.Order
 import dev.blackilykat.pmp.client.Library
 import dev.blackilykat.pmp.client.Player
 import dev.blackilykat.pmp.client.Track
 import dev.blackilykat.pmp.client.android.Mutables
-import dev.blackilykat.pmp.client.android.PlayBar
 import dev.blackilykat.pmp.client.android.R
 import dev.blackilykat.pmp.client.android.util.BoxedDropdownMenu
 import dev.blackilykat.pmp.client.android.util.BoxedDropdownMenuItem
@@ -103,7 +101,6 @@ fun Tracklist(paddingValues: PaddingValues) {
                     }
                 }
             },
-            bottomBar = { PlayBar() },
             content = { padding ->
                 Surface(
                     color = MaterialTheme.colorScheme.background,
@@ -139,35 +136,48 @@ fun Track(track: Track) {
             Player.play(track)
         }
     ) {
-        Row {
+        Row(
+            modifier = Modifier.height(IntrinsicSize.Min)
+        ) {
             Column(
                 modifier = Modifier.padding(10.dp).weight(1f)
             ) {
-                Row(
-                ) {
-                    Text(
-                        text = track.title,
-                        modifier = Modifier.weight(1f),
-                        fontSize = 6.em
-                    )
-
-                    Text(
-                        text = formatSeconds(track.durationSeconds.toLong()),
-                        fontSize = 5.em,
-                        textAlign = TextAlign.Right,
-                    )
-                }
-
-                val artists = track.metadata.filter { it.key.lowercase() == "artist" }.joinToString { it.value }
                 Text(
-                    text = artists,
-                    fontSize = 4.em,
+                    text = track.title,
+                    modifier = Modifier.padding(bottom = 5.dp),
+                    style = MaterialTheme.typography.titleLargeEmphasized,
+                )
+
+                Text(
+                    text = artistsString(track),
+                    style = MaterialTheme.typography.titleMedium,
                 )
             }
-            TrackMenu(track)
+
+            Column(
+                verticalArrangement = Arrangement.SpaceBetween,
+                horizontalAlignment = Alignment.End,
+                modifier = Modifier.fillMaxHeight()
+            ) {
+                TrackMenu(track)
+
+                Text(
+                    text = formatSeconds(track.durationSeconds.toLong()),
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier.padding(
+                        end = 10.dp,
+                        bottom = 10.dp,
+                    )
+                )
+            }
         }
     }
 }
+
+fun artistsString(track: Track?): String = track?.metadata
+    ?.filter { it.key.lowercase() == "artist" }
+    ?.joinToString { it.value }
+    ?: ""
 
 @Composable
 fun TrackMenu(track: Track) {

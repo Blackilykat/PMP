@@ -32,7 +32,6 @@ import androidx.compose.ui.unit.dp
 import dev.blackilykat.pmp.client.Filter
 import dev.blackilykat.pmp.client.FilterOption
 import dev.blackilykat.pmp.client.android.Mutables
-import dev.blackilykat.pmp.client.android.PlayBar
 import dev.blackilykat.pmp.client.android.R
 import dev.blackilykat.pmp.client.android.util.BoxedDropdownMenu
 import dev.blackilykat.pmp.client.android.util.BoxedDropdownMenuItem
@@ -71,7 +70,6 @@ fun Filters(paddingValues: PaddingValues) {
                     }
                 }
             },
-            bottomBar = { PlayBar() },
             content = { paddingValues ->
                 Surface(
                     color = MaterialTheme.colorScheme.background,
@@ -126,7 +124,6 @@ fun Filters(paddingValues: PaddingValues) {
 
 @Composable
 fun FilterOption(filterOption: FilterOption, state: FilterOption.State) {
-    println("State: $state")
     Surface(
         color = when (state) {
             FilterOption.State.POSITIVE -> MaterialTheme.colorScheme.secondaryContainer
