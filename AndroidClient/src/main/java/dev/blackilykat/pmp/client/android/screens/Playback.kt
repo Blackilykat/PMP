@@ -177,21 +177,22 @@ fun Playback(paddingValues: PaddingValues) {
                         modifier = Modifier.padding(10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(formatSeconds(position / 1000))
+                        val progress = (seeking.value ?: position.toFloat())
+                        Text(formatSeconds(progress.toLong() / 1000))
                         Surface(
                             color = Color.Transparent,
                             modifier = Modifier.padding(5.dp).weight(1f),
                         ) {
-                            val progress = (seeking.value ?: position.toFloat())
                             val max = ((track?.durationSeconds ?: 0).toFloat() * 1000)
 
                             LinearWavyProgressIndicator(
                                 progress = { progress / max },
                                 waveSpeed = WavyProgressIndicatorDefaults.LinearDeterminateWavelength / 2f,
                                 amplitude = { if (playing) 0.2f else 0f },
-                                modifier = Modifier.height(48.dp).padding(start = 8.dp, end = 8.dp),
-                                trackColor = Color.Transparent,
+                                modifier = Modifier.height(48.dp).padding(start = 4.dp, end = 8.dp),
+                                trackColor = MaterialTheme.colorScheme.primary,
                                 stopSize = 0.dp,
+                                gapSize = 0.dp
                             )
 
                             Slider(
@@ -221,7 +222,7 @@ fun Playback(paddingValues: PaddingValues) {
                                 thumb = {
                                     SliderDefaults.Thumb(
                                         interactionSource = remember { MutableInteractionSource() },
-                                        thumbSize = DpSize(20.dp, 20.dp),
+                                        thumbSize = DpSize(10.dp, 30.dp),
                                     )
                                 }
                             )
