@@ -38,11 +38,11 @@ class Mutables {
         @SuppressLint("MutableCollectionMutableState") // the list gets manually updated through the listener
         val tracks = mutableStateOf(Library.getSelectedTracks())
 
-        val headers: MutableState<List<Header>> = mutableStateOf(ClientStorage.MAIN.headers.get())
+        val headers: MutableState<List<Header>> = mutableStateOf(emptyList())
         val sortingHeader = mutableStateOf(Library.getSortingHeader())
         val sortingOrder = mutableStateOf(Library.getSortingOrder())
 
-        val filters: MutableState<List<Filter>> = mutableStateOf(ClientStorage.MAIN.filters.get())
+        val filters: MutableState<List<Filter>> = mutableStateOf(emptyList())
         val selectedFilter: MutableState<Filter?> = mutableStateOf(filters.value.firstOrNull())
         val selectedFilterOptions: MutableState<List<OptionAndState>> = mutableStateOf(emptyList())
 
@@ -56,6 +56,11 @@ class Mutables {
 
         val albumArt: MutableState<ByteArray?> = mutableStateOf(null)
         val position = mutableLongStateOf(0)
+
+        fun init() {
+            headers.value = ClientStorage.MAIN.headers.get()
+            filters.value = ClientStorage.MAIN.filters.get()
+        }
 
         init {
             Player.EVENT_PLAY_PAUSE.register { playing.value = !it }

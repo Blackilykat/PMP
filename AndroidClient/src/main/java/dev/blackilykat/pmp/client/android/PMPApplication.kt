@@ -42,7 +42,7 @@ class PMPApplication : Application() {
 
         setupChannel()
 
-        startService(Intent(this, PMPService::class.java))
+        startForegroundService(Intent(this, PMPService::class.java))
     }
 
     private fun setupChannel() {

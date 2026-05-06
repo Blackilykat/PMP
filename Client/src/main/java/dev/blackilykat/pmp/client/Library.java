@@ -39,6 +39,7 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -47,6 +48,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 public class Library {
 	public static final RetroactiveEventSource<Collection<Track>> EVENT_LOADED = new RetroactiveEventSource<>();
@@ -103,7 +105,7 @@ public class Library {
 				foundValues.add(Filter.OPTION_UNKNOWN);
 			}
 
-			filter.applyOptionValues(foundValues.stream().toList());
+			filter.applyOptionValues(new ArrayList<>(foundValues));
 
 			boolean anyNegative = false;
 			boolean anyPositive = false;
@@ -152,13 +154,13 @@ public class Library {
 		}
 
 		List<Track> oldSelectedTracks = selectedTracks;
-		selectedTracks = new LinkedList<>(selection.stream().sorted((a, b) -> {
+		selectedTracks = selection.stream().sorted((a, b) -> {
 			if(sortingHeader == null || sortingOrder == null) {
 				return 0;
 			}
 			int multiplier = sortingOrder == Order.ASCENDING ? 1 : -1;
 			return sortingHeader.compare(a, b) * multiplier;
-		}).toList());
+		}).collect(Collectors.toList());
 		EVENT_SELECTED_TRACKS_UPDATED.call(
 				new SelectedTracksUpdatedEvent(Collections.unmodifiableList(oldSelectedTracks),
 						Collections.unmodifiableList(selectedTracks)));

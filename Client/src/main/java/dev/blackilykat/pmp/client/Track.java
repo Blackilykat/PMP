@@ -32,6 +32,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.zip.CRC32;
 import java.util.zip.CheckedInputStream;
 import java.util.zip.Checksum;
@@ -107,7 +108,7 @@ public class Track {
 		this.artists = this.metadata.stream()
 				.filter(pair -> pair.key.equalsIgnoreCase("artist"))
 				.map(pair -> pair.value)
-				.toList();
+				.collect(Collectors.toUnmodifiableList());
 
 		this.album = this.metadata.stream()
 				.filter(pair -> pair.key.equalsIgnoreCase("album"))

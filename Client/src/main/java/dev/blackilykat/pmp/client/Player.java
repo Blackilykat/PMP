@@ -815,7 +815,7 @@ public class Player {
 
 		if(shuffle == ShuffleOption.ON) {
 			if(options.size() == 1) {
-				return options.getFirst();
+				return options.get(0);
 			}
 
 			// select any track except the one just played
@@ -827,10 +827,10 @@ public class Player {
 
 			return options.get(selection);
 		} else if(current == -1) {
-			return options.getFirst();
+			return options.get(0);
 		} else if(current == options.size() - 1) {
 			if(repeat == RepeatOption.ALL) {
-				return options.getFirst();
+				return options.get(0);
 			} else {
 				return null;
 			}
@@ -851,10 +851,10 @@ public class Player {
 		int current = options.indexOf(currentTrack);
 
 		if(current == -1) {
-			return options.getLast();
+			return options.get(options.size() - 1);
 		} else if(current == 0) {
 			if(repeat == RepeatOption.ALL) {
-				return options.getLast();
+				return options.get(options.size() - 1);
 			} else {
 				return null;
 			}

@@ -45,6 +45,9 @@ class PMPService : Service() {
 
         ServiceCompat.startForeground(this, 100, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
         Main.main(emptyArray<String>())
+
+        Mutables.init()
+
         return START_NOT_STICKY
     }
 
