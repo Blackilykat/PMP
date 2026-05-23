@@ -31,10 +31,13 @@ import dev.blackilykat.pmp.util.Pair;
 import dev.blackilykat.pmp.util.ScopedValue;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.kc7bfi.jflac.FLACDecoder;
 
 import javax.net.ssl.HttpsURLConnection;
+import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -581,6 +584,30 @@ public class Library {
 			Files.copy(file.toPath(), target);
 			LOGGER.debug("Copied {} to {}", file, target);
 		}
+
+		registerNewTrack(target.toFile());
+		return true;
+	}
+
+	public static boolean addTrack(InputStream is) throws IOException {
+		if(is == null) {
+			throw new IllegalArgumentException("Can't add null track");
+		}
+		BufferedInputStream bis = new BufferedInputStream(is);
+		bis.mark(Integer.MAX_VALUE);
+
+		FLACDecoder flacDecoder = new FLACDecoder(bis);
+		List<Pair<String, String>> metadata = FLACUtil.extractMetadata(flacDecoder.readMetadata());
+
+		Path target = library.toPath().resolve(Track.makeFilename(metadata));
+		if(target.toFile().exists()) {
+			throw new FileAlreadyExistsException(target + " already exists");
+		}
+
+		bis.reset();
+		bis.mark(0);
+
+		Files.copy(bis, target);
 
 		registerNewTrack(target.toFile());
 		return true;

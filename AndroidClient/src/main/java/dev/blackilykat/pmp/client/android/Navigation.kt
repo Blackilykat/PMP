@@ -74,7 +74,7 @@ fun NavController.doNavigate(route: String, selected: MutableIntState) {
 }
 
 @Composable
-fun Navigation() {
+fun Navigation(activity: MainActivity) {
     val selected = rememberSaveable { mutableIntStateOf(1) }
     val navController = rememberNavController()
 
@@ -124,7 +124,7 @@ fun Navigation() {
                 Playback(paddingValues)
             }
             composable("tracklist") {
-                Tracklist(paddingValues)
+                Tracklist(paddingValues, activity)
             }
             composable("filters") {
                 BackHandler { navController.doNavigate("tracklist", selected) }

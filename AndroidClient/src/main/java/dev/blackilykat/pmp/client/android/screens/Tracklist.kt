@@ -36,13 +36,14 @@ import dev.blackilykat.pmp.Order
 import dev.blackilykat.pmp.client.Library
 import dev.blackilykat.pmp.client.Player
 import dev.blackilykat.pmp.client.Track
+import dev.blackilykat.pmp.client.android.MainActivity
 import dev.blackilykat.pmp.client.android.Mutables
 import dev.blackilykat.pmp.client.android.R
 import dev.blackilykat.pmp.client.android.util.BoxedDropdownMenu
 import dev.blackilykat.pmp.client.android.util.BoxedDropdownMenuItem
 
 @Composable
-fun Tracklist(paddingValues: PaddingValues) {
+fun Tracklist(paddingValues: PaddingValues, activity: MainActivity) {
     Surface(modifier = Modifier.padding(bottom = paddingValues.calculateBottomPadding())) {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
@@ -115,9 +116,14 @@ fun Tracklist(paddingValues: PaddingValues) {
                 }
             },
             floatingActionButton = {
-                Button(onClick = {
-                    Player.takeOwnership()
-                }, content = { Text("Take ownership") })
+                FloatingActionButton(onClick = {
+                    activity.addTracksPopup()
+                }) {
+                    Icon(
+                        painter = painterResource(R.drawable.plus),
+                        contentDescription = "Add tracks"
+                    )
+                }
             }
         )
     }
