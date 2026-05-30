@@ -575,6 +575,7 @@ public class Player {
 						synchronized(paused) {
 							if(paused.get()) {
 								paused.wait();
+								continue;
 							}
 						}
 
