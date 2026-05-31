@@ -52,8 +52,6 @@ public class ClientStorage {
 		public StoredMap<String, Track> tracks = new StoredMap<>(String.class, Track.class, this);
 		public StoredList<Header> headers = new StoredList<>(Header.class, this);
 		public StoredList<Filter> filters = new StoredList<>(Filter.class, this);
-		public StoredInt currentFilterID = new StoredInt(this, 0);
-		public StoredInt currentHeaderID = new StoredInt(this, 0);
 		public Stored<String> serverAddress = new Stored<>(String.class, this, "localhost");
 		public StoredInt serverPort = new StoredInt(this, PMPConnection.DEFAULT_MESSAGE_PORT);
 		public StoredInt serverFilePort = new StoredInt(this, PMPConnection.DEFAULT_FILE_PORT);

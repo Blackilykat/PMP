@@ -394,11 +394,10 @@ public class Library {
 
 
 			if(ClientStorage.MAIN.headers.empty()) {
-				ClientStorage.MAIN.headers.add(new Header(0, "N°", "tracknumber"));
-				ClientStorage.MAIN.headers.add(new Header(1, "Title", "title"));
-				ClientStorage.MAIN.headers.add(new Header(2, "Artist", "artist"));
-				ClientStorage.MAIN.headers.add(new Header(3, "Duration", "duration"));
-				ClientStorage.MAIN.currentHeaderID.set(4);
+				ClientStorage.MAIN.headers.add(new Header(ClientIds.randomHeaderId(), "N°", "tracknumber"));
+				ClientStorage.MAIN.headers.add(new Header(ClientIds.randomHeaderId(), "Title", "title"));
+				ClientStorage.MAIN.headers.add(new Header(ClientIds.randomHeaderId(), "Artist", "artist"));
+				ClientStorage.MAIN.headers.add(new Header(ClientIds.randomHeaderId(), "Duration", "duration"));
 			} else {
 				for(Header header : ClientStorage.MAIN.headers.get()) {
 					header.updateType();

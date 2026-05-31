@@ -19,6 +19,7 @@ package dev.blackilykat.pmp.client.gui;
 
 import com.github.weisj.jsvg.view.ViewBox;
 import dev.blackilykat.pmp.Order;
+import dev.blackilykat.pmp.client.ClientIds;
 import dev.blackilykat.pmp.client.ClientStorage;
 import dev.blackilykat.pmp.client.Header;
 import dev.blackilykat.pmp.client.Library;
@@ -312,7 +313,7 @@ public class TracksPanel extends JPanel {
 				return;
 			}
 
-			Header header = new Header(ClientStorage.MAIN.currentHeaderID.getAndIncrement(), label.get(), key.get());
+			Header header = new Header(ClientIds.randomHeaderId(), label.get(), key.get());
 
 
 			Library.addHeader(header);

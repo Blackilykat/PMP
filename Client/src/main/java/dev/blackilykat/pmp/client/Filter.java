@@ -43,7 +43,7 @@ public class Filter {
 	public String key;
 
 	public Filter(String key) {
-		this(ClientStorage.MAIN.currentFilterID.getAndIncrement(), key);
+		this(ClientIds.randomFilterId(), key);
 	}
 
 	@JsonCreator
