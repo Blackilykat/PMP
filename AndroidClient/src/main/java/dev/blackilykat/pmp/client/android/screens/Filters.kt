@@ -23,29 +23,32 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import dev.blackilykat.pmp.client.ClientStorage
 import dev.blackilykat.pmp.client.Filter
 import dev.blackilykat.pmp.client.FilterOption
+import dev.blackilykat.pmp.client.Library
 import dev.blackilykat.pmp.client.android.Mutables
 import dev.blackilykat.pmp.client.android.R
 import dev.blackilykat.pmp.client.android.util.BoxedDropdownMenu
 import dev.blackilykat.pmp.client.android.util.BoxedDropdownMenuItem
-import dev.blackilykat.pmp.client.android.util.TodoPopup
+import sh.calvin.reorderable.ReorderableColumn
 
 
 @Composable
 fun Filters(paddingValues: PaddingValues) {
     Surface(modifier = Modifier.padding(bottom = paddingValues.calculateBottomPadding())) {
+        val selectedFilter by Mutables.selectedFilter
+        val filters by Mutables.filters
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             topBar = {
-                val filters by Mutables.filters
-                val selectedFilter by Mutables.selectedFilter
                 Surface(
                     color = MaterialTheme.colorScheme.surfaceContainer,
                     modifier = Modifier
@@ -84,38 +87,171 @@ fun Filters(paddingValues: PaddingValues) {
                 }
             },
             floatingActionButton = {
-                val todo = TodoPopup()
+                val deletePopupShown = remember { mutableStateOf(false) }
+                val reorderPopupShown = remember { mutableStateOf(false) }
+                val newPopupShown = remember { mutableStateOf(false) }
                 Row {
                     FloatingActionButton(onClick = {
-                        todo.value = true
+                        deletePopupShown.value = true
                     }, content = {
                         Icon(
                             painter = painterResource(R.drawable.delete),
-                            contentDescription = "Delete {}"
+                            contentDescription = "Delete ${selectedFilter?.key}"
                         )
                     })
 
                     Spacer(Modifier.width(5.dp))
 
                     FloatingActionButton(onClick = {
-                        todo.value = true
+                        reorderPopupShown.value = true
                     }, content = {
                         Icon(
-                            painter = painterResource(R.drawable.pencil),
-                            contentDescription = "Edit {}"
+                            painter = painterResource(R.drawable.arrow_up_down_bold),
+                            contentDescription = "Reorder filters"
                         )
                     })
 
                     Spacer(Modifier.width(5.dp))
 
                     FloatingActionButton(onClick = {
-                        todo.value = true
+                        newPopupShown.value = true
                     }, content = {
                         Icon(
                             painter = painterResource(R.drawable.plus),
                             contentDescription = "New filter"
                         )
                     })
+                }
+
+
+                if (deletePopupShown.value) {
+                    AlertDialog(
+                        onDismissRequest = {
+                            deletePopupShown.value = false
+                        },
+                        icon = {
+                            Icon(painter = painterResource(R.drawable.delete), contentDescription = "delete")
+                        },
+                        title = { Text("Delete ${selectedFilter?.key}?") },
+                        text = { Text("Are you sure you want to delete the filter for ${selectedFilter?.key}?") },
+                        confirmButton = {
+                            Button(
+                                onClick = {
+                                    Library.removeFilter(selectedFilter)
+                                    deletePopupShown.value = false
+                                }
+                            ) {
+                                Text("Confirm")
+                            }
+                        },
+                        dismissButton = {
+                            Button(
+                                onClick = {
+                                    deletePopupShown.value = false
+                                }
+                            ) {
+                                Text("Dismiss")
+                            }
+                        }
+                    )
+                }
+
+                var popupText by rememberSaveable { mutableStateOf("") }
+
+                if (newPopupShown.value) {
+                    AlertDialog(
+                        onDismissRequest = {
+                            newPopupShown.value = false
+                        },
+                        icon = {
+                            Icon(painter = painterResource(R.drawable.plus), contentDescription = "create")
+                        },
+                        title = { Text("Add a filter") },
+                        text = {
+                            TextField(
+                                value = popupText,
+                                onValueChange = { popupText = it },
+                                label = { Text("Metadata key") }
+                            )
+                        },
+                        confirmButton = {
+                            Button(
+                                onClick = {
+                                    Library.addFilter(Filter(popupText))
+                                    popupText = ""
+                                    newPopupShown.value = false
+                                }
+                            ) {
+                                Text("Confirm")
+                            }
+                        },
+                        dismissButton = {
+                            Button(
+                                onClick = {
+                                    newPopupShown.value = false
+                                }
+                            ) {
+                                Text("Dismiss")
+                            }
+                        }
+                    )
+                }
+
+                if (reorderPopupShown.value) {
+                    AlertDialog(
+                        onDismissRequest = {
+                            reorderPopupShown.value = false
+                        },
+                        icon = {
+                            Icon(
+                                painter = painterResource(R.drawable.arrow_up_down_bold),
+                                contentDescription = "reorder"
+                            )
+                        },
+                        title = { Text("Reorder filters") },
+                        text = {
+                            ReorderableColumn(
+                                list = filters,
+                                onSettle = { from, to ->
+                                    Library.moveFilter(ClientStorage.MAIN.filters!!.get(from), to)
+                                },
+                            ) { _, item, _ ->
+                                key(item.id) {
+                                    ReorderableItem {
+                                        Surface(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(50.dp)
+                                                .draggableHandle()
+                                                .padding(5.dp)
+                                                .clip(RoundedCornerShape(5.dp))
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.fillMaxHeight(),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(
+                                                    painterResource(R.drawable.drag_horizontal_variant),
+                                                    "Reorder",
+                                                    modifier = Modifier.size(30.dp).padding(end = 5.dp, start = 5.dp),
+                                                )
+                                                Text(item.key)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        confirmButton = {
+                            Button(
+                                onClick = {
+                                    reorderPopupShown.value = false
+                                }
+                            ) {
+                                Text("Close")
+                            }
+                        },
+                    )
                 }
             }
         )

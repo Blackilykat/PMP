@@ -81,7 +81,7 @@ class Mutables {
                 sortingOrder.value = it.order
             }
             Library.EVENT_HEADERS_UPDATED.register { headers.value = it }
-            Library.EVENT_FILTERS_UPDATED.register { filters.value = it }
+            Library.EVENT_FILTERS_UPDATED.register { filters.value = ArrayList(it) }
 
             selectedFilter.value?.eventOptionAdded?.register(selectedFilterAddListener)
             selectedFilter.value?.eventOptionRemoved?.register(selectedFilterRemoveListener)
