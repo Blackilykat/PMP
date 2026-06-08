@@ -81,7 +81,13 @@ class Mutables {
                 sortingOrder.value = it.order
             }
             Library.EVENT_HEADERS_UPDATED.register { headers.value = it }
-            Library.EVENT_FILTERS_UPDATED.register { filters.value = ArrayList(it) }
+            Library.EVENT_FILTERS_UPDATED.register {
+                filters.value = ArrayList(it)
+                if (selectedFilter.value == null) {
+                    selectedFilter.value = it.firstOrNull()
+                    updateSelectedFilterOptions()
+                }
+            }
 
             selectedFilter.value?.eventOptionAdded?.register(selectedFilterAddListener)
             selectedFilter.value?.eventOptionRemoved?.register(selectedFilterRemoveListener)

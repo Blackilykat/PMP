@@ -139,6 +139,8 @@ fun Filters(paddingValues: PaddingValues) {
                                 onClick = {
                                     Library.removeFilter(selectedFilter)
                                     deletePopupShown.value = false
+                                    Mutables.selectedFilter.value = filters.firstOrNull()
+                                    Mutables.updateSelectedFilterOptions()
                                 }
                             ) {
                                 Text("Confirm")
@@ -177,9 +179,12 @@ fun Filters(paddingValues: PaddingValues) {
                         confirmButton = {
                             Button(
                                 onClick = {
-                                    Library.addFilter(Filter(popupText))
+                                    val filter = Filter(popupText)
+                                    Library.addFilter(filter)
                                     popupText = ""
                                     newPopupShown.value = false
+                                    Mutables.selectedFilter.value = filter
+                                    Mutables.updateSelectedFilterOptions()
                                 }
                             ) {
                                 Text("Confirm")
