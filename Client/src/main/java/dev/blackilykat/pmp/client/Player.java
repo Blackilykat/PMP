@@ -125,6 +125,10 @@ public class Player {
 	 */
 	private static long playbackPosition = 0;
 
+	public static boolean isPlaybackOwner() {
+		return !Server.isLoggedIn() || Objects.equals(playbackOwner.get(), Server.deviceId);
+	}
+
 	public static boolean shouldSendControl() {
 		return !DONT_SEND_UPDATES.orElse(false) && Server.isLoggedIn() && playbackOwner.get() != null
 				&& !playbackOwner.get().equals(Server.deviceId);

@@ -18,29 +18,42 @@
 package dev.blackilykat.pmp.client.android
 
 import android.app.Notification
-import android.app.Service
+import android.app.PendingIntent
 import android.content.Intent
 import android.content.pm.ServiceInfo
-import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.session.MediaSession
+import androidx.media3.session.MediaSessionService
 import dev.blackilykat.pmp.client.Main
 
 /**
  * PMP is expected to keep running in the background for playback and to stay connected with the server.
  */
-class PMPService : Service() {
-    override fun onBind(intent: Intent?): IBinder? {
-        return null
-    }
+class PMPService : MediaSessionService() {
+    var session: MediaSession? = null
 
+    @UnstableApi
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        println("PMPService starting")
+
         val notification = NotificationCompat.Builder(this, "serviceNotification")
             .setOngoing(true)
             .setContentTitle("PMP")
             .setContentText("PMP is running in the background.")
             .setCategory(Notification.CATEGORY_SERVICE)
             .setSmallIcon(R.drawable.pmp)
+            .setContentIntent(
+                PendingIntent.getActivity(
+                    this,
+                    0,
+                    Intent(this, MainActivity::class.java).apply {
+                        this.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    },
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+            )
             .build()
 
         ServiceCompat.startForeground(this, 100, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
@@ -48,8 +61,15 @@ class PMPService : Service() {
 
         Mutables.init()
 
-        return START_NOT_STICKY
+        session = initMediaControls(this)
+
+        return super.onStartCommand(intent, flags, startId)
     }
 
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
+
+    // I create and update the notification in MediaControls.kt
+    // The default implementation of this method calls onStartCommand again and crashes the application
+    override fun onUpdateNotification(session: MediaSession, startInForegroundRequired: Boolean) {}
 
 }

@@ -34,7 +34,7 @@ class PMPApplication : Application() {
         Globals.dataRoot = getExternalFilesDir(null)
         Globals.library = File(Globals.dataRoot, "library")
 
-        AudioBackend.backend = AndroidAudioBackend();
+        AudioBackend.backend = AndroidAudioBackend()
 
         Server.EVENT_SHOULD_ASK_PASSWORD.register {
             Server.send(LoginAsNewDeviceRequest("mypassword", "android"))
@@ -46,13 +46,23 @@ class PMPApplication : Application() {
     }
 
     private fun setupChannel() {
+        val service = NotificationChannel(
+            "serviceNotification",
+            "Service Notification",
+            NotificationManager.IMPORTANCE_DEFAULT
+        )
+        service.description = "Notifies you when the app is running in the background"
 
-        val name = "Service notification"
-        val descriptionText = "Notifies you when the app is running in the background"
-        val importance = NotificationManager.IMPORTANCE_DEFAULT
-        val mChannel = NotificationChannel("serviceNotification", name, importance)
-        mChannel.description = descriptionText
+        val media = NotificationChannel(
+            "mediaNotification",
+            "Media Notification",
+            NotificationManager.IMPORTANCE_NONE
+        )
+        media.description = "Allows controlling playback from your notifications"
+
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.createNotificationChannel(mChannel)
+
+        notificationManager.createNotificationChannel(service)
+        notificationManager.createNotificationChannel(media)
     }
 }
