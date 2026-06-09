@@ -75,7 +75,7 @@ fun NavController.doNavigate(route: String, selected: MutableIntState) {
 
 @Composable
 fun Navigation(activity: MainActivity) {
-    val selected = rememberSaveable { mutableIntStateOf(1) }
+    val selected = rememberSaveable { mutableIntStateOf(0) }
     val navController = rememberNavController()
 
     Scaffold(
@@ -115,7 +115,7 @@ fun Navigation(activity: MainActivity) {
         } else paddingValues
         NavHost(
             navController = navController,
-            startDestination = "tracklist",
+            startDestination = "playback",
             enterTransition = { EnterTransition.None },
             exitTransition = { ExitTransition.None },
         ) {
