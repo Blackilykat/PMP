@@ -19,20 +19,20 @@ package dev.blackilykat.pmp.client.android
 
 import android.app.Notification
 import android.app.PendingIntent
+import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.session.MediaSession
-import androidx.media3.session.MediaSessionService
 import dev.blackilykat.pmp.client.Main
 
 /**
  * PMP is expected to keep running in the background for playback and to stay connected with the server.
  */
-class PMPService : MediaSessionService() {
-    var session: MediaSession? = null
+class PMPService : Service() {
+    override fun onBind(intent: Intent?): IBinder? = null
 
     @UnstableApi
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -61,15 +61,8 @@ class PMPService : MediaSessionService() {
 
         Mutables.init()
 
-        session = initMediaControls(this)
+        initMediaControls(this)
 
         return super.onStartCommand(intent, flags, startId)
     }
-
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
-
-    // I create and update the notification in MediaControls.kt
-    // The default implementation of this method calls onStartCommand again and crashes the application
-    override fun onUpdateNotification(session: MediaSession, startInForegroundRequired: Boolean) {}
-
 }

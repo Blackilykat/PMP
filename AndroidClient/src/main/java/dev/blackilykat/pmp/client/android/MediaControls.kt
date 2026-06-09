@@ -32,7 +32,6 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.SimpleBasePlayer
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaSession
-import androidx.media3.session.MediaSessionService
 import androidx.media3.session.MediaStyleNotificationHelper
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
@@ -189,7 +188,7 @@ class PMPPlayer(looper: Looper) : SimpleBasePlayer(looper) {
 }
 
 @UnstableApi
-fun initMediaControls(context: MediaSessionService): MediaSession {
+fun initMediaControls(context: Context) {
     println("Initializing media controls")
 
     val player = PMPPlayer(Looper.getMainLooper())
@@ -218,8 +217,6 @@ fun initMediaControls(context: MediaSessionService): MediaSession {
             update()
         }
     }
-
-    return session
 }
 
 @UnstableApi
