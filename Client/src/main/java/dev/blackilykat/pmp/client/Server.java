@@ -173,6 +173,7 @@ public class Server {
 			} catch(IOException e) {
 				connection = null;
 				LOGGER.error("There was an error connecting to {}:{}", address, port, e);
+				scheduleReconnect();
 			}
 		}
 	}
