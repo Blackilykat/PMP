@@ -78,6 +78,8 @@ fun Navigation(activity: MainActivity) {
     val selected = rememberSaveable { mutableIntStateOf(0) }
     val navController = rememberNavController()
 
+    showDialogs()
+
     Scaffold(
         bottomBar = {
             Column {

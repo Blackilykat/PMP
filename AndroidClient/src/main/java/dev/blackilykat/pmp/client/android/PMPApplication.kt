@@ -21,9 +21,7 @@ import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Intent
-import dev.blackilykat.pmp.client.Server
 import dev.blackilykat.pmp.client.audio.AudioBackend
-import dev.blackilykat.pmp.messages.LoginAsNewDeviceRequest
 import dev.blackilykat.pmp.util.Globals
 import java.io.File
 
@@ -35,10 +33,6 @@ class PMPApplication : Application() {
         Globals.library = File(Globals.dataRoot, "library")
 
         AudioBackend.backend = AndroidAudioBackend()
-
-        Server.EVENT_SHOULD_ASK_PASSWORD.register {
-            Server.send(LoginAsNewDeviceRequest("mypassword", "android"))
-        }
 
         setupChannel()
 

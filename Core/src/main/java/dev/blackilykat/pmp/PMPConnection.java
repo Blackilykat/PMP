@@ -151,6 +151,14 @@ public class PMPConnection {
 		_disconnect();
 	}
 
+	/// Disconnect on the message sending thread as soon as all currently queued messages are sent. Useful to
+	/// disconnect
+	/// without performing network operations on the current thread.
+	public void disconnectSoon(String reason) {
+		LOGGER.warn("Disconnecting soon {}: {}", name, reason);
+		send(new DisconnectMessage());
+	}
+
 	public void disconnect() {
 		LOGGER.warn("Disconnecting {}", name);
 		_disconnect();
@@ -171,7 +179,9 @@ public class PMPConnection {
 		}
 
 		messageReceivingThread.interrupt();
-		messageSendingThread.interrupt();
+		if(!messageSendingThread.equals(Thread.currentThread())) {
+			messageSendingThread.interrupt();
+		}
 		keepaliveTimer.cancel();
 
 		if(wasConnected) {
@@ -204,6 +214,11 @@ public class PMPConnection {
 			try {
 				while(!Thread.interrupted()) {
 					Message message = messageQueue.take();
+
+					if(message instanceof DisconnectMessage) {
+						_disconnect();
+						return;
+					}
 
 					if(message instanceof Request request) {
 						if(request.requestId == null) {

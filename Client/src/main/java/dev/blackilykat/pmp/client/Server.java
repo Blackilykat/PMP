@@ -35,6 +35,7 @@ import dev.blackilykat.pmp.messages.ErrorMessage;
 import dev.blackilykat.pmp.messages.GetActionsRequest;
 import dev.blackilykat.pmp.messages.GetActionsResponse;
 import dev.blackilykat.pmp.messages.LoginAsExistingDeviceRequest;
+import dev.blackilykat.pmp.messages.LoginAsNewDeviceRequest;
 import dev.blackilykat.pmp.messages.Message;
 import dev.blackilykat.pmp.util.Pair;
 import dev.blackilykat.pmp.util.ScopedValue;
@@ -70,16 +71,14 @@ public class Server {
 	public static final EventSource<Void> EVENT_LOGGED_IN = new EventSource<>();
 	public static final EventSource<Void> EVENT_DISCONNECTED = new EventSource<>();
 	public static final EventSource<Void> EVENT_SHOULD_ASK_PASSWORD = new EventSource<>();
-
-	private static final ScopedValue<Boolean> SHOULD_NOT_RECONNECT = ScopedValue.newInstance();
 	private static final ScopedValue<Boolean> HANDLING_ACTION = ScopedValue.newInstance();
 	private static final long RECONNECT_COOLDOWN_MS = 10_000;
-
 	private static final Logger LOGGER = LogManager.getLogger(Server.class);
 	private static final Timer RECONNECT_TIMER = new Timer("Server reconnect timer");
 	private static final Object connectionLock = new Object();
 	public static Integer deviceId = null;
 	public static int lastActionId = -1;
+	private static boolean shouldNotReconnect = false;
 	private static PMPConnection connection = null;
 	private static SSLContext sslContext = null;
 
@@ -152,7 +151,8 @@ public class Server {
 
 					EVENT_DISCONNECTED.call(null);
 					deviceId = null;
-					if(SHOULD_NOT_RECONNECT.orElse(false)) {
+					if(shouldNotReconnect) {
+						shouldNotReconnect = false;
 						return;
 					}
 
@@ -180,17 +180,22 @@ public class Server {
 
 	public static void disconnectWithoutRetrying() {
 		if(connection != null) {
-			ScopedValue.where(SHOULD_NOT_RECONNECT, true).run(() -> {
-				connection.disconnect();
-			});
+			shouldNotReconnect = true;
+			connection.disconnect();
 		}
 	}
 
 	public static void disconnectWithoutRetrying(String reason) {
 		if(connection != null) {
-			ScopedValue.where(SHOULD_NOT_RECONNECT, true).run(() -> {
-				connection.disconnect(reason);
-			});
+			shouldNotReconnect = true;
+			connection.disconnect(reason);
+		}
+	}
+
+	public static void disconnectSoonWithoutRetrying(String reason) {
+		if(connection != null) {
+			shouldNotReconnect = true;
+			connection.disconnectSoon(reason);
 		}
 	}
 
@@ -282,6 +287,20 @@ public class Server {
 			conn.setDoOutput(true);
 		}
 		return conn;
+	}
+
+	/// Method called from UI once the user responds after [#EVENT_SHOULD_ASK_PASSWORD] is called
+	public static void submitPassword(String password) {
+		if(isLoggedIn()) {
+			throw new IllegalStateException("Already logged in");
+		}
+
+		Integer deviceId = ClientStorage.SENSITIVE.deviceID.get();
+		if(deviceId == null) {
+			Server.send(new LoginAsNewDeviceRequest(password, "host"));
+		} else {
+			Server.send(LoginAsExistingDeviceRequest.newWithPassword(password, deviceId));
+		}
 	}
 
 	private static class ActionHandlingThread extends Thread {

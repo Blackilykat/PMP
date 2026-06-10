@@ -57,6 +57,8 @@ class Mutables {
         val albumArt: MutableState<ByteArray?> = mutableStateOf(null)
         val position = mutableLongStateOf(0)
 
+        val shouldAskPassword = mutableStateOf(false)
+
         fun init() {
             headers.value = ClientStorage.MAIN.headers.get()
             filters.value = ClientStorage.MAIN.filters.get()
@@ -88,6 +90,8 @@ class Mutables {
                     updateSelectedFilterOptions()
                 }
             }
+
+            Server.EVENT_SHOULD_ASK_PASSWORD.register { shouldAskPassword.value = true }
 
             selectedFilter.value?.eventOptionAdded?.register(selectedFilterAddListener)
             selectedFilter.value?.eventOptionRemoved?.register(selectedFilterRemoveListener)

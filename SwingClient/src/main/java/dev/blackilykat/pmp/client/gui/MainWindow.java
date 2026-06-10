@@ -17,13 +17,10 @@
 
 package dev.blackilykat.pmp.client.gui;
 
-import dev.blackilykat.pmp.client.ClientStorage;
 import dev.blackilykat.pmp.client.Main;
 import dev.blackilykat.pmp.client.Server;
 import dev.blackilykat.pmp.client.gui.util.GUIUtils;
 import dev.blackilykat.pmp.client.gui.util.ThemedLabel;
-import dev.blackilykat.pmp.messages.LoginAsExistingDeviceRequest;
-import dev.blackilykat.pmp.messages.LoginAsNewDeviceRequest;
 import dev.blackilykat.pmp.util.Shutdown;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -132,14 +129,7 @@ public class MainWindow extends JFrame {
 				return;
 			}
 
-			String password = new String(passwordField.getPassword());
-
-			Integer deviceId = ClientStorage.SENSITIVE.deviceID.get();
-			if(deviceId == null) {
-				Server.send(new LoginAsNewDeviceRequest(password, "host"));
-			} else {
-				Server.send(LoginAsExistingDeviceRequest.newWithPassword(password, deviceId));
-			}
+			Server.submitPassword(new String(passwordField.getPassword()));
 		});
 	}
 
