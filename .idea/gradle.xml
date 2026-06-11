@@ -6,7 +6,6 @@
       <GradleProjectSettings>
         <option name="testRunner" value="CHOOSE_PER_TEST" />
         <option name="externalProjectPath" value="$PROJECT_DIR$" />
-        <option name="gradleHome" value="/usr/share/java/gradle" />
         <option name="gradleJvm" value="#GRADLE_LOCAL_JAVA_HOME" />
         <option name="modules">
           <set>
@@ -14,6 +13,7 @@
             <option value="$PROJECT_DIR$/AndroidClient" />
             <option value="$PROJECT_DIR$/Client" />
             <option value="$PROJECT_DIR$/Core" />
+            <option value="$PROJECT_DIR$/QtClient" />
             <option value="$PROJECT_DIR$/Server" />
             <option value="$PROJECT_DIR$/SwingClient" />
           </set>

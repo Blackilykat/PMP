@@ -1,0 +1,52 @@
+plugins {
+    id 'application'
+}
+
+group = 'dev.blackilykat'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+
+    maven {
+        url 'https://jitpack.io'
+    }
+}
+
+dependencies {
+    implementation project(':Core')
+    implementation project(':Client')
+
+    implementation platform('org.apache.logging.log4j:log4j-bom:2.25.1')
+    implementation 'org.apache.logging.log4j:log4j-slf4j-impl'
+
+    implementation 'com.fasterxml.jackson.core:jackson-core:2.20.0'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.20.0'
+    implementation 'com.fasterxml.jackson.module:jackson-module-parameter-names:2.20.0'
+
+    implementation 'com.github.blackilykat:mpris-java:cc27ccc2605128b38bca00706f17776263c4bdb3'
+
+    implementation 'io.qtjambi:qtjambi:6.11.1'
+    implementation 'io.qtjambi:qtjambi-qml:6.11.1'
+    implementation 'io.qtjambi:qtjambi-quick:6.11.1'
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'dev.blackilykat.pmp.client.qt.MainWindow'
+    }
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    exclude 'META-INF/*.RSA', 'META-INF/*.SF','META-INF/*.DSA'
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    dependsOn('dependencies')
+}
+
+gradle.projectsEvaluated {
+    tasks.withType(JavaCompile).tap {
+        configureEach {
+            options.compilerArgs << "-parameters"
+        }
+    }
+}
