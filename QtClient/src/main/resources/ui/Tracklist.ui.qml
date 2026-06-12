@@ -30,7 +30,7 @@ Rectangle {
 
 
             onReleased: {
-                console.log(tracklist.tracks)
+                console.log(headerWidths[1])
             }
         }
     }
@@ -53,16 +53,46 @@ Rectangle {
 
             model: tracklistModel
 
-            delegate: Row {
-                Repeater {
-                    id: thedata
+            delegate: Item {
+                height: row.height
+                width: list.width
+                Row {
+                    id: row
 
-                    model: metadata
+                    Item {
+                        width: 40
+                        height: parent.height
 
-                    delegate: Text {
-                        text: value
-                        color: Style.text
-                        font.pixelSize: 16
+                        Icon {
+                            padding: 7
+                            visible: playing
+                            height: parent.height
+                            width: height * 0.6666
+                            source: "icons/play.svg"
+                        }
+                    }
+
+                    Repeater {
+                        id: thedata
+
+                        model: metadata
+
+                        delegate: Text {
+                            elide: Text.ElideRight
+                            text: value
+                            width: headerWidths[index]
+                            color: Style.text
+                            font.pixelSize: 22
+                            horizontalAlignment: rightAligned ? Text.AlignRight : Text.AlignLeft
+                            padding: 10
+                        }
+                    }
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    onReleased: {
+                        Interaction.playTrack(filename)
                     }
                 }
             }

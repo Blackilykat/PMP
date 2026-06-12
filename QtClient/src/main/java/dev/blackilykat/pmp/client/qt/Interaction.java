@@ -17,14 +17,21 @@
 
 package dev.blackilykat.pmp.client.qt;
 
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import dev.blackilykat.pmp.RepeatOption;
 import dev.blackilykat.pmp.ShuffleOption;
+import dev.blackilykat.pmp.client.ClientStorage;
 import dev.blackilykat.pmp.client.Player;
+import dev.blackilykat.pmp.client.Track;
 import io.qt.core.QObject;
 
 /// This class serves as a bridge between the UI and the logic.
 /// JS snippets from QML call these methods which perform the requested action.
 class Interaction extends QObject {
+	public final static Logger LOGGER = LogManager.getLogger(Interaction.class);
 	public void playPause() {
 		Player.playPause();
 	}
@@ -56,5 +63,14 @@ class Interaction extends QObject {
 	public void seek(double percent) {
 		percent = Math.clamp(percent, 0, 1);
 		Player.seek((long) (Player.getTrack().getDurationSeconds() * 1000 * percent));
+	}
+
+	public void playTrack(String filename) {
+		Track track = ClientStorage.MAIN.tracks.get(filename);
+		if(track == null) {
+			LOGGER.warn("QML tried to play nonexistent track {}", filename);
+			return;
+		}
+		Player.play(track);
 	}
 }

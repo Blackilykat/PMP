@@ -26,73 +26,73 @@ import java.util.List;
 
 
 abstract class ReplaceableListModel<T> extends QAbstractListModel {
-		protected final List<T> items = new ArrayList<>();
+	protected final List<T> items = new ArrayList<>();
 
-		public ReplaceableListModel(QObject parent) {
-			super(parent);
+	public ReplaceableListModel(QObject parent) {
+		super(parent);
+	}
+
+	@Override
+	public int rowCount(@NonNull QModelIndex arg0) {
+		return items.size();
+	}
+
+	public void add(T item, int index) {
+		beginInsertRows(new QModelIndex(), index, index);
+		items.add(index, item);
+		endInsertRows();
+	}
+
+	public void addMany(List<T> newItems, int dest, int src, int count) {
+		beginInsertRows(new QModelIndex(), dest, dest + count);
+		for(int i = 0; i < count; i++) {
+			items.add(dest + i, newItems.get(src + i));
 		}
+		endInsertRows();
+	}
 
-		@Override
-		public int rowCount(@NonNull QModelIndex arg0) {
-			return items.size();
+	public void remove(int index, int count) {
+		beginRemoveRows(new QModelIndex(), index, index + count - 1);
+		for(int i = 0; i < count; i++) {
+			items.remove(index);
 		}
+		endRemoveRows();
+	}
 
-		public void add(T item, int index) {
-			beginInsertRows(new QModelIndex(), index, index);
-			items.add(index, item);
-			endInsertRows();
-		}
-
-		public void addMany(List<T> newItems, int dest, int src, int count) {
-			beginInsertRows(new QModelIndex(), dest, dest + count);
-			for(int i = 0; i < count; i++) {
-				items.add(dest + i, newItems.get(src + i));
+	public void replace(List<T> newItems) {
+		int i = 0;
+		int j = 0;
+		for(; i < items.size(); i++, j++) {
+			if(j >= newItems.size()) {
+				remove(i, items.size() - i);
+				break;
 			}
-			endInsertRows();
-		}
 
-		public void remove(int index, int count) {
-			beginRemoveRows(new QModelIndex(), index, index + count - 1);
-			for(int i = 0; i < count; i++) {
-				items.remove(index);
+			if(items.get(i) == newItems.get(j)) {
+				continue;
 			}
-			endRemoveRows();
-		}
 
-		public void replace(List<T> newItems) {
-			int i = 0;
-			int j = 0;
-			for(; i < items.size(); i++, j++) {
-				if(j >= newItems.size()) {
-					remove(i, items.size() - i);
-					break;
+			T newItem = newItems.get(j);
+			if(items.contains(newItem)) {
+				while(i < items.size() && items.get(i) != newItem) {
+					remove(i, 1);
 				}
-
-				if(items.get(i) == newItems.get(j)) {
-					continue;
-				}
-
-				T newItem = newItems.get(j);
-				if(items.contains(newItem)) {
-					while(i < items.size() && items.get(i) != newItem) {
-						remove(i, 1);
-					}
-					continue;
-				}
-
-				add(newItem, i);
+				continue;
 			}
 
-			if(j < newItems.size()) {
-				addMany(newItems, items.size(), j, newItems.size() - j);
-			}
+			add(newItem, i);
 		}
 
-		public void clear() {
-			if(items.isEmpty()) return;
-			beginRemoveRows(new QModelIndex(), 0, items.size() - 1);
-			items.clear();
-			endRemoveRows();
+		if(j < newItems.size()) {
+			addMany(newItems, items.size(), j, newItems.size() - j);
 		}
 	}
+
+	public void clear() {
+		if(items.isEmpty()) return;
+		beginRemoveRows(new QModelIndex(), 0, items.size() - 1);
+		items.clear();
+		endRemoveRows();
+	}
+}
 
