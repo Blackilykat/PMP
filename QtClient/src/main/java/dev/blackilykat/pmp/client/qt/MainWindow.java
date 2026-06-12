@@ -17,20 +17,27 @@
 
 package dev.blackilykat.pmp.client.qt;
 
+import io.qt.NonNull;
+import io.qt.core.QByteArray;
 import io.qt.core.QCoreApplication;
+import io.qt.core.QModelIndex;
 import io.qt.core.QObject;
 import io.qt.core.QUrl;
+import io.qt.core.QVariant;
+import io.qt.gui.QGuiApplication;
 import io.qt.qml.QQmlApplicationEngine;
-import io.qt.widgets.QApplication;
-
+import io.qt.qml.QQmlContext;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import dev.blackilykat.pmp.client.Library;
 import dev.blackilykat.pmp.client.Main;
 import dev.blackilykat.pmp.client.Player;
 import dev.blackilykat.pmp.client.Server;
+import dev.blackilykat.pmp.client.Track;
 import dev.blackilykat.pmp.util.Shutdown;
 
 public class MainWindow {
@@ -40,7 +47,7 @@ public class MainWindow {
 	}
 
 	static void main(String[] args) {
-		QApplication.initialize(args);
+		QGuiApplication.initialize(args);
 
 		QQmlApplicationEngine engine = new QQmlApplicationEngine();
 
@@ -54,30 +61,32 @@ public class MainWindow {
 
 		QObject root = engine.rootObjects().getFirst();
 
-		registerPropertyUpdates(root); 
+		registerPropertyUpdates(root, engine.rootContext()); 
 
 		Main.main(args);
 
 		Server.EVENT_SHOULD_ASK_PASSWORD.register(_ -> {
+			Server.submitPassword("mypassword");
 		});
 
-		QApplication.exec();
+		QGuiApplication.exec();
 
 		engine.dispose();
 		engine = null;
 
-		QApplication.shutdown();
+		QGuiApplication.shutdown();
 
 		Shutdown.shutdown(true);
 	}
 
-	private static void registerPropertyUpdates(QObject root) {
+	private static void registerPropertyUpdates(QObject root, QQmlContext context) {
 		QObject playbar = root.findChild("playbar");
 
 		if(playbar == null) {
 			LOGGER.warn("Could not find playbar QML object");
 		} else {
 			Player.EVENT_TRACK_CHANGE.register(event -> {
+				if(event.track() == null) return;
 				playbar.setProperty("title", event.track().getTitle());
 				playbar.setProperty("artists", event.track().getArtists().stream().collect(Collectors.joining(", ")));
 
@@ -104,7 +113,34 @@ public class MainWindow {
 				playbar.setProperty("repeat", repeat.toString());
 			});
 		}
+
+		TrackListModel trackListModel = new TrackListModel(QGuiApplication.instance());
+		context.setContextProperty("tracklistModel", new QVariant(trackListModel));
+
+		Library.EVENT_SELECTED_TRACKS_UPDATED.register(event -> {
+			trackListModel.replace(event.newSelection());
+		});
+
 	}
 
-	
+	private static class TrackListModel extends ReplaceableListModel<Track> {
+		public static final int ROLE_TITLE = 0x0101;
+
+		public TrackListModel(QObject parent) {
+			super(parent);
+		}
+
+		@Override
+		public Map<Integer, QByteArray> roleNames() {
+			return Map.of(
+				ROLE_TITLE, new QByteArray("title")
+			);
+		}
+
+		@Override
+		public Object data(@NonNull QModelIndex arg0, int arg1) {
+			return new QVariant(items.get(arg0.row()).getTitle());
+		}
+	}
+
 }

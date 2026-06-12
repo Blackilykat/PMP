@@ -15,16 +15,20 @@ Window {
         buttonText: Style.text
     }
 
-    property string test: "hi"
-
     visible: true
     title: "PMP"
 
-    Text {
-        id: whatever
-        text: root.test
-
+    Tracklist {
+        id: tracklist
+        objectName: "tracklist"
+        anchors {
+            top: parent.top
+            left: parent.left
+            right: parent.right
+            bottom: playbar.top
+        }
     }
+
     Playbar {
         id: playbar
         objectName: "playbar"
