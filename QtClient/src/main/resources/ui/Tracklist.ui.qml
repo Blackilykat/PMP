@@ -53,10 +53,18 @@ Rectangle {
 
             model: tracklistModel
 
-            delegate: Text {
-                text: title
-                color: Style.text
-                font.pixelSize: 24
+            delegate: Row {
+                Repeater {
+                    id: thedata
+
+                    model: metadata
+
+                    delegate: Text {
+                        text: value
+                        color: Style.text
+                        font.pixelSize: 16
+                    }
+                }
             }
         }
 
