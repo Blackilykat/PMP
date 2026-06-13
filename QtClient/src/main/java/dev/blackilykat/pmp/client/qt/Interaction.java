@@ -73,4 +73,17 @@ class Interaction extends QObject {
 		}
 		Player.play(track);
 	}
+
+	public void resizeHeader(int id, double delta) {
+		for(var item : Tracklist.headerListModel.items) {
+			if(item.id != id) continue;
+
+			int newWidth = Math.max(0, item.width + (int) delta);
+
+			item.setWidth(newWidth);
+			QtStorage.MAIN.headerWidths.put(id, newWidth);
+
+			break;
+		}
+	}
 }

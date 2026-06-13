@@ -41,19 +41,45 @@ Rectangle {
                         bottomPadding: 10
 
 
-                    MouseArea {
-                        anchors.fill: parent
+                        MouseArea {
+                            anchors.fill: parent
 
 
-                        onReleased: {
-                            console.log(headerWidth)
+                            onReleased: {
+                                console.log(headerWidth)
+                            }
                         }
-                    }
                     }
                     Rectangle {
                         height: parent.height
                         width: 20
-                        color: "#00000000"
+                        color: mousearea.pressed ? Style.clicked : mousearea.containsMouse ? Style.hover : "#00000000"
+
+                        Rectangle {
+                            color: Style.text
+                            width: 2
+
+                            anchors {
+                                left: parent.left
+                                leftMargin: (parent.width / 2) - (width / 2)
+                                top: parent.top
+                                topMargin: 10
+                                bottom: parent.bottom
+                                bottomMargin: 10
+                            }
+                        }
+
+                        MouseArea {
+                            id: mousearea
+                            anchors.fill: parent
+                            hoverEnabled: true
+
+                            onPositionChanged: e => {
+                                if(pressed) {
+                                    Interaction.resizeHeader(headerId, e.x - (width / 2));
+                                }
+                            }
+                        }
                     }
 
                 }

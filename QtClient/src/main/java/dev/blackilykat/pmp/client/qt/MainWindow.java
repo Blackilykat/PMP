@@ -30,16 +30,21 @@ import io.qt.qml.QQmlContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.IOException;
 import java.util.stream.Collectors;
 
 public class MainWindow {
 	public final static Logger LOGGER = LogManager.getLogger(MainWindow.class);
 
-	public MainWindow() {
-	}
-
 	static void main(String[] args) {
 		Main.main(args);
+
+		try {
+			QtStorage.load();
+		} catch(IOException e) {
+			LOGGER.error("Failed to load QT storage", e);
+			Shutdown.shutdown(true);
+		}
 
 		QGuiApplication.initialize(args);
 
