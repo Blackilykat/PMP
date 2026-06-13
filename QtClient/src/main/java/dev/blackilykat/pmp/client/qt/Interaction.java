@@ -21,9 +21,12 @@ package dev.blackilykat.pmp.client.qt;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import dev.blackilykat.pmp.Order;
 import dev.blackilykat.pmp.RepeatOption;
 import dev.blackilykat.pmp.ShuffleOption;
 import dev.blackilykat.pmp.client.ClientStorage;
+import dev.blackilykat.pmp.client.Header;
+import dev.blackilykat.pmp.client.Library;
 import dev.blackilykat.pmp.client.Player;
 import dev.blackilykat.pmp.client.Track;
 import io.qt.core.QObject;
@@ -85,5 +88,27 @@ class Interaction extends QObject {
 
 			break;
 		}
+	}
+
+	public void sortByHeader(int id) {
+		Header current = Library.getSortingHeader();
+		if(current.id == id) {
+			Library.setSorting(current, switch(Library.getSortingOrder()) {
+				case ASCENDING -> Order.DESCENDING;
+				case DESCENDING -> Order.ASCENDING;
+			});
+			return;
+		}
+
+
+		for(var header : ClientStorage.MAIN.headers.get()) {
+			if(header.id != id) continue;
+
+			Library.setSorting(header, Order.ASCENDING);
+
+			return;
+		}
+
+		LOGGER.warn("QML tried to sort by nonexistent header {}", id);
 	}
 }

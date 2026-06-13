@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Shapes
 
 Rectangle {
     id: tracklist
@@ -30,23 +31,72 @@ Rectangle {
                 model: trackHeadersModel
 
                 delegate: Row {
-                    Text {
-                        elide: Text.ElideRight
-                        text: name
+                    Rectangle {
                         width: headerWidth
-                        color: Style.text
-                        font.pixelSize: 22
-                        horizontalAlignment: rightAligned ? Text.AlignRight : Text.AlignLeft
-                        topPadding: 10
-                        bottomPadding: 10
-
+                        height: header.height
+                        color: headerMouseArea.pressed ? Style.clicked : headerMouseArea.containsMouse ? Style.hover : "#00000000"
+                        Text {
+                            elide: Text.ElideRight
+                            text: name
+                            color: Style.text
+                            font.pixelSize: 22
+                            horizontalAlignment: rightAligned ? Text.AlignRight : Text.AlignLeft
+                            topPadding: 10
+                            bottomPadding: 10
+                            anchors.fill: parent
+                        }
 
                         MouseArea {
+                            id: headerMouseArea
                             anchors.fill: parent
+                            hoverEnabled: true
 
+                            onClicked: {
+                                Interaction.sortByHeader(headerId);
+                            }
+                        }
 
-                            onReleased: {
-                                console.log(headerWidth)
+                        Shape {
+                            id: descendingTriangle
+                            width: 10
+                            height: 6
+                            visible: sorting == "DESCENDING"
+
+                            anchors {
+                                horizontalCenter: parent.horizontalCenter
+                                top: parent.top
+                                topMargin: 5
+                            }
+                            ShapePath {
+                                startX: descendingTriangle.width / 2
+                                startY: 0
+                                fillColor: Style.text
+                                strokeWidth: 0
+                                PathLine { x: descendingTriangle.width; y: descendingTriangle.height }
+                                PathLine { x: 0; y: descendingTriangle.height }
+                                PathLine { x: descendingTriangle.width / 2; y: 0 }
+                            }
+                        }
+
+                        Shape {
+                            id: ascendingTriangle
+                            width: 10
+                            height: 6
+                            visible: sorting == "ASCENDING"
+
+                            anchors {
+                                horizontalCenter: parent.horizontalCenter
+                                bottom: parent.bottom
+                                bottomMargin: 5
+                            }
+                            ShapePath {
+                                startX: descendingTriangle.width / 2
+                                startY: descendingTriangle.height
+                                fillColor: Style.text
+                                strokeWidth: 0
+                                PathLine { x: descendingTriangle.width; y: 0 }
+                                PathLine { x: 0; y: 0 }
+                                PathLine { x: descendingTriangle.width / 2; y: descendingTriangle.height }
                             }
                         }
                     }

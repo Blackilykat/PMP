@@ -20,7 +20,9 @@ package dev.blackilykat.pmp.client.qt;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
+import dev.blackilykat.pmp.Order;
 import dev.blackilykat.pmp.client.ClientStorage;
 import dev.blackilykat.pmp.client.Header;
 import dev.blackilykat.pmp.client.Library;
@@ -117,6 +119,7 @@ class Tracklist {
 		public static final int ROLE_RIGHT_ALIGNED = 0x0102;
 		public static final int ROLE_WIDTH = 0x0103;
 		public static final int ROLE_ID = 0x0104;
+		public static final int ROLE_SORTING = 0x0105;
 
 		public TrackHeaderListModel(QObject parent) {
 			super(parent);
@@ -127,6 +130,9 @@ class Tracklist {
 		}
 
 		public void update() {
+			Header sortingHeader = Library.getSortingHeader();
+			Order sortingOrder = Library.getSortingOrder();
+
 			replace(ClientStorage.MAIN.headers.get().stream().map(header -> {
 				Integer width = QtStorage.MAIN.headerWidths.get(header.id);
 
@@ -139,14 +145,14 @@ class Tracklist {
 					header.id,
 					header.getLabel(),
 					width,
-					Tracklist.RIGHT_ALIGNED_TYPES.contains(header.type)
+					Tracklist.RIGHT_ALIGNED_TYPES.contains(header.type),
+					header == sortingHeader ? sortingOrder : null
 				);
 
 				return obj;
 			}).toList());
 
 			for(int i = 0; i < items.size(); i++) {
-
 				var obj = items.get(i);
 
 				final int j = i;
@@ -154,7 +160,23 @@ class Tracklist {
 				obj.widthChanged.connect(() -> {
 					dataChanged.emit(index(j, 0), index(j, 0));
 				});
+
+				obj.sortingChanged.connect(() -> {
+					dataChanged.emit(index(j, 0), index(j, 0));
+				});
 			}
+
+			Library.EVENT_SORTING_HEADER_UPDATED.register(event -> {
+				for(var item : items) {
+					if(item.sorting != null && item.id != event.header().id) {
+						item.setSorting(null);
+					}
+
+					if(item.id == event.header().id) {
+						item.setSorting(event.order());
+					}
+				}
+			});
 		}
 
 		@Override
@@ -165,6 +187,7 @@ class Tracklist {
 				case ROLE_RIGHT_ALIGNED -> row.rightAligned;
 				case ROLE_WIDTH -> row.width;
 				case ROLE_ID -> row.id;
+				case ROLE_SORTING -> Objects.toString(row.sorting);
 				default -> new QVariant();
 			};
 		}
@@ -175,7 +198,8 @@ class Tracklist {
 				ROLE_NAME, new QByteArray("name"),
 				ROLE_RIGHT_ALIGNED, new QByteArray("rightAligned"),
 				ROLE_WIDTH, new QByteArray("headerWidth"),
-				ROLE_ID, new QByteArray("headerId")
+				ROLE_ID, new QByteArray("headerId"),
+				ROLE_SORTING, new QByteArray("sorting")
 			);
 		}
 	}
@@ -233,17 +257,25 @@ class Tracklist {
 
 	public static class TrackHeaderObject extends QObject {
 		public final Signal0 widthChanged = new Signal0();
+		public final Signal0 sortingChanged = new Signal0();
 
 		public int id;
 		public String name;
 		public int width;
 		public boolean rightAligned;
+		public Order sorting;
 
-		public TrackHeaderObject(int id, String name, int width, boolean rightAligned) {
+		public TrackHeaderObject(int id, String name, int width, boolean rightAligned, Order sorting) {
 			this.id = id;
 			this.name = name;
 			this.width = width;
 			this.rightAligned = rightAligned;
+			this.sorting = sorting;
+		}
+
+		public void setSorting(Order sorting) {
+			this.sorting = sorting;
+			sortingChanged.emit();
 		}
 
 		public void setWidth(int width) {
