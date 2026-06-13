@@ -6,10 +6,12 @@ Rectangle {
     id: tracklist
     color: Style.tracklistBackground
 
+    property real playIconWidth: 40
+
     Rectangle {
         id: header
         color: Style.panelBackground
-        height: 400
+        height: 50
         z: 1
         anchors {
             top: parent.top
@@ -17,20 +19,44 @@ Rectangle {
             right: parent.right
         }
 
+        Row {
+            Rectangle {
+                width: tracklist.playIconWidth
+                height: parent.height
+                color: "#00000000"
+            }
 
-        Text {
-            text: "Header"
-            color: Style.text
+            Repeater {
+                model: trackHeadersModel
 
-            font.pixelSize: 100
-        }
+                delegate: Row {
+                    Text {
+                        elide: Text.ElideRight
+                        text: name
+                        width: headerWidth
+                        color: Style.text
+                        font.pixelSize: 22
+                        horizontalAlignment: rightAligned ? Text.AlignRight : Text.AlignLeft
+                        topPadding: 10
+                        bottomPadding: 10
 
-        MouseArea {
-            anchors.fill: parent
+
+                    MouseArea {
+                        anchors.fill: parent
 
 
-            onReleased: {
-                console.log(headerWidths[1])
+                        onReleased: {
+                            console.log(headerWidth)
+                        }
+                    }
+                    }
+                    Rectangle {
+                        height: parent.height
+                        width: 20
+                        color: "#00000000"
+                    }
+
+                }
             }
         }
     }
@@ -60,7 +86,7 @@ Rectangle {
                     id: row
 
                     Item {
-                        width: 40
+                        width: tracklist.playIconWidth
                         height: parent.height
 
                         Icon {
@@ -77,14 +103,31 @@ Rectangle {
 
                         model: metadata
 
-                        delegate: Text {
-                            elide: Text.ElideRight
-                            text: value
-                            width: headerWidths[index]
-                            color: Style.text
-                            font.pixelSize: 22
-                            horizontalAlignment: rightAligned ? Text.AlignRight : Text.AlignLeft
-                            padding: 10
+                        delegate: Row {
+                            Text {
+                                id: rowtext
+                                elide: Text.ElideRight
+                                text: value
+                                width: trackHeadersModel.get(index).headerWidth
+                                color: Style.text
+                                font.pixelSize: 22
+                                horizontalAlignment: rightAligned ? Text.AlignRight : Text.AlignLeft
+                                topPadding: 10
+                                bottomPadding: 10
+
+                                // A binding would be better, but idk how to do that and I've spent enough hours on this already
+                                Connections {
+                                    target: trackHeadersModel
+                                    function onDataChanged() {
+                                        rowtext.width = trackHeadersModel.get(index).headerWidth
+                                    }
+                                }
+                            }
+                            Rectangle {
+                                color: "#00000000"
+                                width: 20
+                                height: parent.height
+                            }
                         }
                     }
                 }

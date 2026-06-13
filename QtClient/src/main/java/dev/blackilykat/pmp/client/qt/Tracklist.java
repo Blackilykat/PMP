@@ -28,7 +28,6 @@ import dev.blackilykat.pmp.client.Player;
 import dev.blackilykat.pmp.client.Track;
 import io.qt.NonNull;
 import io.qt.core.QByteArray;
-import io.qt.core.QList;
 import io.qt.core.QModelIndex;
 import io.qt.core.QObject;
 import io.qt.core.QVariant;
@@ -52,13 +51,9 @@ class Tracklist {
 
 		TrackListModel trackListModel = new TrackListModel(QGuiApplication.instance());
 		context.setContextProperty("tracklistModel", new QVariant(trackListModel));
-		context.setContextProperty("trackHeadersModel", new QVariant(new TrackHeaderListModel(QGuiApplication.instance())));
-		QList<Integer> headerWidths = new QList<>(Integer.class);
-		ClientStorage.MAIN.headers.get().forEach(header -> {
-			headerWidths.add(Tracklist.INITIAL_HEADER_WIDTHS.get(header.type));
-		});
 
-		context.setContextProperty("headerWidths", headerWidths);
+		TrackHeaderListModel headerListModel = new TrackHeaderListModel(QGuiApplication.instance());
+		context.setContextProperty("trackHeadersModel", new QVariant(headerListModel));
 
 		trackListModel.replace(Library.getSelectedTracks());
 		Library.EVENT_SELECTED_TRACKS_UPDATED.register(event -> {
@@ -116,24 +111,54 @@ class Tracklist {
 	}
 
 	private static class TrackHeaderListModel extends ReplaceableListModel<TrackHeaderObject> {
-		public static final int ROLE_HEADER = 0x0101;
+		public static final int ROLE_NAME = 0x0101;
+		public static final int ROLE_RIGHT_ALIGNED = 0x0102;
+		public static final int ROLE_WIDTH = 0x0103;
 
 		public TrackHeaderListModel(QObject parent) {
 			super(parent);
 
 			replace(ClientStorage.MAIN.headers.get().stream().map(header -> {
-				return new TrackHeaderObject(header.getLabel(), Tracklist.RIGHT_ALIGNED_TYPES.contains(header.type));
+				var obj = new TrackHeaderObject(
+					header.getLabel(),
+					Tracklist.INITIAL_HEADER_WIDTHS.get(header.type),
+					Tracklist.RIGHT_ALIGNED_TYPES.contains(header.type)
+				);
+
+
+				return obj;
 			}).toList());
+
+			for(int i = 0; i < items.size(); i++) {
+
+				var obj = items.get(i);
+
+				final int j = i;
+
+				obj.widthChanged.connect(() -> {
+					dataChanged.emit(index(j, 0), index(j, 0));
+				});
+			}
 		}
 
 		@Override
 		public Object data(@NonNull QModelIndex arg0, int arg1) {
-			return new QVariant(items.get(arg0.row()));
+			var row = items.get(arg0.row());
+			return switch(arg1) {
+				case ROLE_NAME -> row.name;
+				case ROLE_RIGHT_ALIGNED -> row.rightAligned;
+				case ROLE_WIDTH -> row.width;
+				default -> new QVariant();
+			};
 		}
 
 		@Override
 		public Map<Integer, QByteArray> roleNames() {
-			return Map.of(ROLE_HEADER, new QByteArray("header"));
+			return Map.of(
+				ROLE_NAME, new QByteArray("name"),
+				ROLE_RIGHT_ALIGNED, new QByteArray("rightAligned"),
+				ROLE_WIDTH, new QByteArray("headerWidth")
+			);
 		}
 	}
 
@@ -177,7 +202,6 @@ class Tracklist {
 	}
 
 	public static class TrackMetadataObject extends QObject {
-		public final QBooleanProperty playing = new QBooleanProperty(false);
 		public String value;
 		public boolean rightAligned;
 
@@ -190,12 +214,22 @@ class Tracklist {
 
 
 	public static class TrackHeaderObject extends QObject {
+		public final Signal0 widthChanged = new Signal0();
+
 		public String name;
+		public int width;
 		public boolean rightAligned;
 
-		public TrackHeaderObject(String name, boolean rightAligned) {
+		public TrackHeaderObject(String name, int width, boolean rightAligned) {
 			this.name = name;
+			this.width = width;
 			this.rightAligned = rightAligned;
 		}
+
+		public void setWidth(int width) {
+			this.width = width;
+			widthChanged.emit();
+		}
+
 	}
 }

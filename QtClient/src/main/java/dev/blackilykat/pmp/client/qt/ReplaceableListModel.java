@@ -19,9 +19,13 @@ package dev.blackilykat.pmp.client.qt;
 
 import io.qt.NonNull;
 import io.qt.core.QAbstractListModel;
+import io.qt.core.QMap;
 import io.qt.core.QModelIndex;
 import io.qt.core.QObject;
+import io.qt.core.QVariant;
+
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 
@@ -41,6 +45,20 @@ abstract class ReplaceableListModel<T> extends QAbstractListModel {
 		beginInsertRows(new QModelIndex(), index, index);
 		items.add(index, item);
 		endInsertRows();
+	}
+
+	public void add(T item) {
+		add(item, items.size());
+	}
+
+	public QMap<String, QVariant> get(int index) {
+		var map = new HashMap<String, QVariant>();
+
+		roleNames().forEach((i, name) -> {
+			map.put(new String(name.toArray()), new QVariant(data(index(index, 0), i)));
+		});
+
+		return new QMap<>(map);
 	}
 
 	public void addMany(List<T> newItems, int dest, int src, int count) {
