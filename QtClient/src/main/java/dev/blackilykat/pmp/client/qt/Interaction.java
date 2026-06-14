@@ -18,6 +18,12 @@
 package dev.blackilykat.pmp.client.qt;
 
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.FileAlreadyExistsException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -31,11 +37,20 @@ import dev.blackilykat.pmp.client.Library;
 import dev.blackilykat.pmp.client.Player;
 import dev.blackilykat.pmp.client.Track;
 import io.qt.core.QObject;
+import io.qt.core.QStandardPaths;
+import io.qt.core.QStandardPaths.StandardLocation;
+import io.qt.widgets.QFileDialog;
 
 /// This class serves as a bridge between the UI and the logic.
 /// JS snippets from QML call these methods which perform the requested action.
 class Interaction extends QObject {
 	public final static Logger LOGGER = LogManager.getLogger(Interaction.class);
+
+	/// Executor used to **respond to** input without blocking the UI thread.
+	/// Qt dialogs are not thread safe. Do not use this to ask for user input.
+	public final static ExecutorService EXECUTOR = Executors.newSingleThreadExecutor();
+
+
 	public void playPause() {
 		Player.playPause();
 	}
@@ -141,5 +156,42 @@ class Interaction extends QObject {
 			return;
 		}
 		LOGGER.warn("QML tried to interact with nonexistent filter {}", filterId);
+	}
+
+	public void addTracks() {
+		// QML fallback dialog does not properly implement multiple file selection.
+		// This keeps the context menu on the screen while a file is selected. Not ideal,
+		// but better than not having multiple file selection.
+		var res = QFileDialog.getOpenFileNames(
+			null,
+			"Add tracks",
+			QStandardPaths.writableLocation(StandardLocation.MusicLocation),
+			"FLAC files (*.flac)"
+		);
+
+		if(res == null) return;
+
+		EXECUTOR.submit(() -> {
+
+			for(String path : res.result) {
+				File file = new File(path);
+				try {
+					Library.addTrack(file);
+				} catch(FileAlreadyExistsException e) {
+					LOGGER.warn("{} is already in the library", file);
+				} catch(IOException e) {
+					LOGGER.error("Failed to add track {}", path, e);
+				}
+			}
+		});
+	}
+
+	public void removeTrack(String filename) {
+		Track track = ClientStorage.MAIN.tracks.get(filename);
+		if(track == null) {
+			LOGGER.warn("QML tried to remove nonexistent track {}", filename);
+			return;
+		}
+		Library.removeTrack(track);
 	}
 }

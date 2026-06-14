@@ -15,27 +15,23 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-
 import QtQuick
 import QtQuick.Controls
 
-// very silly way to do it but why is this not in qt quick
 Button {
-	id: btn
-	property color color: Style.text
-	property string source: ""
-
-	enabled: false
-	padding: 0
-
+	id: button
 	icon {
-		source: btn.source
-		color: btn.color
-
-		width: btn.width
-		height: btn.height
+		color: Style.text
 	}
 
-	background: Item {}
-}
+	background: Rectangle {
+		color: Style.buttonBackground
+		radius: width / 2
 
+		Rectangle {
+			anchors.fill: parent
+			color: button.down ? Style.clicked : "#00000000"
+			radius: width / 2
+		}
+	}
+}

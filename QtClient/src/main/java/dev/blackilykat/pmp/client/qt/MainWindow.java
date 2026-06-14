@@ -24,9 +24,10 @@ import dev.blackilykat.pmp.util.Shutdown;
 import io.qt.core.QCoreApplication;
 import io.qt.core.QObject;
 import io.qt.core.QUrl;
-import io.qt.gui.QGuiApplication;
 import io.qt.qml.QQmlApplicationEngine;
 import io.qt.qml.QQmlContext;
+import io.qt.widgets.QApplication;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -46,7 +47,7 @@ public class MainWindow {
 			Shutdown.shutdown(true);
 		}
 
-		QGuiApplication.initialize(args);
+		QApplication.initialize(args);
 
 		QQmlApplicationEngine engine = new QQmlApplicationEngine();
 
@@ -69,12 +70,12 @@ public class MainWindow {
 			Server.submitPassword("mypassword");
 		});
 
-		QGuiApplication.exec();
+		QApplication.exec();
 
 		engine.dispose();
 		engine = null;
 
-		QGuiApplication.shutdown();
+		QApplication.shutdown();
 
 		Shutdown.shutdown(true);
 	}

@@ -69,6 +69,7 @@ class Tracklist {
 		public static final int ROLE_FILENAME = 0x0101;
 		public static final int ROLE_METADATA = 0x0102;
 		public static final int ROLE_PLAYING = 0x0103;
+		public static final int ROLE_TITLE = 0x0104;
 
 		private Map<Track, TrackMetadataListModel> metadata = new HashMap<>();
 
@@ -100,6 +101,7 @@ class Tracklist {
 					yield new QVariant(dis);
 				}
 				case ROLE_PLAYING -> row == Player.getTrack();
+				case ROLE_TITLE -> row.getTitle();
 				default -> new QVariant();
 			};
 		}
@@ -109,7 +111,8 @@ class Tracklist {
 			return Map.of(
 				ROLE_FILENAME, new QByteArray("filename"),
 				ROLE_METADATA, new QByteArray("metadata"),
-				ROLE_PLAYING, new QByteArray("playing")
+				ROLE_PLAYING, new QByteArray("playing"),
+				ROLE_TITLE, new QByteArray("title")
 			);
 		}
 	}

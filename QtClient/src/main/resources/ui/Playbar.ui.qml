@@ -22,249 +22,251 @@ import Qt5Compat.GraphicalEffects
 import "."
 
 Rectangle {
-    id: playbar
-    height: 140
-    color: Style.panelBackground
+	id: playbar
+	height: 140
+	color: Style.panelBackground
 
-    property string title: ""
-    property string artists: ""
-    property double position: 0
-    property double length: 0
-    property bool playing: false
-    property string albumArt: ""
-    property string shuffle: "OFF"
-    property string repeat: "ALL"
+	property string title: ""
+	property string artists: ""
+	property double position: 0
+	property double length: 0
+	property bool playing: false
+	property string albumArt: ""
+	property string shuffle: "OFF"
+	property string repeat: "ALL"
 
-    RoundButton {
-        id: playPauseButton
-        width: 60
-        height: 60
+	palette {
+		button: Style.buttonBackground
+		buttonText: Style.text
+	}
 
-        anchors {
-            top: parent.top
-            topMargin: 20
-            horizontalCenter: parent.horizontalCenter
-        }
 
-        icon {
-            width: 16
-            height: 24
-            color: Style.text
-            source: playbar.playing ? "icons/pause.svg" : "icons/play.svg"
-        }
+	PlaybarButton {
+		id: playPauseButton
+		width: 60
+		height: 60
 
-        onClicked: Interaction.playPause()
-    }
+		anchors {
+			top: parent.top
+			topMargin: 20
+			horizontalCenter: parent.horizontalCenter
+		}
 
-    RoundButton {
-        id: previousButton
-        width: 50
-        height: 50
+		icon {
+			width: 16
+			height: 24
+			source: playbar.playing ? "icons/pause.svg" : "icons/play.svg"
+		}
 
-        anchors {
-            verticalCenter: playPauseButton.verticalCenter
-            right: playPauseButton.left
-            rightMargin: 10
-        }
+		onClicked: Interaction.playPause()
+	}
 
-        icon {
-            width: 16
-            height: 24
-            source: "icons/previous.svg"
-            color: Style.text
-        }
+	PlaybarButton {
+		id: previousButton
+		width: 50
+		height: 50
 
-        onClicked: Interaction.previous()
-    }
+		anchors {
+			verticalCenter: playPauseButton.verticalCenter
+			right: playPauseButton.left
+			rightMargin: 10
+		}
 
-    RoundButton {
-        id: shuffleButton
-        width: 50
-        height: 50
+		icon {
+			width: 16
+			height: 24
+			source: "icons/previous.svg"
+		}
 
-        anchors {
-            verticalCenter: previousButton.verticalCenter
-            right: previousButton.left
-            rightMargin: 10
-        }
+		onClicked: Interaction.previous()
+	}
 
-        icon {
-            width: 24
-            height: 24
-            source: `icons/shuffle-${ playbar.shuffle.toLowerCase() }.svg`
-            color: Style.text
-        }
+	PlaybarButton {
+		id: shuffleButton
+		width: 50
+		height: 50
 
-        onClicked: Interaction.shuffle()
-    }
+		anchors {
+			verticalCenter: previousButton.verticalCenter
+			right: previousButton.left
+			rightMargin: 10
+		}
 
-    RoundButton {
-        id: nextButton
-        width: 50
-        height: 50
+		icon {
+			width: 24
+			height: 24
+			source: `icons/shuffle-${ playbar.shuffle.toLowerCase() }.svg`
+		}
 
-        anchors {
-            verticalCenter: playPauseButton.verticalCenter
-            left: playPauseButton.right
-            leftMargin: 10
-        }
+		onClicked: Interaction.shuffle()
+	}
 
-        icon {
-            width: 16
-            height: 24
-            source: "icons/next.svg"
-            color: Style.text
-        }
+	PlaybarButton {
+		id: nextButton
+		width: 50
+		height: 50
 
-        onClicked: Interaction.next()
-    }
+		anchors {
+			verticalCenter: playPauseButton.verticalCenter
+			left: playPauseButton.right
+			leftMargin: 10
+		}
 
-    RoundButton {
-        id: repeatButton
-        width: 50
-        height: 50
+		icon {
+			width: 16
+			height: 24
+			source: "icons/next.svg"
+		}
 
-        anchors {
-            verticalCenter: nextButton.verticalCenter
-            left: nextButton.right
-            leftMargin: 10
-        }
+		onClicked: Interaction.next()
+	}
 
-        icon {
-            width: 24
-            height: 24
-            source: `icons/repeat-${ playbar.repeat.toLowerCase() }.svg`
-            color: Style.text
-        }
+	PlaybarButton {
+		id: repeatButton
+		width: 50
+		height: 50
 
-        onClicked: Interaction.repeat()
-    }
+		anchors {
+			verticalCenter: nextButton.verticalCenter
+			left: nextButton.right
+			leftMargin: 10
+		}
 
-    Image {
-        id: albumArt
-        width: playbar.albumArt == "" ? 0 : height
 
-        source: playbar.albumArt
-        fillMode: Image.PreserveAspectCrop
+		icon {
+			width: 24
+			height: 24
+			source: `icons/repeat-${ playbar.repeat.toLowerCase() }.svg`
+		}
 
-        // seemingly a good enough compromise between smoothness and contrast.
-        // both set to true result in very blurry images.
-        // The scaling on the swing client is really good. Might be worth replicating
-        // that since the image data is served through java code anyway
-        mipmap: true
-        smooth: false
+		onClicked: Interaction.repeat()
+	}
 
-        anchors {
-            left: parent.left
-            top: parent.top
-            bottom: parent.bottom
-            leftMargin: 20
-            topMargin: 20
-            bottomMargin: 20
-        }
+	Image {
+		id: albumArt
+		width: playbar.albumArt == "" ? 0 : height
 
-        layer {
-            enabled: true
-            effect: OpacityMask {
-                maskSource: Item {
-                    width: albumArt.width
-                    height: albumArt.height
-                    Rectangle {
-                        anchors.centerIn: parent
-                        width: albumArt.width
-                        height: albumArt.height
-                        radius: 10
-                    }
-                }
-            }
-        }
-    }
+		source: playbar.albumArt
+		fillMode: Image.PreserveAspectCrop
 
-    Text {
-        id: titleText
-        color: Style.text
-        text: playbar.title
-        elide: Text.ElideRight
-        font.pixelSize: 30
-        font.family: Style.font
+		// seemingly a good enough compromise between smoothness and contrast.
+		// both set to true result in very blurry images.
+		// The scaling on the swing client is really good. Might be worth replicating
+		// that since the image data is served through java code anyway
+		mipmap: true
+		smooth: false
 
-        anchors {
-            left: albumArt.right
-            top: parent.top
-            leftMargin: 10
-            topMargin: 20
-            right: shuffleButton.left
-            rightMargin: 0
-        }
-    }
+		anchors {
+			left: parent.left
+			top: parent.top
+			bottom: parent.bottom
+			leftMargin: 20
+			topMargin: 20
+			bottomMargin: 20
+		}
 
-    Text {
-        id: artists
-        color: Style.text
-        text: playbar.artists
-        elide: Text.ElideRight
-        font.pixelSize: 20
-        font.family: Style.font
+		layer {
+			enabled: true
+			effect: OpacityMask {
+				maskSource: Item {
+					width: albumArt.width
+					height: albumArt.height
+					Rectangle {
+						anchors.centerIn: parent
+						width: albumArt.width
+						height: albumArt.height
+						radius: 10
+					}
+				}
+			}
+		}
+	}
 
-        anchors {
-            left: titleText.left
-            top: titleText.bottom
-            leftMargin: 0
-            topMargin: 5
-            right: shuffleButton.left
-            rightMargin: 0
-        }
-    }
+	Text {
+		id: titleText
+		color: Style.text
+		text: playbar.title
+		elide: Text.ElideRight
+		font.pixelSize: 30
+		font.family: Style.font
 
-    Text {
-        id: currentTime
-        color: Style.text
-        text: secToStr(playbar.position)
-        font.pixelSize: 24
-        font.family: Style.font
+		anchors {
+			left: albumArt.right
+			top: parent.top
+			leftMargin: 10
+			topMargin: 20
+			right: shuffleButton.left
+			rightMargin: 0
+		}
+	}
 
-        anchors {
-            left: titleText.left
-            bottom: parent.bottom
-            leftMargin: 0
-            bottomMargin: 10
-        }
-    }
+	Text {
+		id: artists
+		color: Style.text
+		text: playbar.artists
+		elide: Text.ElideRight
+		font.pixelSize: 20
+		font.family: Style.font
 
-    Text {
-        id: totalTime
-        color: Style.text
-        text: secToStr(playbar.length)
-        font.pixelSize: 24
-        font.family: Style.font
+		anchors {
+			left: titleText.left
+			top: titleText.bottom
+			leftMargin: 0
+			topMargin: 5
+			right: shuffleButton.left
+			rightMargin: 0
+		}
+	}
 
-        anchors {
-            right: parent.right
-            bottom: parent.bottom
-            rightMargin: 10
-            bottomMargin: 10
-        }
-    }
+	Text {
+		id: currentTime
+		color: Style.text
+		text: secToStr(playbar.position)
+		font.pixelSize: 24
+		font.family: Style.font
 
-    TimeBar {
-        id: timeBar
-        height: 36
+		anchors {
+			left: titleText.left
+			bottom: parent.bottom
+			leftMargin: 0
+			bottomMargin: 10
+		}
+	}
 
-        progress: playbar.position / playbar.length
+	Text {
+		id: totalTime
+		color: Style.text
+		text: secToStr(playbar.length)
+		font.pixelSize: 24
+		font.family: Style.font
 
-        anchors {
-            verticalCenter: currentTime.verticalCenter
-            left: currentTime.right
-            right: totalTime.left
-            leftMargin: 16
-            rightMargin: 16
-        }
-    }
+		anchors {
+			right: parent.right
+			bottom: parent.bottom
+			rightMargin: 10
+			bottomMargin: 10
+		}
+	}
 
-    // TODO: move this
-    function secToStr(seconds) {
+	TimeBar {
+		id: timeBar
+		height: 36
+
+		progress: playbar.position / playbar.length
+
+		anchors {
+			verticalCenter: currentTime.verticalCenter
+			left: currentTime.right
+			right: totalTime.left
+			leftMargin: 16
+			rightMargin: 16
+		}
+	}
+
+	// TODO: move this
+	function secToStr(seconds) {
 		let minutes = seconds / 60;
 		seconds %= 60;
-        return `${Math.floor(minutes)}:${`${Math.floor(seconds)}`.padStart(2, "0")}`
-    }
+		return `${Math.floor(minutes)}:${`${Math.floor(seconds)}`.padStart(2, "0")}`
+	}
 }
