@@ -25,6 +25,7 @@ import dev.blackilykat.pmp.Order;
 import dev.blackilykat.pmp.RepeatOption;
 import dev.blackilykat.pmp.ShuffleOption;
 import dev.blackilykat.pmp.client.ClientStorage;
+import dev.blackilykat.pmp.client.FilterOption;
 import dev.blackilykat.pmp.client.Header;
 import dev.blackilykat.pmp.client.Library;
 import dev.blackilykat.pmp.client.Player;
@@ -110,5 +111,35 @@ class Interaction extends QObject {
 		}
 
 		LOGGER.warn("QML tried to sort by nonexistent header {}", id);
+	}
+
+	public void filterOption(int filterId, String option, boolean positive) {
+		for(var filter : ClientStorage.MAIN.filters.get()) {
+			if(filter.id != filterId) continue;
+
+			for(var o : filter.getOptions()) {
+				if(!o.value.equals(option)) continue;
+
+				if(positive) {
+					o.setState(switch(o.getState()) {
+						case NONE -> FilterOption.State.POSITIVE;
+						case POSITIVE -> FilterOption.State.NONE;
+						case NEGATIVE -> FilterOption.State.POSITIVE;
+					});
+				} else {
+					o.setState(switch(o.getState()) {
+						case NONE -> FilterOption.State.NEGATIVE;
+						case POSITIVE -> FilterOption.State.NEGATIVE;
+						case NEGATIVE -> FilterOption.State.NONE;
+					});
+				}
+
+				return;
+			}
+
+			LOGGER.warn("QML tried to interact with nonexistent filter option {} -> {}", filter.key, option);
+			return;
+		}
+		LOGGER.warn("QML tried to interact with nonexistent filter {}", filterId);
 	}
 }

@@ -51,6 +51,7 @@ public class MainWindow {
 		QQmlApplicationEngine engine = new QQmlApplicationEngine();
 
 		Tracklist.initialize(engine.rootContext());
+		Filters.initialize(engine.rootContext());
 
 		engine.addImageProvider("albumArt", new AlbumArtProvider());
 

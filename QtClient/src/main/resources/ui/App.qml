@@ -23,8 +23,18 @@ Window {
         objectName: "tracklist"
         anchors {
             top: parent.top
-            left: parent.left
+            left: filters.right
             right: parent.right
+            bottom: playbar.top
+        }
+    }
+
+    Filters {
+        id: filters
+        objectName: "filters"
+        anchors {
+            top: parent.top
+            left: parent.left
             bottom: playbar.top
         }
     }
