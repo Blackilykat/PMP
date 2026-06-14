@@ -79,6 +79,17 @@ class Interaction extends QObject {
 		Player.next();
 	}
 
+	public void seekForward() {
+		Track track = Player.getTrack();
+		if(track == null) return;
+		long max = (long) (track.getDurationSeconds() * 1000);
+		Player.seek(Math.min(max, Player.getPosition() + 5000));
+	}
+
+	public void seekBackward() {
+		Player.seek(Math.max(Player.getPosition() - 5000, 0));
+	}
+
 	public void seek(double percent) {
 		percent = Math.clamp(percent, 0, 1);
 		Player.seek((long) (Player.getTrack().getDurationSeconds() * 1000 * percent));

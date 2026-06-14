@@ -25,14 +25,6 @@ Window {
 
 	color: Style.tracklistBackground
 
-	palette {
-		// text: Style.text
-		// windowText: Style.text
-
-		// button: Style.buttonBackground
-		// buttonText: Style.text
-	}
-
 	visible: true
 	title: "PMP"
 
@@ -65,5 +57,19 @@ Window {
 		anchors.right: parent.right
 	}
 
+	Shortcut {
+		sequence: "Space"
+		onActivated: Interaction.playPause()
+	}
+
+	Shortcut {
+		sequence: "Left"
+		onActivated: Interaction.seekBackward()
+	}
+
+	Shortcut {
+		sequence: "Right"
+		onActivated: Interaction.seekForward()
+	}
 }
 
