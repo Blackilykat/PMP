@@ -22,8 +22,10 @@ It is recommended to run the desktop client and server in dedicated directories 
 After [building](#Building), you will find compiled jars in `subproject/build/libs/`.
 
 ```
-$ java -jar /path/to/subproject/build/lis/x.jar
+$ java -jar /path/to/subproject/build/libs/x.jar
 ```
+
+When running the server for the first time, you may need a real terminal (i.e. not the run window from your IDE) to input the password.
 
 ## Android
 
@@ -35,7 +37,7 @@ For daily usage, Android forces release APKs to be signed. Either wait for an of
 
 # Building
 
-Building instrucitons for Unix (Linux, macOS...). For Windows, replace `./gradlew` with `gradlew.bat`.
+Building instructions for Unix (Linux, macOS...). For Windows, replace `./gradlew` with `gradlew.bat`.
 
 ## Client
 
