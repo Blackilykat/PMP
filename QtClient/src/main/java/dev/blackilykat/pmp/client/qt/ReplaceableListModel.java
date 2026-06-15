@@ -77,6 +77,14 @@ abstract class ReplaceableListModel<T> extends QAbstractListModel {
 		endRemoveRows();
 	}
 
+	public void move(int from, int to) {
+		// dest index is treated differently based on whether the items are moving up or down.
+		// https://doc.qt.io/qt-6/qabstractitemmodel.html#beginMoveRows
+		beginMoveRows(new QModelIndex(), from, from, new QModelIndex(), to > from ? to + 1 : to);
+		items.add(to, items.remove(from));
+		endMoveRows();
+	}
+
 	public void replace(List<T> newItems) {
 		int i = 0;
 		int j = 0;

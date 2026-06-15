@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import dev.blackilykat.pmp.Order;
 import dev.blackilykat.pmp.client.ClientStorage;
@@ -129,12 +130,25 @@ class Tracklist {
 
 			update();
 
-			Library.EVENT_HEADERS_UPDATED.register(_ -> update());
+			// properly move the UI elements to allow dragging headers around
+			AtomicBoolean handledMove = new AtomicBoolean(false);
+
+			Library.EVENT_HEADER_MOVED.register(event -> {
+				handledMove.set(true);
+				move(event.oldPosition(), event.newPosition());
+			});
+
+			Library.EVENT_HEADERS_UPDATED.register(_ -> {
+				if(!handledMove.getAndSet(false)) {
+					update();
+				}
+			});
 		}
 
 		public void update() {
 			Header sortingHeader = Library.getSortingHeader();
 			Order sortingOrder = Library.getSortingOrder();
+			System.out.println("updating headers");
 
 			replace(ClientStorage.MAIN.headers.get().stream().map(header -> {
 				Integer width = QtStorage.MAIN.headerWidths.get(header.id);

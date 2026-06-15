@@ -205,4 +205,27 @@ class Interaction extends QObject {
 		}
 		Library.removeTrack(track);
 	}
+
+	public void moveHeader(int id, boolean right) {
+		for(int i = 0; i < ClientStorage.MAIN.headers.size(); i++) {
+			var header = ClientStorage.MAIN.headers.get(i);
+			if(header.id != id) continue;
+
+			if(i == 0 && !right) {
+				LOGGER.warn("QML tried to move header {} too far left", header.getLabel());
+				return;
+			}
+
+			if(i == ClientStorage.MAIN.headers.size() - 1 && right) {
+				LOGGER.warn("QML tried to move header {} too far right", header.getLabel());
+				return;
+			}
+
+			Library.moveHeader(header, i + (right ? 1 : -1));
+
+			return;
+		}
+
+		LOGGER.warn("QML tried to move nonexistent header {}", id);
+	}
 }

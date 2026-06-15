@@ -26,6 +26,14 @@ Rectangle {
 	id: tracklist
 	color: Style.tracklistBackground
 
+	property bool draggingHeader: false
+
+	MouseArea {
+		id: tracklistMA
+		cursorShape: tracklist.draggingHeader ? Qt.DragMoveCursor : Qt.ArrowCursor
+		anchors.fill: parent
+	}
+
 	property real playIconWidth: 40
 
 	Rectangle {
@@ -53,7 +61,7 @@ Rectangle {
 					Rectangle {
 						width: headerWidth
 						height: header.height
-						color: headerMouseArea.pressed ? Style.clicked : headerMouseArea.containsMouse ? Style.hover : "#00000000"
+						color: headerMouseArea.dragging ? "#00000000" : headerMouseArea.pressed ? Style.clicked : headerMouseArea.containsMouse ? Style.hover : "#00000000"
 						Text {
 							elide: Text.ElideRight
 							text: name
@@ -63,6 +71,7 @@ Rectangle {
 							topPadding: 10
 							bottomPadding: 10
 							anchors.fill: parent
+							opacity: headerMouseArea.dragging ? 0.5 : 1
 						}
 
 						MouseArea {
@@ -70,8 +79,65 @@ Rectangle {
 							anchors.fill: parent
 							hoverEnabled: true
 
+							cursorShape: tracklistMA.cursorShape
+
+							property real dragStartX: 0
+							property bool dragStarted: false
+							property bool dragging: false
+							property bool handleClick: false
+
 							onClicked: {
-								Interaction.sortByHeader(headerId);
+								if(!dragging && handleClick) Interaction.sortByHeader(headerId);
+							}
+
+							onReleased: e => {
+								if(dragging) {
+									dragStarted = false
+									dragging = false
+									tracklist.draggingHeader = false
+									e.accepted = true 
+									handleClick = false
+									return;
+								}
+							}
+
+							onPressed: {
+								handleClick = true
+							}
+
+							onPositionChanged: e => {
+								if(e.buttons & Qt.LeftButton) {
+									if(
+										dragStarted &&
+										!dragging && 
+										(Math.abs(dragStartX - e.x) > 20 || e.x < 0 || e.x > headerWidth)
+									) {
+										dragging = true
+										tracklist.draggingHeader = true
+									}
+									if(!dragStarted) {
+										dragStartX = e.x;
+										dragStarted = true;
+									}
+
+									if(e.x < 0) {
+										if(index == 0) return;
+										let delta = e.x + 20;
+										let prevWidth = trackHeadersModel.get(index - 1).headerWidth
+
+										if(-delta > prevWidth / 2) {
+											Interaction.moveHeader(headerId, false);
+										}
+									} else if(e.x > headerWidth) {
+										if(index == trackHeadersModel.rowCount() - 1) return;
+										let delta = e.x - headerWidth - 20;
+										let nextWidth = trackHeadersModel.get(index + 1).headerWidth
+
+										if(delta > nextWidth / 2) {
+											Interaction.moveHeader(headerId, true);
+										}
+									}
+								}
 							}
 						}
 
@@ -142,6 +208,8 @@ Rectangle {
 							id: mousearea
 							anchors.fill: parent
 							hoverEnabled: true
+
+							cursorShape: tracklistMA.cursorShape
 
 							onPositionChanged: e => {
 								if(pressed) {
@@ -236,6 +304,9 @@ Rectangle {
 					id: trackMouseArea
 					anchors.fill: parent
 					hoverEnabled: true
+
+					cursorShape: tracklistMA.cursorShape
+
 					onDoubleClicked: {
 						Interaction.playTrack(filename)
 					}
