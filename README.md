@@ -2,7 +2,7 @@
 
 A platform and music player to synchronize libraries and control playback across devices.
 
-> The project is currently in pre-alpha. It has been in daily use for months but it still requires a lot of work to be done to be ready for public use.
+> The project is currently in pre-alpha. It has been in daily use for months, but it still requires a lot of work to be done to be ready for public use.
 
 # Structure
 
@@ -35,7 +35,7 @@ For daily usage, Android forces release APKs to be signed. Either wait for an of
 
 # Building
 
-Building instrucitons for Unix (Linux, MacOS...). For Windows, replace `./gradlew` with `gradlew.bat`.
+Building instrucitons for Unix (Linux, macOS...). For Windows, replace `./gradlew` with `gradlew.bat`.
 
 ## Client
 
