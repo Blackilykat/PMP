@@ -162,7 +162,7 @@ public class Library {
 				return 0;
 			}
 			int multiplier = sortingOrder == Order.ASCENDING ? 1 : -1;
-			int comp = sortingHeader.compare(a, b) * multiplier;
+			int comp = sortingHeader.compare(a, b);
 			if(comp == 0){
 				comp = a.getTitle().compareToIgnoreCase(b.getTitle());
 			}

@@ -1,0 +1,6 @@
+[11:03:25.532 INFO ] Loading server storage
+[11:03:25.533 DEBUG] Attempting to load server storage at /home/kirannamburi/eclipse-workspace/PMP/./server.json
+[11:03:25.537 INFO ] Loading .sensitive_server storage
+[11:03:25.537 DEBUG] Attempting to load .sensitive_server storage at /home/kirannamburi/eclipse-workspace/PMP/./.sensitive_server.json
+[11:03:25.538 FATAL] Need a real terminal to ask password, or "password" to have a value in .sensitive_server.json
+[11:03:25.540 INFO ] Shutting down
