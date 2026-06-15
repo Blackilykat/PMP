@@ -148,7 +148,6 @@ class Tracklist {
 		public void update() {
 			Header sortingHeader = Library.getSortingHeader();
 			Order sortingOrder = Library.getSortingOrder();
-			System.out.println("updating headers");
 
 			replace(ClientStorage.MAIN.headers.get().stream().map(header -> {
 				Integer width = QtStorage.MAIN.headerWidths.get(header.id);

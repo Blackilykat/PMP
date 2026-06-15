@@ -271,7 +271,8 @@ Rectangle {
 								id: rowtext
 								elide: Text.ElideRight
 								text: value
-								width: trackHeadersModel.get(index).headerWidth
+								// prevent binding the index which becomes -1 on removal
+								width: {width = trackHeadersModel.get(index).headerWidth}
 								color: Style.text
 								font.pixelSize: 22
 								horizontalAlignment: rightAligned ? Text.AlignRight : Text.AlignLeft
