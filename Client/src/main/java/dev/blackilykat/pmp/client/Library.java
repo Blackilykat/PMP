@@ -162,7 +162,11 @@ public class Library {
 				return 0;
 			}
 			int multiplier = sortingOrder == Order.ASCENDING ? 1 : -1;
-			return sortingHeader.compare(a, b) * multiplier;
+			int comp = sortingHeader.compare(a, b);
+			if(comp == 0){
+				comp = a.getFile().getName().compareToIgnoreCase(b.getFile().getName());
+			}
+			return comp * multiplier;
 		}).collect(Collectors.toList());
 		EVENT_SELECTED_TRACKS_UPDATED.call(
 				new SelectedTracksUpdatedEvent(Collections.unmodifiableList(oldSelectedTracks),
