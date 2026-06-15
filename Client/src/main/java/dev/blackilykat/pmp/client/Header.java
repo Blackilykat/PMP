@@ -177,7 +177,7 @@ public class Header {
 
 				double valueB = 0;
 				boolean foundB = false;
-				for(Pair<String, String> metadatum : a.metadata) {
+				for(Pair<String, String> metadatum : b.metadata) {
 					if(!metadatum.key.equalsIgnoreCase(key)) {
 						continue;
 					}
