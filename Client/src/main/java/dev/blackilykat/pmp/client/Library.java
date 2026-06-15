@@ -164,7 +164,7 @@ public class Library {
 			int multiplier = sortingOrder == Order.ASCENDING ? 1 : -1;
 			int comp = sortingHeader.compare(a, b);
 			if(comp == 0){
-				comp = a.getTitle().compareToIgnoreCase(b.getTitle());
+				comp = a.getFile().getName().compareToIgnoreCase(b.getFile().getName());
 			}
 			return comp * multiplier;
 		}).collect(Collectors.toList());
