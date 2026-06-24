@@ -26,29 +26,56 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.List;
 
-/**
- * After a request, the client is now logged in.
- * <p>Direction: S2C
- */
+/// After a request, the client is now logged in.
+///
+/// Direction: S2C
 public class LoginSuccessResponse extends Response {
 	public static final String MESSAGE_TYPE = "LoginSuccess";
 
 	private static final Logger LOGGER = LogManager.getLogger(LoginSuccessResponse.class);
 
+	/// The device id, either newly assigned or the same in the request.
 	public Integer deviceId;
+
+	/// The new token just assigned by the server. Must be stored for the next login.
 	public String token;
 
 	// non-login info the client needs when connecting
+
+	/// The device ID of the current playback owner. May be null.
 	public Integer playbackOwner;
+
+	/// Whether playback is playing or paused.
 	public boolean playing;
+
+	/// If playing the relative epoch of when the song started, else the position in milliseconds.
 	public Long positionOrEpoch;
+
+	/// The selected shuffle option.
 	public ShuffleOption shuffle;
+
+	/// The selected repeat option.
 	public RepeatOption repeat;
+
+	/// The filename of the currently playing track.
 	public String track;
+
+	/// The list of selected positive options.
+	///
+	/// The list contains a pair of filter ids and option names.
 	public List<Pair<Integer, String>> positiveOptions;
+
+	/// The list of selected negative options.
+	///
+	/// The list contains a pair of filter ids and option names.
 	public List<Pair<Integer, String>> negativeOptions;
+
+	/// The list of all filters.
 	public List<FilterInfo> filters;
 
+	/// The server's last action ID, used by the client to decide whether to request new actions.
+	///
+	/// @see GetActionsRequest
 	public int lastActionId = -1;
 
 	public LoginSuccessResponse(Integer requestId, Integer deviceId, String token, int lastActionId) {

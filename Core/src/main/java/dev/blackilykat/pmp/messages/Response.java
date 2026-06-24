@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Blackilykat and contributors
+ * Copyright (C) 2026 Blackilykat and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,11 +19,10 @@ package dev.blackilykat.pmp.messages;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
-/**
- * Any message that responds to a {@link Request}. There may be multiple responses for the same request if
- * {@link #isLastResponse} is overridden in the Response.
- */
+/// Any message that responds to a [Request]. There may be multiple responses for the same request if
+/// [#isLastResponse] is overridden in the Response's class.
 public abstract class Response extends Message {
+	/// The id of the request this response is responding to.
 	public Integer requestId;
 
 	public Response(Integer requestId) {
@@ -31,9 +30,11 @@ public abstract class Response extends Message {
 		this.requestId = requestId;
 	}
 
-	/**
-	 * @return whether this is expected to be the last response to this request or if there are more after this.
-	 */
+	/// Returns whether this is expected to be the last response to this request or if there are more after this.
+	///
+	/// All overriding methods must specify the [JsonIgnore] annotation.
+	///
+	/// @return whether this is expected to be the last response to this request or if there are more after this.
 	@JsonIgnore
 	public boolean isLastResponse() {
 		return true;

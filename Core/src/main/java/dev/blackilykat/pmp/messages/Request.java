@@ -20,8 +20,6 @@ package dev.blackilykat.pmp.messages;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import dev.blackilykat.pmp.PMPConnection;
 import dev.blackilykat.pmp.event.Listener;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import javax.annotation.Nonnull;
 import java.net.SocketException;
@@ -29,21 +27,19 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-/**
- * Any message that expects to receive a {@link Response}.
- */
+/// Any message that expects to receive a [Response].
 public abstract class Request extends Message {
-	private static final Logger LOGGER = LogManager.getLogger(Request.class);
 	private static int currentRequestId = 0;
-	/**
-	 * A number that uniquely identifies the request for the side that is sending it. Different sides may use the same
-	 * request id.
-	 */
+
+	/// A number that uniquely identifies the request for the side that is sending it. Different sides may use the same
+	/// request id.
 	public Integer requestId = null;
 
+	/// A queue containing the received responses to this request.
 	@JsonIgnore
 	private BlockingQueue<Response> responses = new LinkedBlockingQueue<>();
 
+	/// The connection this request was sent to.
 	@JsonIgnore
 	private PMPConnection connection = null;
 
@@ -51,16 +47,15 @@ public abstract class Request extends Message {
 		super();
 	}
 
+	/// Register a response to this request, allowing it to be handled by [#takeResponse]
 	public void addResponse(Response response) {
 		responses.add(response);
 	}
 
-	/**
-	 * Takes a response from this message's queue and returns it. If the queue is empty, waits for the next response.
-	 *
-	 * @throws InterruptedException if the thread is interrupted
-	 * @throws SocketException if the server disconnects before sending the response or sends an unexpected one
-	 */
+	/// Takes a response from this message's queue and returns it. If the queue is empty, waits for the next response.
+	///
+	/// @throws InterruptedException if the thread is interrupted
+	/// @throws SocketException if the server disconnects before sending the response or sends an unexpected one
 	public @Nonnull <T extends Response> T takeResponse() throws InterruptedException, SocketException {
 		assert connection != null;
 		AtomicBoolean disconnected = new AtomicBoolean(false);
@@ -89,10 +84,12 @@ public abstract class Request extends Message {
 		}
 	}
 
+	/// Incrementally assign a unique ID to this request.
 	public void assignId() {
 		requestId = currentRequestId++;
 	}
 
+	/// Set the connection this request was sent in.
 	@JsonIgnore
 	public void setConnection(PMPConnection connection) {
 		this.connection = connection;

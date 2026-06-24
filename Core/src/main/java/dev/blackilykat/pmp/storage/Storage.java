@@ -26,7 +26,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 import dev.blackilykat.pmp.event.EventSource;
-import dev.blackilykat.pmp.util.Globals;
+import dev.blackilykat.pmp.Globals;
 import dev.blackilykat.pmp.util.ScopedValue;
 import dev.blackilykat.pmp.util.Shutdown;
 import org.apache.logging.log4j.LogManager;
@@ -46,20 +46,66 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.atomic.AtomicReference;
 
+/// Storages are used to store data to disk to keep it throughout restarts of the program.
+///
+/// A storage should contain final [Stored] fields. These will be found through reflection and read
+/// and written to files.
+///
+/// Data is serialized with JSON. This allows simple management of storage in code and gives users
+/// the possibility of manually editing storage files.
+///
+/// In most cases the amount of data to store is small. If this is not the case, a field should be
+/// extracted to its own storage file to reduce the load of serializing the file it would've
+/// otherwise been in.
+///
+/// Most storages are marked dirty when a value is updated (this happens automatically in [Stored]),
+/// to be then saved either periodically every {@value #SAVING_INTERVAL_MIN} minutes or upon
+/// [Shutdown#EVENT_MAY_SHUTDOWN_SOON].
+///
+/// If possible, you should directly use and set values in storage throughout the code, instead of
+/// manually creating a separate "loading" and "saving" stage. In some cases, however, it is convenient
+/// to separately keep track of state. In those cases you may use [#eventMaybeSaving] to check whether
+/// the separately stored state has changed since the last write, and [#eventSaving] to actually set
+/// the new values in storage before it gets written to disk.
 public abstract class Storage {
+	/// Used while loading to prevent the setters of [Stored] fields called while deserializing JSON
+	/// from marking the loading storage as dirty.
 	public static final ScopedValue<Boolean> NO_DIRTY = ScopedValue.newInstance();
 
-	private static final long SAVING_INTERVAL_MS = 30 * 60 * 1000;
+	/// How often storages should periodically save if dirty.
+	private static final int SAVING_INTERVAL_MIN = 30;
+	private static final long SAVING_INTERVAL_MS = SAVING_INTERVAL_MIN * 60 * 1000;
 	private static final Logger LOGGER = LogManager.getLogger(Storage.class);
 	private static final ObjectMapper MAPPER;
 	private static Timer savingTimer = null;
 
+	/// Emitted before writing a storage to disk after confirming it is dirty.
+	///
+	/// Use this to write state stored separately to storage.
 	public final EventSource<Storage> eventSaving = new EventSource<>();
+
+	/// Emitted before discarding a storage as non-dirty to check if separately
+	/// stored state has changed.
+	///
+	/// Use this exclusively to perform this check and mark storage as dirty if so.
+	///
+	/// **DO NOT** rely on this to save state to storage. Use [#eventSaving] instead.
+	/// In most cases, this will not be called at all.
+	///
+	/// Avoid performing computationally expensive operations here. If you have
+	/// large amounts of data you can usually store it directly in the storage
+	/// using a [StoredList] or a [StoredMap]. If you really can't store it directly,
+	/// consider whether it is acceptable to lose an update. Most of the time,
+	/// other values will make the data get updated regardless, and it may be
+	/// worth it to skip the dirty checks for some values.
 	public final EventSource<Storage> eventMaybeSaving = new EventSource<>();
 
+	/// The name of the storage, used for logging and to determine the filename.
 	@JsonIgnore
 	public final String name;
 
+	/// Whether the storage is dirty or not. May be updated last minute when periodically
+	/// saving by [#eventMaybeSaving].
 	@JsonIgnore
 	protected boolean dirty = false;
 
@@ -77,6 +123,7 @@ public abstract class Storage {
 		});
 	}
 
+	/// Periodically called to save storage **if dirty**.
 	public synchronized void maybeSave() throws IOException {
 		if(!dirty) {
 			eventMaybeSaving.call(this);
@@ -86,11 +133,9 @@ public abstract class Storage {
 		}
 	}
 
-	/**
-	 * Saves storage to disk.
-	 *
-	 * @throws IOException if there is an error writing to storage
-	 */
+	/// Saves storage to disk.
+	///
+	/// @throws IOException if there is an error writing to storage
 	protected synchronized void save() throws IOException {
 		LOGGER.info("Saving {} storage", this.getClass().getName());
 
@@ -124,6 +169,10 @@ public abstract class Storage {
 		dirty = false;
 	}
 
+	/// Marks this storage as dirty, to be saved periodically or during shutdown.
+	///
+	/// This method logs a stacktrace if storage was not dirty. This is not a warning,
+	/// but an aid to debugging potential optimization issues.
 	public synchronized void markDirty() {
 		if(!dirty && !NO_DIRTY.orElse(false)) {
 			LOGGER.debug("Storage {} marked dirty", name, new Throwable());
@@ -131,6 +180,10 @@ public abstract class Storage {
 		}
 	}
 
+	/// Load a storage from disk.
+	///
+	/// @param name the storage name used to determine the filename.
+	/// @param clazz the class of the storage to load.
 	public static <T extends Storage> T load(String name, Class<T> clazz) throws IOException {
 		LOGGER.info("Loading {} storage", name);
 

@@ -21,8 +21,8 @@ import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Intent
+import dev.blackilykat.pmp.Globals
 import dev.blackilykat.pmp.client.audio.AudioBackend
-import dev.blackilykat.pmp.util.Globals
 import java.io.File
 
 class PMPApplication : Application() {

@@ -17,23 +17,6 @@
 
 package dev.blackilykat.pmp.client;
 
-import dev.blackilykat.pmp.Action;
-import dev.blackilykat.pmp.FLACUtil;
-import dev.blackilykat.pmp.FilterInfo;
-import dev.blackilykat.pmp.Order;
-import dev.blackilykat.pmp.event.EventSource;
-import dev.blackilykat.pmp.event.RetroactiveEventSource;
-import dev.blackilykat.pmp.messages.FilterListMessage;
-import dev.blackilykat.pmp.messages.PlaybackControlMessage;
-import dev.blackilykat.pmp.messages.PlaybackUpdateMessage;
-import dev.blackilykat.pmp.util.Globals;
-import dev.blackilykat.pmp.util.Pair;
-import dev.blackilykat.pmp.util.ScopedValue;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.kc7bfi.jflac.FLACDecoder;
-
-import javax.net.ssl.HttpsURLConnection;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -52,6 +35,25 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
+
+import javax.net.ssl.HttpsURLConnection;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.kc7bfi.jflac.FLACDecoder;
+
+import dev.blackilykat.pmp.Action;
+import dev.blackilykat.pmp.FilterInfo;
+import dev.blackilykat.pmp.Globals;
+import dev.blackilykat.pmp.Order;
+import dev.blackilykat.pmp.event.EventSource;
+import dev.blackilykat.pmp.event.RetroactiveEventSource;
+import dev.blackilykat.pmp.messages.FilterListMessage;
+import dev.blackilykat.pmp.messages.PlaybackControlMessage;
+import dev.blackilykat.pmp.messages.PlaybackUpdateMessage;
+import dev.blackilykat.pmp.util.FLACUtil;
+import dev.blackilykat.pmp.util.Pair;
+import dev.blackilykat.pmp.util.ScopedValue;
 
 public class Library {
 	public static final RetroactiveEventSource<Collection<Track>> EVENT_LOADED = new RetroactiveEventSource<>();

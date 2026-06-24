@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Blackilykat and contributors
+ * Copyright (C) 2026 Blackilykat and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,9 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package dev.blackilykat.pmp;
+package dev.blackilykat.pmp.util;
 
-import dev.blackilykat.pmp.util.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.kc7bfi.jflac.FLACDecoder;
@@ -35,14 +34,13 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/// Utility class for reading metadata of FLAC files.
 public class FLACUtil {
 	private static final Logger LOGGER = LogManager.getLogger(FLACUtil.class);
 
-	/**
-	 * Extracts FLAC vorbis metadata from the given file
-	 *
-	 * @return the metadata, or null if the file is not a valid FLAC file
-	 */
+	/// Extracts FLAC vorbis metadata from the given file
+	///
+	/// @return the metadata, or null if the file is not a valid FLAC file
 	public static List<Pair<String, String>> extractMetadata(File file) {
 		try(InputStream is = new FileInputStream(file)) {
 			FLACDecoder decoder = new FLACDecoder(is);
@@ -52,6 +50,7 @@ public class FLACUtil {
 		}
 	}
 
+	/// Convert the given metadata object array into a list of key-value pairs
 	public static List<Pair<String, String>> extractMetadata(Metadata[] metadata) {
 		List<Pair<String, String>> list = new LinkedList<>();
 

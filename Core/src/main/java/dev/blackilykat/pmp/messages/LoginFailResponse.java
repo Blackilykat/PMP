@@ -17,12 +17,16 @@
 
 package dev.blackilykat.pmp.messages;
 
-/**
- * A login request was rejected.
- * <p>Direction: S2C
- */
+/// A login request was rejected.
+///
+/// Direction: S2C
+///
+/// @see LoginAsExistingDeviceRequest
+/// @see LoginAsNewDeviceRequest
 public class LoginFailResponse extends Response {
 	public static final String MESSAGE_TYPE = "LoginFail";
+
+	/// Machine readable reason for why the login has failed.
 	public Reason reason;
 
 	public LoginFailResponse(Integer requestId, Reason reason) {
@@ -30,7 +34,27 @@ public class LoginFailResponse extends Response {
 		this.reason = reason;
 	}
 
+	/// Machine readable reason for why the login has failed.
 	public enum Reason {
-		INCORRECT_CREDENTIALS, NO_SUCH_DEVICE, BAD_REQUEST, DEVICE_ALREADY_CONNECTED
+		/// Incorrect password or token, depending on which one was used.
+		INCORRECT_CREDENTIALS,
+
+		/// The client tried to log in with a device ID which does not exist.
+		///
+		/// This should only happen if an attacker is attempting to gain unauthorized access, but
+		/// may also happen in case the server gets brutally interrupted between sending login confirmation
+		/// and saving storage.
+		NO_SUCH_DEVICE,
+
+		/// The client sent an invalid request. This should never happen with an official client.
+		BAD_REQUEST,
+
+		/// The device is already connected.
+		///
+		/// This may be due to:
+		/// - the user mistakenly starting a client multiple times;
+		/// - a connection silently dropping with the client reconnecting faster than the server can timeout the connection;
+		/// - an attacker with correct credentials attempting to log in as an existing device.
+		DEVICE_ALREADY_CONNECTED
 	}
 }

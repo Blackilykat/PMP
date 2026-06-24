@@ -17,10 +17,28 @@
 
 package dev.blackilykat.pmp.messages;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonSubTypes.Type;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+
+/// Base class of all messages.
+///
+/// Messages are registered by editing this class' annotations.
+///
+/// All fields, getters and setters without the [JsonIgnore] annotation will be serialized and deserialized
+/// when sending and receiving messages.
+///
+/// Other than particular cases like [Request] and [Response], hierarchy should not be used to group similar
+/// messages together due to the lack of actual implementation use cases for doing so.
+///
+/// Messages are documented with a "direction", containing one or more of the following:
+///  - C2S: Client to Server, this message is sent by the client and handled by the server.
+///  - S2C: Server to Client, this message is sent by the server and handled by the client.
+///  - C2S2C: Client to Server to Client, this message is sent by a client to be forwarded, unaltered or altered,
+///    to another client. If the server does anything more than alter and forward the message (such as altering
+///    internal state) it must also be marked as C2S.
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "messageType")
 @JsonSubTypes({@Type(value = LoginAsNewDeviceRequest.class, name = LoginAsNewDeviceRequest.MESSAGE_TYPE),
@@ -50,10 +68,8 @@ public abstract class Message implements Cloneable {
 		}
 	}
 
-	/**
-	 * @return a version of this message, but with all sensitive information redacted. This may or may not be the same
-	 * object, but may never mutate the original object.
-	 */
+	/// @return a version of this message, but with all sensitive information redacted. This may or may not be the same
+	/// object, but may never mutate the original object.
 	public Message withRedactedInfo() {
 		return this;
 	}

@@ -21,6 +21,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 
 import java.io.Serializable;
 
+/// Basic utility generic class to store two values at once. Think of it as a tuple.
 public class Pair<T, U> implements Serializable {
 	public T key;
 	public U value;

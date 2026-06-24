@@ -1,0 +1,15 @@
+subprojects {
+    afterEvaluate {
+        if (plugins.hasPlugin('java')) {
+            rootProject.tasks.aggregatedJavadoc.source += sourceSets.main.allJava
+            // include nullable annotations, which are not in runtime classpath
+            rootProject.tasks.aggregatedJavadoc.classpath += files(sourceSets.main.compileClasspath) 
+        }
+    }
+}
+
+task aggregatedJavadoc(type: Javadoc) {
+    destinationDir = file("$buildDir/docs/javadoc")
+    options.linkSource = true
+    options.use = true
+}

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Blackilykat and contributors
+ * Copyright (C) 2026 Blackilykat and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,18 +17,27 @@
 
 package dev.blackilykat.pmp.messages;
 
-/**
- * Request to log in using a password. This can contain either a password or a token: password login must be used only
- * as a fallback in case the token is incorrect.
- * <p>Direction: C2S
- */
+/// Request to log in as an existing device. This can contain either a password or a
+/// token: password login must be used only as a fallback in case the token is incorrect.
+///
+/// Direction: C2S
 public class LoginAsExistingDeviceRequest extends Request {
 	public static final String MESSAGE_TYPE = "LoginAsExistingDevice";
 
+	/// The user-entered password, if a previous attempt at using the token has failed.
+	///
+	/// If this is set, [#token] must be null.
 	public String password;
+
+	/// The previously stored token.
+	///
+	/// If this is set, [#password] must be null.
 	public String token;
+
+	/// The previously stored device ID the client is attempting to log in as.
 	public int deviceId;
 
+	/// Private constructor used in [#newWithPassword] and [#newWithToken] and by the JSON deserializer.
 	private LoginAsExistingDeviceRequest(int deviceId) {
 		this.deviceId = deviceId;
 	}
@@ -45,12 +54,24 @@ public class LoginAsExistingDeviceRequest extends Request {
 		return clone;
 	}
 
+	/// Create a login request using a user-entered password.
+	///
+	/// Use only as a fallback in case an attempt at using the token failed.
+	///
+	/// @param password the user entered password
+	/// @param deviceId the previously stored device ID
+	/// @return a new [LoginAsExistingDeviceRequest]
 	public static LoginAsExistingDeviceRequest newWithPassword(String password, int deviceId) {
 		LoginAsExistingDeviceRequest req = new LoginAsExistingDeviceRequest(deviceId);
 		req.password = password;
 		return req;
 	}
 
+	/// Create a login request using a previously stored token.
+	///
+	/// @param token the previously stored token
+	/// @param deviceId the previously stored device ID
+	/// @return a new [LoginAsExistingDeviceRequest]
 	public static LoginAsExistingDeviceRequest newWithToken(String token, int deviceId) {
 		LoginAsExistingDeviceRequest req = new LoginAsExistingDeviceRequest(deviceId);
 		req.token = token;

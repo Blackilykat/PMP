@@ -19,10 +19,8 @@ package dev.blackilykat.pmp.util;
 
 import java.io.ByteArrayOutputStream;
 
-/**
- * java.io.ByteArrayOutputStream with some methods to allow easier usage without unnecessarily copying data from
- * memory.
- */
+/// java.io.ByteArrayOutputStream with some methods to allow easier usage without unnecessarily
+/// copying data from memory.
 public class ExposedByteArrayOutputStream extends ByteArrayOutputStream {
 	public byte[] getBackingArray() {
 		return buf;

@@ -22,11 +22,11 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 
-/**
- * Sensitive storage contains particularly important information that should not be shared and must be saved as soon as
- * possible. The difference with {@link Storage} is that sensitive storage immediately stores all changes, while normal
- * storage marks dirty at every change and periodically saves
- */
+/// Sensitive storage contains particularly important information that should not be shared and must be saved as soon as
+/// possible.
+///
+/// The difference with {@link Storage} is that sensitive storage immediately stores all changes, while normal storage
+/// marks dirty at every change and periodically saves
 public class SensitiveStorage extends Storage {
 	private static final Logger LOGGER = LogManager.getLogger(SensitiveStorage.class);
 
@@ -34,6 +34,7 @@ public class SensitiveStorage extends Storage {
 		super(name);
 	}
 
+	/// Save the storage to disk instead of marking it as dirty.
 	@Override
 	public synchronized void markDirty() {
 		if(!NO_DIRTY.orElse(false)) {
@@ -43,9 +44,8 @@ public class SensitiveStorage extends Storage {
 			} catch(IOException e) {
 				LOGGER.error("Failed to save sensitive storage {} upon change", name, e);
 
-				// maybeSave is still called periodically on sensitive storages. Hope that when it gets called it does
-				// not
-				// fail again (even though it's really likely that it will)
+				// maybeSave is still called periodically on sensitive storages. This hopes that when it gets called
+				// it does not fail again (even though it's really likely that it will)
 				dirty = true;
 			}
 		}

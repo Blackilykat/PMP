@@ -24,14 +24,21 @@ import dev.blackilykat.pmp.util.Pair;
 import java.io.Serializable;
 import java.util.List;
 
+/// Represents any update to the library.
+///
+/// Used to maintain a trusted unique order of modifications which stays consistent on all devices.
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class Action implements Serializable {
+	/// The track affected by this action
 	public String filename;
 
+	/// What kind of modification this action performs on the library
 	public Type actionType;
 
+	/// Only present when [#actionType] == [Type#CHANGE_METADATA]. Contains the full updated metadata of the track.
 	public List<Pair<String, String>> newMetadata = null;
 
+	/// Constructor used when actionType != [Type#CHANGE_METADATA].
 	public Action(String filename, Type actionType) {
 		if(actionType == Type.CHANGE_METADATA) {
 			throw new IllegalArgumentException("Wrong initializer for action type CHANGE_METADATA!");
@@ -40,14 +47,16 @@ public class Action implements Serializable {
 		this.actionType = actionType;
 	}
 
+	/// Constructor used when actionType == [Type#CHANGE_METADATA].
 	public Action(String filename, List<Pair<String, String>> newMetadata) {
 		this.filename = filename;
 		this.actionType = Type.CHANGE_METADATA;
 		this.newMetadata = newMetadata;
 	}
 
+	/// Constructor used when deserializing actions from JSON.
 	@JsonCreator
-	public Action() {
+	private Action() {
 		this.filename = "";
 	}
 
@@ -57,24 +66,16 @@ public class Action implements Serializable {
 				+ newMetadata + '}';
 	}
 
+	/// What kind of modification an action performs on the library
 	public enum Type {
-		/**
-		 * Add a new song to the library
-		 */
+		/// Add a new track to the library
 		ADD,
-		/**
-		 * Remove a song from the library
-		 */
+		/// Remove a track from the library
 		REMOVE,
-		/**
-		 * Replace the file of a song with another one (would be the same song, this action would only happen if like
-		 * someone changes the source, say, to get a higher quality version. This action exists so that when the
-		 * playback eventually gets tracked the counts don't get split or interrupted due to a file replacement)
-		 */
+		/// Replace the file of a track with another one (would be the same song, this action would only happen if like
+		/// someone changes the source, say, to get a higher quality version)
 		REPLACE,
-		/**
-		 * Change the metadata of a song while keeping the audio data untouched
-		 */
+		/// Change the metadata of a track while keeping the audio data untouched
 		CHANGE_METADATA
 	}
 }

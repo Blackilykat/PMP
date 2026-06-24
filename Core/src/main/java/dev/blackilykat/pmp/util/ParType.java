@@ -21,8 +21,10 @@ import javax.annotation.Nonnull;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 
+/// Instantiatable [ParameterizedType].
+///
+/// Used to allow the JSON serializer and deserializer to handle generic types correctly in storage.
 public record ParType(Type ownerType, Type rawType, Type[] actualTypeArguments) implements ParameterizedType {
-
 	public ParType(Type rawType, Type[] actualTypeArguments) {
 		this(null, rawType, actualTypeArguments);
 	}

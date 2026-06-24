@@ -15,11 +15,15 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package dev.blackilykat.pmp.util;
+package dev.blackilykat.pmp;
 
 import java.io.File;
 
+/// Class containing various global values which may be overridden during
+/// startup to change the behavior of underlying shared code.
 public class Globals {
+	/// The directory where all storage is saved to and loaded from.
 	public static File dataRoot = new File(".");
+	/// The directory where tracks are saved to and loaded from.
 	public static File library = new File(dataRoot, "library");
 }

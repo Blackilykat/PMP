@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Blackilykat and contributors
+ * Copyright (C) 2026 Blackilykat and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,6 +17,15 @@
 
 package dev.blackilykat.pmp;
 
+/// Enum specifying the possible states of shuffling playback.
+///
+/// @see RepeatOption
 public enum ShuffleOption {
-	ON, OFF
+	/// Randomly select a new track excluding the currently playing track.
+	ON,
+
+	/// Play tracks in sequential order based on the selected filters and sorting.
+	///
+	/// @see Order
+	OFF
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Blackilykat and contributors
+ * Copyright (C) 2026 Blackilykat and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,15 +19,14 @@ package dev.blackilykat.pmp.messages;
 
 import dev.blackilykat.pmp.PMPConnection;
 
-/**
- * Used to indicate that a side is disconnecting from the socket. The side receiving this message can expect the side
- * who sent it to have already disconnected from the socket.
- * <p>This message is handled by {@link PMPConnection}.
- * <p>Direction: bidirectional
- */
+/// Used to indicate that a side is disconnecting from the socket. The side receiving this message can expect the side
+/// who sent it to have already disconnected from the socket.
+///
+/// This message is handled by {@link PMPConnection}.
+///
+/// Direction: C2S, S2C
 public class DisconnectMessage extends Message {
 	public static final String MESSAGE_TYPE = "Disconnect";
 
-	public DisconnectMessage() {
-	}
+	public DisconnectMessage() {}
 }

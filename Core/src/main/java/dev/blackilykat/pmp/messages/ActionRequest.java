@@ -19,13 +19,15 @@ package dev.blackilykat.pmp.messages;
 
 import dev.blackilykat.pmp.Action;
 
-/**
- * Request from a client to perform an action.
- * <p>Direction: C2S
- */
+/// Request from a client to perform an action.
+///
+/// Direction: C2S
+///
+/// @see ActionResponse
 public class ActionRequest extends Request {
 	public static final String MESSAGE_TYPE = "ActionRequest";
 
+	/// The action itself with all details needed (except file contents) to apply it to the library.
 	public Action action;
 
 	public ActionRequest(Action action) {

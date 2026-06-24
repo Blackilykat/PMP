@@ -17,16 +17,6 @@
 
 package dev.blackilykat.pmp.client;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import dev.blackilykat.pmp.FLACUtil;
-import dev.blackilykat.pmp.util.Pair;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.kc7bfi.jflac.FLACDecoder;
-import org.kc7bfi.jflac.metadata.Metadata;
-import org.kc7bfi.jflac.metadata.StreamInfo;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -36,6 +26,18 @@ import java.util.stream.Collectors;
 import java.util.zip.CRC32;
 import java.util.zip.CheckedInputStream;
 import java.util.zip.Checksum;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.kc7bfi.jflac.FLACDecoder;
+import org.kc7bfi.jflac.metadata.Metadata;
+import org.kc7bfi.jflac.metadata.StreamInfo;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import dev.blackilykat.pmp.util.FLACUtil;
+import dev.blackilykat.pmp.util.Pair;
 
 public class Track {
 	private static final Logger LOGGER = LogManager.getLogger(Track.class);

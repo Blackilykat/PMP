@@ -19,17 +19,16 @@ package dev.blackilykat.pmp.messages;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
-/**
- * Response to {@link ActionMessage} which tells the client how to move ahead with library sync.
- * <p>Direction: S2C
- */
+/// Response to [ActionRequest] which tells the client how to move ahead with library sync.
+///
+/// Direction: S2C
 public class ActionResponse extends Response {
 	public static final String MESSAGE_TYPE = "ActionResponse";
 
-	/**
-	 * The action ID assigned by the server. This is only present when {@link #type} == {@link Type#COMPLETED}.
-	 */
+	/// The action ID assigned by the server. This is only present when {@link #type} == {@link Type#COMPLETED}.
 	public Integer actionId;
+
+	/// The state of the request, based on which the client should decide how to complete the action.
 	public Type type;
 
 	public ActionResponse(Integer requestId, Type type, Integer actionId) {
@@ -47,25 +46,22 @@ public class ActionResponse extends Response {
 		};
 	}
 
+	/// The state of the request, based on which the client should decide how to complete the action.
 	public enum Type {
-		/**
-		 * This action has been completed. It may be an action where data does not need to be sent (i.e. REMOVE) or one
-		 * which previously received an APPROVED response and is now done uploading data.
-		 */
+
+		/// This action has been completed. It may be an action where data does not need to be sent (i.e. REMOVE) or one
+		/// which previously received an APPROVED response and is now done transferring data.
 		COMPLETED,
-		/**
-		 * This action requires data to be uploaded and the client has 30 seconds to start the HTTP request to upload
-		 * data.
-		 */
+
+		/// This action requires data to be uploaded and the client has 30 seconds to start the HTTP request to upload
+		/// the data.
 		APPROVED,
-		/**
-		 * This action is not valid (i.e. REMOVE on a non-existent track).
-		 */
+
+		/// This action is not valid (i.e. REMOVE on a non-existent track).
 		INVALID,
-		/**
-		 * Another client is currently performing an action and this one has been queued. The server will send another
-		 * response when it's this client's turn.
-		 */
+
+		/// Another client may or may not be currently performing an action and this one has been queued. The server
+		/// will send another response when it's this action's turn.
 		QUEUED
 	}
 }

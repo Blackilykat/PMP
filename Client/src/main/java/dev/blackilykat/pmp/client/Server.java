@@ -178,13 +178,6 @@ public class Server {
 		}
 	}
 
-	public static void disconnectWithoutRetrying() {
-		if(connection != null) {
-			shouldNotReconnect = true;
-			connection.disconnect();
-		}
-	}
-
 	public static void disconnectWithoutRetrying(String reason) {
 		if(connection != null) {
 			shouldNotReconnect = true;
@@ -196,12 +189,6 @@ public class Server {
 		if(connection != null) {
 			shouldNotReconnect = true;
 			connection.disconnectSoon(reason);
-		}
-	}
-
-	public static void disconnect() {
-		if(connection != null) {
-			connection.disconnect();
 		}
 	}
 

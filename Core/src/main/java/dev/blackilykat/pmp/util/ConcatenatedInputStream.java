@@ -27,6 +27,7 @@ public class ConcatenatedInputStream extends InputStream {
 	protected InputStream b;
 	protected boolean aClosed = false;
 
+	/// Construct this ConcatenatedInputStream using the two other given InputStreams.
 	public ConcatenatedInputStream(InputStream a, InputStream b) {
 		this.a = a;
 		this.b = b;

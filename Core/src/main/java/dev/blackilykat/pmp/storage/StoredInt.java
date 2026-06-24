@@ -17,6 +17,7 @@
 
 package dev.blackilykat.pmp.storage;
 
+/// Equivalent to [Stored]<[Integer]>, but guarantees non-null values and implements int-specific methods
 public class StoredInt extends Stored<Integer> {
 	public StoredInt(Storage storage, int initial) {
 		super(Integer.class, storage, initial);
@@ -30,17 +31,21 @@ public class StoredInt extends Stored<Integer> {
 		super.set(newValue);
 	}
 
+	/// Increment the value by 1 and return the value it was before being incremented.
 	public int getAndIncrement() {
 		synchronized(storage) {
+			int oldValue = value;
+			value++;
 			storage.markDirty();
-			return value++;
+			return oldValue;
 		}
 	}
 
+	/// Increment the value by 1.
 	public void increment() {
 		synchronized(storage) {
-			storage.markDirty();
 			value++;
+			storage.markDirty();
 		}
 	}
 }

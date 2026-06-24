@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Blackilykat and contributors
+ * Copyright (C) 2026 Blackilykat and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,12 +23,11 @@ import dev.blackilykat.pmp.FilterInfo;
 import java.util.LinkedList;
 import java.util.List;
 
-/**
- * Update the list of filters. Only contains id and key of the filter: the option states are in
- * {@link PlaybackUpdateMessage}. Clients should use the IDs to keep existing filters with previous states, and add new
- * filters if new. This may not be followed by a PlaybackUpdate if there is no owner.
- * <p>Direction: Bidirectional (C2S, C2S2C)
- */
+/// Update the list of filters. Only contains id and key of the filter: the option states are in
+/// [PlaybackUpdateMessage]. Clients should use the IDs to keep existing filters with previous states, and add new
+/// filters if present. This may not be followed by a PlaybackUpdate if there is no owner.
+///
+/// Direction: C2S, C2S2C
 public class FilterListMessage extends Message {
 	public static final String MESSAGE_TYPE = "FilterList";
 

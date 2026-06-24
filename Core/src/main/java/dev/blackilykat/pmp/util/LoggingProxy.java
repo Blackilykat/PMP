@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Blackilykat and contributors
+ * Copyright (C) 2026 Blackilykat and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,14 +23,23 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.PrintStream;
 
+/// Class used to proxy [System#out] and [System#err] to be logged through log4j.
 public class LoggingProxy {
 	private static final Logger LOGGER = LogManager.getLogger(LoggingProxy.class);
 
+	/// Sets up logging proxies for [System#out] and [System#err].
 	public static void setUpProxies() {
 		System.setOut(proxy(System.out, "(stdout)", Level.INFO));
 		System.setErr(proxy(System.err, "(stderr)", Level.ERROR));
 	}
 
+	/// Sets up a single logging proxy.
+	///
+	/// @param stream the original print stream which should be overridden.
+	/// @param prefix the prefix added before each logged message to identify this stream.
+	/// @param level the log4j logging level which should be used for each message.
+	/// @return a new print stream which should be set as the variable which used to contain `stream`.
+	/// @see #setUpProxies()
 	public static PrintStream proxy(PrintStream stream, String prefix, Level level) {
 		final String fPrefix = prefix != null ? prefix : "(stream)";
 

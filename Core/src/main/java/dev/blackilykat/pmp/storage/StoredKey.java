@@ -28,6 +28,8 @@ import java.io.ObjectOutputStream;
 import java.security.Key;
 import java.util.Base64;
 
+/// Stored [Key] objects. These require special handling because they must be
+/// serialized and encoded to strings using base64.
 public class StoredKey extends Stored<String> {
 	private static final Logger LOGGER = LogManager.getLogger(StoredKey.class);
 
@@ -35,6 +37,9 @@ public class StoredKey extends Stored<String> {
 		super(String.class, storage, null);
 	}
 
+	/// Decode the stored base64 string into a [Key].
+	///
+	/// @return the decoded value
 	public Key getDecoded() {
 		String got = get();
 		if(got == null) {
@@ -45,20 +50,23 @@ public class StoredKey extends Stored<String> {
 		try(ObjectInputStream is = new ObjectInputStream(new ByteArrayInputStream(data))) {
 			Object o = is.readObject();
 			if(!(o instanceof Key key)) {
-				LOGGER.error("ClientStorage$Sensitive: Key is not a key but a {}, this should be unreachable",
+				LOGGER.error("StoredKey#getDecoded: Key is not a key but a {}, this should be unreachable",
 						o.getClass().getName());
 				return null;
 			}
 			return key;
 		} catch(IOException | ClassNotFoundException e) {
-			LOGGER.error("ClientStorage$Sensitive: this should be unreachable", e);
+			LOGGER.error("StoredKey#getDecoded: this should be unreachable", e);
 			return null;
 		}
 	}
 
+	/// Encode the given value to base64 and set it as the value.
+	///
+	/// @param key the value to encode
 	public void setDecoded(Key key) {
 		if(get() != null) {
-			LOGGER.warn("Overriding server public key");
+			LOGGER.warn("Overriding StoredKey");
 		}
 		try(ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
 			ObjectOutputStream os = new ObjectOutputStream(byteStream)) {
@@ -67,7 +75,7 @@ public class StoredKey extends Stored<String> {
 			byte[] data = byteStream.toByteArray();
 			set(Base64.getEncoder().encodeToString(data));
 		} catch(IOException e) {
-			LOGGER.error("Storage#getServerPublicKey: this should be unreachable", e);
+			LOGGER.error("StoredKey#setDecoded: this should be unreachable", e);
 		}
 	}
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Blackilykat and contributors
+ * Copyright (C) 2026 Blackilykat and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,14 +17,16 @@
 
 package dev.blackilykat.pmp.messages;
 
-/**
- * Request to log in as a new device. Only supports password login as a token could not have been previously assigned.
- * <p>Direction: C2S
- */
+/// Request to log in as a new device. Only supports password login as a token could not have been previously assigned.
+///
+/// Direction: C2S
 public class LoginAsNewDeviceRequest extends Request {
 	public static final String MESSAGE_TYPE = "LoginAsNewDevice";
 
+	/// The user entered password.
 	public String password;
+
+	/// The hostname of this device to allow the user to recognize it in a list of devices.
 	public String hostname;
 
 	public LoginAsNewDeviceRequest(String password, String hostname) {

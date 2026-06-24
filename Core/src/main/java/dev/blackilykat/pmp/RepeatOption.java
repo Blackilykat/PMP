@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Blackilykat and contributors
+ * Copyright (C) 2026 Blackilykat and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,17 +17,16 @@
 
 package dev.blackilykat.pmp;
 
+/// Enum specifying the possible states of repeating playback.
+///
+/// @see ShuffleOption
 public enum RepeatOption {
-	/**
-	 * Repeat this track. Takes priority over shuffle.
-	 */
+	/// Repeat the currently playing track. Takes priority over shuffle.
 	TRACK,
-	/**
-	 * When at the end of the track list, get back to the start. Does nothing if shuffle is on.
-	 */
+
+	/// When at the end of the track list, get back to the start. Does nothing if shuffle is on.
 	ALL,
-	/**
-	 * When at the end of the track list, stop playing.
-	 */
+
+	/// When at the end of the track list, stop playing. Does nothing if shuffle is on.
 	OFF
 }

@@ -21,9 +21,13 @@ import dev.blackilykat.pmp.Action;
 
 import java.util.List;
 
+/// Response to a [GetActionsRequest]. Contains the list of requested actions.
+///
+/// Direction: S2C
 public class GetActionsResponse extends Response {
 	public static final String MESSAGE_TYPE = "GetActionsResponse";
 
+	/// The list of requested actions.
 	public List<Action> actions;
 
 	public GetActionsResponse(List<Action> actions, Integer requestId) {

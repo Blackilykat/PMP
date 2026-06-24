@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Blackilykat and contributors
+ * Copyright (C) 2026 Blackilykat and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,11 +31,9 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-/**
- * Single thread executor service which interrupts a previous task whenever a new one is submitted.
- * <p>
- * Relies on submitted tasks to properly handle interrupts.
- */
+/// Single thread executor service which interrupts a previous task whenever a new one is submitted.
+///
+/// Relies on submitted tasks to properly handle interrupts.
 @SuppressWarnings({"NullableProblems", "unchecked"})
 public class OverridingSingleThreadExecutor implements ExecutorService {
 	private final ExecutorService base;
@@ -172,6 +170,7 @@ public class OverridingSingleThreadExecutor implements ExecutorService {
 		submit(command);
 	}
 
+	/// Interrupt the currently running task **without** preventing other tasks from being submitted later.
 	public void interrupt() {
 		if(currentTask != null) {
 			currentTask.cancel(true);

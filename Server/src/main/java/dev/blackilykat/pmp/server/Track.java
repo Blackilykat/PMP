@@ -17,14 +17,6 @@
 
 package dev.blackilykat.pmp.server;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import dev.blackilykat.pmp.FLACUtil;
-import dev.blackilykat.pmp.util.Pair;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.kc7bfi.jflac.FLACDecoder;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -33,6 +25,16 @@ import java.util.List;
 import java.util.zip.CRC32;
 import java.util.zip.CheckedInputStream;
 import java.util.zip.Checksum;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.kc7bfi.jflac.FLACDecoder;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import dev.blackilykat.pmp.util.FLACUtil;
+import dev.blackilykat.pmp.util.Pair;
 
 public class Track {
 	private static final Logger LOGGER = LogManager.getLogger(Track.class);

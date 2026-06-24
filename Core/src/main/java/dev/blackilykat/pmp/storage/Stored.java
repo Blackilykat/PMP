@@ -24,6 +24,10 @@ import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import java.io.IOException;
 import java.lang.reflect.Type;
 
+/// A value which is stored in a [Storage] file.
+///
+/// This class is necessary to consistently synchronize reads and writes from and to storage,
+/// and to allow all updates to stored values to always mark storage as dirty.
 public class Stored<T> {
 	public final Type type;
 	protected final Storage storage;
@@ -35,6 +39,7 @@ public class Stored<T> {
 		this.value = initial;
 	}
 
+	/// Set the inner stored value and mark storage as dirty.
 	public void set(T newValue) {
 		synchronized(storage) {
 			value = newValue;
@@ -42,13 +47,14 @@ public class Stored<T> {
 		}
 	}
 
+	/// Get the inner stored value.
 	public T get() {
 		synchronized(storage) {
 			return value;
 		}
 	}
 
-
+	/// Jackson serializer which allows stored values to not be wrapped in unnecessary [Stored] objects.
 	public static class Serializer extends StdSerializer<Stored<?>> {
 		protected Serializer() {
 			//noinspection unchecked

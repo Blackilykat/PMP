@@ -21,28 +21,36 @@ import dev.blackilykat.pmp.event.EventSource;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+/// Utility class to gracefully terminate the execution of the program.
 public class Shutdown {
-	/**
-	 * Event called when the program shuts down. This is not guaranteed to be called in every platform (i.e. Android
-	 * does not offer a callback on shutdown)
-	 *
-	 * @see #EVENT_MAY_SHUTDOWN_SOON
-	 */
+	/// Event called when the program shuts down. This is not guaranteed to be called in every platform (i.e. Android
+	/// does not offer a callback on shutdown)
+	///
+	/// @see #EVENT_MAY_SHUTDOWN_SOON
 	public static final EventSource<Void> EVENT_SHUTDOWN = new EventSource<>();
-	/**
-	 * Event called when either the program is shutting down or it may shut down soon. This should be used to save data
-	 * to disk, but it should not close any resources that may be needed later. It may be called multiple times during
-	 * the execution of the program.
-	 */
+	/// Event called when either the program is shutting down or it may shut down soon. This should be used to save data
+	/// to disk, but it should not close any resources that may be needed later. It may be called multiple times during
+	/// the execution of the program.
+	///
+	/// @see #EVENT_SHUTDOWN
 	public static final EventSource<Void> EVENT_MAY_SHUTDOWN_SOON = new EventSource<>();
 	private static final Logger LOGGER = LogManager.getLogger(Shutdown.class);
+	/// True if the shutdown procedure has started.
+	///
+	/// Prevents making the shutdown procedure which calls shutdown hooks from calling the shutdown procedure again.
 	private static boolean shuttingDown = false;
 
+	/// Emit [#EVENT_MAY_SHUTDOWN_SOON].
 	public static void mayShutdownSoon() {
 		LOGGER.info("May shut down soon");
 		EVENT_MAY_SHUTDOWN_SOON.call(null);
 	}
 
+	/// The shutdown procedure.
+	///
+	/// Calls [#EVENT_MAY_SHUTDOWN_SOON] then [#EVENT_SHUTDOWN], then exits if `exit` is true.
+	///
+	/// @param exit whether this method should actually shut down the JVM.
 	public static void shutdown(boolean exit) {
 		if(shuttingDown) {
 			return;

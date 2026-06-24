@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Blackilykat and contributors
+ * Copyright (C) 2026 Blackilykat and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,6 +17,11 @@
 
 package dev.blackilykat.pmp.event;
 
+/// An event source which stores the last event and calls newly registered
+/// listeners if a previous event was emitted.
+///
+/// Useful for event sources that expose state to UI, to avoid code duplication
+/// in the UI layer.
 public class RetroactiveEventSource<T> extends EventSource<T> {
 	private T lastEvent = null;
 

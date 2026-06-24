@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Blackilykat and contributors
+ * Copyright (C) 2026 Blackilykat and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,19 +17,27 @@
 
 package dev.blackilykat.pmp.messages;
 
-/**
- * <p>C2S: Claim ownership of playback, device == null
- * <p>S2C: Playback owner has changed, device == null <b>only if there is no longer an owner</b>
- * <p>Direction: Bidirectional (C2S, S2C, C2S2C)
- */
+/// Used to claim playback ownership and to indicate ownership has changed.
+///
+/// C2S: Claim ownership of playback, device == null
+///
+/// (C2)S2C: Playback owner has changed, device == null **only if there is no longer an owner**
+///
+/// Direction: C2S, S2C, C2S2C
 public class PlaybackOwnershipMessage extends Message {
 	public static final String MESSAGE_TYPE = "PlaybackOwnership";
+
+	/// The id of the new playback owner or null if none.
+	///
+	/// Only present when (C2)S2C.
 	public Integer deviceId;
 
+	/// Create a message with no device ID
 	public PlaybackOwnershipMessage() {
 		this.deviceId = null;
 	}
 
+	/// Create a message with the specified device ID
 	public PlaybackOwnershipMessage(int deviceId) {
 		this.deviceId = deviceId;
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Blackilykat and contributors
+ * Copyright (C) 2026 Blackilykat and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,13 +17,13 @@
 
 package dev.blackilykat.pmp.messages;
 
-/**
- * Request by the client to get a list of actions, from {@link #from} to the latest.
- * <p>Direction: C2S
- */
+/// Request by the client to get a list of actions, from [#from] to the latest.
+///
+/// Direction: C2S
 public class GetActionsRequest extends Request {
 	public static final String MESSAGE_TYPE = "GetActionsRequest";
 
+	/// The first action to send
 	public int from;
 
 	public GetActionsRequest(int from) {

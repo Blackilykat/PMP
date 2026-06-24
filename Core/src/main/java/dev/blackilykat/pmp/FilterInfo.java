@@ -20,4 +20,8 @@ package dev.blackilykat.pmp;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 // This record failed deserializing on android without the annotations. Don't know why, but these have to stay.
+
+/// Serializable class for communicating filters.
+///
+/// Does not contain filter options: they are sent separately using the filter's id.
 public record FilterInfo(@JsonProperty("id") int id, @JsonProperty("key") String key) {}

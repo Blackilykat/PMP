@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Blackilykat and contributors
+ * Copyright (C) 2026 Blackilykat and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,18 +17,17 @@
 
 package dev.blackilykat.pmp.messages;
 
-/**
- * Message used to indicate that a programming error has manifested somewhere, likely by the receiving side.
- * <p>There is no expected behavior upon receiving this, as it ideally never gets encountered at all outside of
- * development. This does not mean the expected behavior is to not react: there may be attempts at recovering the error
- * such as reconnecting.
- * <p>Direction: Bidirectional (C2S, S2C)
- */
+/// Message used to indicate that a programming error has manifested somewhere, likely by the receiving side.
+///
+/// There is no expected behavior upon receiving this, as it ideally never gets encountered at all outside of
+/// development. This does not mean the expected behavior is to not react: there may be attempts at recovering the error
+/// such as reconnecting.
+///
+/// Direction: C2S, S2C
 public class ErrorMessage extends Message {
 	public static final String MESSAGE_TYPE = "Error";
-	/**
-	 * Human-readable info message about what happened.
-	 */
+
+	/// Human-readable and unique info message about what happened.
 	public String info;
 
 	public ErrorMessage(String info) {

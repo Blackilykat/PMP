@@ -25,9 +25,7 @@ import java.util.List;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
 
-/**
- * BlockingDeque for use in storage designed to have at most 1 consuming thread.
- */
+/// [BlockingDeque] for use in storage designed to have at most 1 consuming thread.
 public class StoredBlockingDeque<T> extends Stored<BlockingDeque<T>> {
 	public StoredBlockingDeque(Type type, Storage storage) {
 		super(new ParType(LinkedBlockingDeque.class, new Type[]{type}), storage, new LinkedBlockingDeque<>());
@@ -40,28 +38,35 @@ public class StoredBlockingDeque<T> extends Stored<BlockingDeque<T>> {
 		throw new RuntimeException("Do not use get on a stored queue");
 	}
 
+	/// Equivalent to [#peek], but if the queue is empty blocks until a value is added.
 	public T blockingPeek() throws InterruptedException {
 		T peeked = value.take();
 		value.addFirst(peeked);
 		return peeked;
 	}
 
+	/// Equivalent to [BlockingDeque#peek]
 	public T peek() {
 		synchronized(storage) {
 			return value.peek();
 		}
 	}
 
+	/// Equivalent to [BlockingDeque#add]
 	public void add(T t) {
 		synchronized(storage) {
 			value.add(t);
+			storage.markDirty();
 		}
 	}
 
+	/// Equivalent to [BlockingDeque#take]
 	public void take() {
 		value.remove();
+		storage.markDirty();
 	}
 
+	/// Get a safely iterable copy of the list of all values in this queue.
 	public List<T> viewAll() {
 		synchronized(storage) {
 			return new ArrayList<>(value);
