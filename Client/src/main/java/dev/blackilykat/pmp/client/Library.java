@@ -36,6 +36,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
+import javax.annotation.Nonnull;
 import javax.net.ssl.HttpsURLConnection;
 
 import org.apache.logging.log4j.LogManager;
@@ -55,32 +56,94 @@ import dev.blackilykat.pmp.util.FLACUtil;
 import dev.blackilykat.pmp.util.Pair;
 import dev.blackilykat.pmp.util.ScopedValue;
 
+/// General management of loading, updating, sorting, filtering the library.
+///
+/// @see #EVENT_SELECTED_TRACKS_UPDATED
 public class Library {
+	/// Emitted when the library is done loading.
+	///
+	/// Contains the list of all tracks in the library.
 	public static final RetroactiveEventSource<Collection<Track>> EVENT_LOADED = new RetroactiveEventSource<>();
+	/// Emitted when a filter is added either locally by the user or remotely through another device.
+	///
+	/// Contains the added filter.
 	public static final EventSource<Filter> EVENT_FILTER_ADDED = new EventSource<>();
+	/// Emitted when a filter is removed either locally by the user or remotely through another device.
+	///
+	/// Contains the removed filter.
 	public static final EventSource<Filter> EVENT_FILTER_REMOVED = new EventSource<>();
+	/// Emitted when a filter was added, removed or moved.
+	///
+	/// Contains the new list of filters.
 	public static final EventSource<List<Filter>> EVENT_FILTERS_UPDATED = new EventSource<>();
+	/// Emitted when a track is added to the library.
+	///
+	/// Contains the new track object.
+	///
+	/// Not suitable for updating UI track list as it does not account for sorting or filters.
+	///
+	/// @see #EVENT_SELECTED_TRACKS_UPDATED
 	public static final EventSource<Track> EVENT_TRACK_ADDED = new EventSource<>();
+	/// Emitted when a track is removed from the library.
+	///
+	/// Contains the old track object.
+	///
+	/// Not suitable for updating UI track list as it does not account for sorting or filters.
+	///
+	/// @see #EVENT_SELECTED_TRACKS_UPDATED
 	public static final EventSource<Track> EVENT_TRACK_REMOVED = new EventSource<>();
+	/// Emitted when a header is added, removed or moved.
+	///
+	/// Contains the new list of headers.
 	public static final EventSource<List<Header>> EVENT_HEADERS_UPDATED = new RetroactiveEventSource<>();
+	/// Emitted when a header is added.
+	///
+	/// Contains the new header, which is always added as the last header.
 	public static final EventSource<Header> EVENT_HEADER_ADDED = new EventSource<>();
+	/// Emitted when a header is removed.
+	///
+	/// Contains the old header.
 	public static final EventSource<Header> EVENT_HEADER_REMOVED = new EventSource<>();
+	/// Emitted when a header is moved to a different position.
+	///
+	/// Moving a header only affects UI order.
 	public static final EventSource<HeaderMovedEvent> EVENT_HEADER_MOVED = new EventSource<>();
+	/// Emitted when a filter is moved to a different position.
+	///
+	/// Moving a filter affects both UI and logic, as filters are applied in order.
 	public static final EventSource<FilterMovedEvent> EVENT_FILTER_MOVED = new EventSource<>();
+	/// Emitted when the list of filtered and sorted tracks is updated.
+	///
+	/// This event is suitable to update a tracklist in the UI layer. Tracks must be displayed in the order
+	/// they appear in the given list, and there must not be any missing or extra tracks.
 	public static final EventSource<SelectedTracksUpdatedEvent> EVENT_SELECTED_TRACKS_UPDATED = new EventSource<>();
+	/// Emitted when the sorting is updated.
 	public static final EventSource<SortingHeaderUpdatedEvent> EVENT_SORTING_HEADER_UPDATED = new EventSource<>();
 
+	/// True when [#reloadSelection] should be prevented from running for performance reasons.
+	///
+	/// Used in [#collectReloads].
 	private static final ScopedValue<Boolean> NO_RELOAD_SELECTION = ScopedValue.newInstance();
+	/// Used to prevent recursion when handling filter option updates.
 	private static final ScopedValue<Boolean> IGNORE_FILTER_OPTION_UPDATE = ScopedValue.newInstance();
 
 	private static final Logger LOGGER = LogManager.getLogger(Library.class);
 	private static final AtomicBoolean INITIALIZED = new AtomicBoolean(false);
 
+	/// The directory containing the library.
 	private static File library = null;
+	/// The current list of filtered and sorted tracks.
+	///
+	/// @see #EVENT_SELECTED_TRACKS_UPDATED
 	private static List<Track> selectedTracks = new LinkedList<>();
 	private static Header sortingHeader = null;
 	private static Order sortingOrder = Order.ASCENDING;
 
+	/// Reloads the selection if [#NO_RELOAD_SELECTION] does not prevent it from doing so.
+	///
+	/// Applies filters and filter options and sorts the filtered list.
+	///
+	/// @see #EVENT_SELECTED_TRACKS_UPDATED
 	public static void reloadSelection() {
 		if(NO_RELOAD_SELECTION.orElse(false)) {
 			return;
@@ -175,6 +238,10 @@ public class Library {
 						Collections.unmodifiableList(selectedTracks)));
 	}
 
+	/// Add a new filter and send the update to the server if possible.
+	///
+	/// @see #EVENT_FILTER_ADDED
+	/// @see #EVENT_FILTERS_UPDATED
 	public static void addFilter(Filter filter) {
 		LOGGER.info("Adding filter {}", filter);
 		ClientStorage.MAIN.filters.add(filter);
@@ -195,6 +262,10 @@ public class Library {
 		}
 	}
 
+	/// Remove an existing filter and send the update to the server if possible.
+	///
+	/// @see #EVENT_FILTER_REMOVED
+	/// @see #EVENT_FILTERS_UPDATED
 	public static void removeFilter(Filter filter) {
 		LOGGER.info("Removing filter {}", filter);
 		ClientStorage.MAIN.filters.remove(filter);
@@ -209,6 +280,13 @@ public class Library {
 		}
 	}
 
+	/// Move an existing filter to a new position and send the update to the server if possible.
+	///
+	/// @throws IndexOutOfBoundsException if `position` is out of bounds
+	/// @throws IllegalArgumentException if `filter` is not an existing filter
+	///
+	/// @see #EVENT_FILTER_MOVED
+	/// @see #EVENT_FILTERS_UPDATED
 	public static void moveFilter(Filter filter, int position) {
 		if(position < 0 || position >= ClientStorage.MAIN.filters.size()) {
 			throw new IndexOutOfBoundsException(
@@ -235,7 +313,13 @@ public class Library {
 		}
 	}
 
-	public static void importFilters(List<FilterInfo> filterInfos) {
+	/// Import filters from a network-friendly list sent by the server.
+	///
+	/// @see #EVENT_FILTER_ADDED
+	/// @see #EVENT_FILTER_REMOVED
+	/// @see #EVENT_FILTER_MOVED
+	/// @see #EVENT_FILTERS_UPDATED
+	public static void importFilters(@Nonnull List<FilterInfo> filterInfos) {
 		if(filterInfos == null) {
 			LOGGER.warn("Attempted import of null filters");
 			return;
@@ -281,6 +365,7 @@ public class Library {
 		});
 	}
 
+	/// Export filters to a network-friendly list to be sent to the server.
 	public static List<FilterInfo> exportFilters() {
 		List<FilterInfo> toReturn = new LinkedList<>();
 		for(Filter filter : ClientStorage.MAIN.filters.get()) {
@@ -289,6 +374,10 @@ public class Library {
 		return toReturn;
 	}
 
+	/// Add a new header.
+	///
+	/// @see #EVENT_HEADER_ADDED
+	/// @see #EVENT_HEADERS_UPDATED
 	public static void addHeader(Header header) {
 		LOGGER.info("Adding header {}", header);
 
@@ -298,6 +387,12 @@ public class Library {
 		EVENT_HEADERS_UPDATED.call(ClientStorage.MAIN.headers.get());
 	}
 
+	/// Move an existing header to a new position.
+	///
+	/// @throws IllegalArgumentException if `header` is not an existing header
+	/// @throws IndexOutOfBoundsException if `position` is out of bounds
+	/// @see #EVENT_HEADER_MOVED
+	/// @see #EVENT_HEADERS_UPDATED
 	public static void moveHeader(Header header, int position) {
 		if(!ClientStorage.MAIN.headers.contains(header)) {
 			throw new IllegalArgumentException(header + " is not in headers");
@@ -319,12 +414,15 @@ public class Library {
 		EVENT_HEADERS_UPDATED.call(ClientStorage.MAIN.headers.get());
 	}
 
-	/**
-	 * @throws IllegalStateException if header is the last header
-	 */
+	/// Remove an existing header.
+	///
+	/// @throws IllegalStateException if the header is the only header
+	/// @see #EVENT_HEADER_REMOVED
+	/// @see Header#eventHeaderRemoved
+	/// @see #EVENT_HEADERS_UPDATED
 	public static void removeHeader(Header header) {
 		if(ClientStorage.MAIN.headers.size() == 1) {
-			throw new IllegalStateException("Can't remove last header");
+			throw new IllegalStateException("Can't remove the only header");
 		}
 
 		LOGGER.info("Removing header {}", header);
@@ -341,6 +439,10 @@ public class Library {
 		EVENT_HEADERS_UPDATED.call(ClientStorage.MAIN.headers.get());
 	}
 
+	/// Update the sorting header and order.
+	///
+	/// @see Header
+	/// @see #EVENT_SORTING_HEADER_UPDATED
 	public static void setSorting(Header header, Order order) {
 		sortingHeader = header;
 		sortingOrder = order;
@@ -357,10 +459,22 @@ public class Library {
 		return sortingOrder;
 	}
 
+	/// Get an unmodifiable view of the current list of filtered and sorted tracks.
 	public static List<Track> getSelectedTracks() {
 		return Collections.unmodifiableList(selectedTracks);
 	}
 
+	/// Initialize the state of the library:
+	/// - Creates a library directory if it did not exist;
+	/// - Loads all files in library, using the cache at [ClientStorage.Main#tracks] when possible;
+	/// - Creates default headers if needed;
+	/// - Updates header types (see [Header#updateType];
+	/// - Creates default filters if needed;
+	/// - Loads initial state of selected tracks (see [#reloadSelection]);
+	/// - Registers needed listeners.
+	///
+	/// @throws IllegalStateException if called twice
+	/// @see #EVENT_LOADED
 	public static void init() {
 		synchronized(INITIALIZED) {
 			if(INITIALIZED.get()) {
@@ -565,6 +679,16 @@ public class Library {
 		}
 	}
 
+	/// Add a track to the library using its file.
+	///
+	/// Confirms it is a valid track by parsing its metadata, then uses it to create a filename (see [Track#makeFilename]).
+	///
+	/// Attempts to create a hard link if possible to reduce disk space waste. If that fails, it will create a copy.
+	///
+	/// @see #EVENT_TRACK_ADDED
+	/// @throws IllegalArgumentException if the file does not exist or is a directory
+	/// @throws FileAlreadyExistsException if the target file (a track with the same title, artist and album) already exists
+	/// @return true if the track was added, false if it was not a valid FLAC file.
 	public static boolean addTrack(File file) throws IOException {
 		if(file == null || !file.exists()) {
 			throw new IllegalArgumentException("File does not exist");
@@ -595,7 +719,16 @@ public class Library {
 		return true;
 	}
 
-	public static boolean addTrack(InputStream is) throws IOException {
+	/// Add a track to the library using an arbitrary InputStream.
+	///
+	/// Confirms it is a valid track by parsing its metadata, then uses it to create a filename (see [Track#makeFilename]).
+	///
+	/// Always stores a copy of the track as an InputStream does not hold a reference to an original file.
+	///
+	/// @see #EVENT_TRACK_ADDED
+	/// @throws IllegalArgumentException if `is` is null
+	/// @return true if the track was added, false if it was not a valid FLAC file.
+	public static boolean addTrack(@Nonnull InputStream is) throws IOException {
 		if(is == null) {
 			throw new IllegalArgumentException("Can't add null track");
 		}
@@ -604,6 +737,9 @@ public class Library {
 
 		FLACDecoder flacDecoder = new FLACDecoder(bis);
 		List<Pair<String, String>> metadata = FLACUtil.extractMetadata(flacDecoder.readMetadata());
+		if(metadata == null) {
+			return false;
+		}
 
 		Path target = library.toPath().resolve(Track.makeFilename(metadata));
 		if(target.toFile().exists()) {
@@ -619,6 +755,9 @@ public class Library {
 		return true;
 	}
 
+	/// Start properly tracking a newly added track of which the file is already in the library.
+	///
+	/// @see #EVENT_TRACK_ADDED
 	public static void registerNewTrack(File file) throws IOException {
 		Track track = new Track(file);
 		ClientStorage.MAIN.tracks.put(track.getFile().getName(), track);
@@ -626,6 +765,9 @@ public class Library {
 		reloadSelection();
 	}
 
+	/// Remove an existing track from the library.
+	///
+	/// @see #EVENT_TRACK_REMOVED
 	public static void removeTrack(Track track) {
 		if(!ClientStorage.MAIN.tracks.containsValue(track)) {
 			throw new IllegalArgumentException("Track is not in library");
@@ -643,6 +785,10 @@ public class Library {
 		reloadSelection();
 	}
 
+	// Export current positive filter options to a network and storage friendly list.
+	//
+	// @see #exportNegativeOptions
+	// @see #importFilterOptions
 	public static List<Pair<Integer, String>> exportPositiveOptions() {
 		LinkedList<Pair<Integer, String>> toReturn = new LinkedList<>();
 		for(Filter filter : ClientStorage.MAIN.filters.get()) {
@@ -655,6 +801,26 @@ public class Library {
 		return toReturn;
 	}
 
+	// Export current negative filter options to a network and storage friendly list.
+	//
+	// @see #exportPositiveOptions
+	// @see #importFilterOptions
+	public static List<Pair<Integer, String>> exportNegativeOptions() {
+		LinkedList<Pair<Integer, String>> toReturn = new LinkedList<>();
+		for(Filter filter : ClientStorage.MAIN.filters.get()) {
+			for(FilterOption option : filter.getOptions()) {
+				if(option.getState() == FilterOption.State.NEGATIVE) {
+					toReturn.add(new Pair<>(filter.id, option.value));
+				}
+			}
+		}
+		return toReturn;
+	}
+
+	// Imports filter options from a network and storage friendly list.
+	//
+	// @see #exportNegativeOptions
+	// @see #exportPositiveOptions
 	public static void importFilterOptions(List<Pair<Integer, String>> positive,
 			List<Pair<Integer, String>> negative) {
 		ScopedValue.where(Player.DONT_SEND_UPDATES, true).run(() -> {
@@ -678,7 +844,6 @@ public class Library {
 						}
 
 
-						boolean isNegative = false;
 						if(negative != null) {
 							for(Pair<Integer, String> negativeOption : negative) {
 								if(negativeOption.key != id || !Objects.equals(value, negativeOption.value)) {
@@ -703,31 +868,22 @@ public class Library {
 		}
 	}
 
-	public static List<Pair<Integer, String>> exportNegativeOptions() {
-		LinkedList<Pair<Integer, String>> toReturn = new LinkedList<>();
-		for(Filter filter : ClientStorage.MAIN.filters.get()) {
-			for(FilterOption option : filter.getOptions()) {
-				if(option.getState() == FilterOption.State.NEGATIVE) {
-					toReturn.add(new Pair<>(filter.id, option.value));
-				}
-			}
-		}
-		return toReturn;
-	}
-
-	/**
-	 * Runs the specified runnable preventing the selection reloads from happening, then does a selection reload. Used
-	 * to improve performance when performing actions that would normally trigger one on bulk.
-	 * <p>
-	 * When using this, it is good practice to call the {@link #reloadSelection} method when the intention is for it to
-	 * be called regardless of what may have happened above in the runnable.
-	 */
+	/// Runs the specified runnable preventing the selection reloads from happening, then does a selection reload. Used
+	/// to improve performance when performing actions that would normally trigger one on bulk.
+	///
+	/// When using this, it is good practice to call the {@link #reloadSelection} method when the intention is for it to
+	/// be called regardless of what may have happened above in the runnable. This improves readability and allows potential
+	/// future optimizations.
 	public static void collectReloads(Runnable runnable) {
 		ScopedValue.where(NO_RELOAD_SELECTION, true).run(runnable);
 		reloadSelection();
 	}
 
-
+	/// Handles an [Action.Type#ADD] action received from the server.
+	///
+	/// Equivalent to [#handleReplaceAction] with an extra check to prevent overriding existing files.
+	///
+	/// @see #EVENT_TRACK_ADDED
 	public static void handleAddAction(Action action) throws IOException {
 		File target = library.toPath().resolve(action.filename).toFile();
 		if(target.exists()) {
@@ -737,6 +893,13 @@ public class Library {
 		handleReplaceAction(action);
 	}
 
+	/// Handles a [Action.Type#REPLACE] action received from the server.
+	///
+	/// Downloads the track from the server's HTTP endpoint, stores it and adds it to the library.
+	///
+	/// Uses `.tmp` files to prevent leftover incomplete downloads.
+	///
+	/// @see ClientStorage.Main#serverFilePort
 	public static void handleReplaceAction(Action action) throws IOException {
 		File target = library.toPath().resolve(action.filename).toFile();
 
@@ -764,6 +927,12 @@ public class Library {
 		registerNewTrack(target);
 	}
 
+	/// Handles a [Action.Type#REMOVE] action received from the server.
+	///
+	/// Removes the file and removes the track from the library.
+	///
+	/// @throws IOException if the file cannot be removed
+	/// @see #EVENT_TRACK_REMOVED
 	public static void handleRemoveAction(Action action) throws IOException {
 		File target = library.toPath().resolve(action.filename).toFile();
 		if(!target.delete()) {
@@ -775,6 +944,9 @@ public class Library {
 		reloadSelection();
 	}
 
+	/// Block until library is initialized.
+	///
+	/// @see #EVENT_LOADED
 	public static void waitUntilLoaded() throws InterruptedException {
 		synchronized(INITIALIZED) {
 			while(!INITIALIZED.get()) {
@@ -783,11 +955,18 @@ public class Library {
 		}
 	}
 
+	/// Data for [Library#EVENT_SELECTED_TRACKS_UPDATED]
+	///
+	/// @param oldSelection the old selected tracks, usable if needed to only update needed UI elements.
+	/// @param newSelection the new selected tracks, which the UI should match both in contents and in order.
 	public record SelectedTracksUpdatedEvent(List<Track> oldSelection, List<Track> newSelection) {}
 
+	/// Data for [Library#EVENT_SORTING_HEADER_UPDATED]
 	public record SortingHeaderUpdatedEvent(Header header, Order order) {}
 
+	/// Data for [Library#EVENT_HEADER_MOVED]
 	public record HeaderMovedEvent(Header header, int oldPosition, int newPosition) {}
 
+	/// Data for [Library#EVENT_FILTER_MOVED]
 	public record FilterMovedEvent(Filter filter, int newPosition) {}
 }

@@ -21,13 +21,16 @@ import dev.blackilykat.pmp.client.Track;
 
 import java.io.IOException;
 
+/// Abstraction layer to define audio backends to interact with the operating system and hardware.
+///
+/// Desktop implementations of this should generally be included in the Client subproject.
+///
+/// UI layers, if appropriate, are free to implement a custom audio backend.
 public abstract class AudioBackend {
 	public static AudioBackend backend = null;
 
-	/**
-	 * Do any needed setup for a track with the given stream info. Will be called for every new track loaded. May do
-	 * nothing if a previous setup works for this track.
-	 */
+	/// Do any needed setup for a track with the given stream info. Will be called for every new track loaded. May do
+	/// nothing if a previous setup works for this track.
 	abstract public void setupTrack(Track track) throws IOException;
 
 	/// Write PCM data to the backend. Must block.
@@ -36,27 +39,19 @@ public abstract class AudioBackend {
 	/// calls when {@link #setupTrack} is called between them.
 	abstract public void write(byte[] pcm, int offset, int length) throws IOException;
 
-	/**
-	 * Close the audio backend. Will not be reopened after. Will only be called in case of an error or shutdown.
-	 */
+	/// Close the audio backend. Will not be reopened after. Will only be called in case of an error or shutdown.
 	abstract public void close();
 
-	/**
-	 * Clear the backend audio buffer (if any) to avoid byte misalignment when seeking.
-	 */
+	/// Clear the backend audio buffer (if any) to avoid byte misalignment when seeking.
 	public void frameAlign() throws IOException {
 	}
 
-	/**
-	 * Get the latency, in milliseconds, as reported by the audio backend. If this is not supported, return 0.
-	 */
+	/// Get the latency, in milliseconds, as reported by the audio backend. If this is not supported, return 0.
 	public int getLatency() {
 		return 0;
 	}
 
-	/**
-	 * Flush previous audio data. If this is not supported, does nothing.
-	 */
+	/// Flush previous audio data. If this is not supported, does nothing.
 	public void flush() throws IOException {
 	}
 }

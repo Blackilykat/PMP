@@ -30,15 +30,11 @@ import dev.blackilykat.pmp.messages.LoginSuccessResponse;
 import dev.blackilykat.pmp.messages.PlaybackOwnershipMessage;
 import dev.blackilykat.pmp.messages.PlaybackUpdateMessage;
 import dev.blackilykat.pmp.util.ScopedValue;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.time.Instant;
 import java.util.List;
 
 public class LoginSuccessResponseHandler extends MessageHandler<LoginSuccessResponse> {
-	private static final Logger LOGGER = LogManager.getLogger(LoginSuccessResponseHandler.class);
-
 	public LoginSuccessResponseHandler() {
 		super(LoginSuccessResponse.class);
 	}

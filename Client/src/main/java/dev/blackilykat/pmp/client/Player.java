@@ -61,84 +61,131 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
+/// Handle playback and related state
 public class Player {
+	/// Emitted when the playing state has changed.
+	///
+	/// Contains true if playback is paused.
 	public static final RetroactiveEventSource<Boolean> EVENT_PLAY_PAUSE = new RetroactiveEventSource<>();
+
+	/// Emitted when the currently playing track has changed.
 	public static final RetroactiveEventSource<TrackChangeEvent> EVENT_TRACK_CHANGE = new RetroactiveEventSource<>();
+
+	/// Emitted periodically while playback is progressing.
+	///
+	/// Contains the current position in milliseconds.
 	public static final RetroactiveEventSource<Long> EVENT_PROGRESS = new RetroactiveEventSource<>();
+
+	/// Emitted periodically as the current track loads.
 	public static final RetroactiveEventSource<CurrentTrackLoadEvent> EVENT_CURRENT_TRACK_LOAD =
 			new RetroactiveEventSource<>();
+
+	/// Emitted when new debug info for playback is available.
 	public static final RetroactiveEventSource<PlaybackDebugInfoEvent> EVENT_PLAYBACK_DEBUG_INFO =
 			new RetroactiveEventSource<>();
+
+	/// Emitted when the current state of the repeat option has changed.
 	public static final RetroactiveEventSource<RepeatOption> EVENT_REPEAT_CHANGED = new RetroactiveEventSource<>();
+
+	/// Emitted when the current state of the shuffle option has changed.
 	public static final RetroactiveEventSource<ShuffleOption> EVENT_SHUFFLE_CHANGED = new RetroactiveEventSource<>();
+
+	/// Emitted when the track scheduled to be played at the end of the current one is updated.
 	public static final RetroactiveEventSource<Track> EVENT_NEXT_TRACK_CHANGED = new RetroactiveEventSource<>();
+
+	/// Emitted when the user seeks to a position in the current track.
+	///
+	/// Contains the new position in milliseconds.
 	public static final EventSource<Long> EVENT_SEEK = new EventSource<>();
+
+	/// Emitted when the playback owner changes.
+	///
+	/// Contains the new playback owner's device id, or null if there is none.
 	public static final EventSource<Integer> EVENT_PLAYBACK_OWNER_CHANGED = new EventSource<>();
+
+	/// Used to avoid echoing updates back to the server after applying them locally.
 	public static final ScopedValue<Boolean> DONT_SEND_UPDATES = ScopedValue.newInstance();
-	/**
-	 * Buffer size when playing the already loaded audio. Too high values can make pausing unresponsive. Too low values
-	 * can make audio choppy in some circumstances.
-	 */
+
+	/// Buffer size when playing the already loaded audio.
+	/// Too high values can make pausing unresponsive.
+	/// Too low values can make audio choppy in some circumstances.
 	public static final int PLAYBACK_BUFFER_SIZE = 8192;
+
 	private static final Logger LOGGER = LogManager.getLogger(Player.class);
-	private static final ScopedValue<Boolean> APPLYING_SESSION = ScopedValue.newInstance();
-	/**
-	 * Cooldown multiplier when writing to audio lines. Cooldown is calculated using buffer size and audio format. This
-	 * multiplier is then applied to leave some wiggle room and allow the audio backend to build a small buffer.
-	 */
+
+	/// Cooldown multiplier when writing to audio lines. Cooldown is calculated using buffer size and audio format. This
+	/// multiplier is then applied to leave some wiggle room and allow the audio backend to build a small buffer.
 	private static final double PLAYBACK_WRITE_COOLDOWN_MULTIPLIER = 0.9;
-	/**
-	 * Buffer size when loading track from disk. Too low values can increase CPU usage. Too high values can make it
-	 * take
-	 * longer to start playing.
-	 */
+
+	/// Buffer size when loading track from disk.
+	/// Too low values can increase CPU usage.
+	/// Too high values can make it take longer to start playing.
 	private static final int LOADING_BUFFER_SIZE = 88200;
 
+	/// Executor used to start the FLAC decoder and read the initial metadata.
 	private static final OverridingSingleThreadExecutor DECODING_EXECUTOR = new OverridingSingleThreadExecutor();
+
+	/// Executor started from [#DECODING_EXECUTOR] which reads the actual audio data from FLAC files.
 	private static final OverridingSingleThreadExecutor LOADING_EXECUTOR = new OverridingSingleThreadExecutor();
+
+	/// Executor used to periodically call [#EVENT_PROGRESS].
 	private static final Pair<ScheduledExecutorService, ScheduledFuture<?>> PROGRESS_EXECUTOR = new Pair<>(
 			Executors.newSingleThreadScheduledExecutor(), null);
+
 	private static final AtomicBoolean paused = new AtomicBoolean(true);
+	/// current playback owner's device ID.
 	private static final AtomicReference<Integer> playbackOwner = new AtomicReference<>(null);
 	private static RepeatOption repeat = RepeatOption.OFF;
 	private static ShuffleOption shuffle = ShuffleOption.OFF;
 	private static Track nextTrack = null;
 	private static boolean shouldSeek = false;
 	private static boolean shouldCheckOwnership = false;
+
+	/// Thread used to write audio to the backend.
 	private static Thread audioThread = null;
 	private static Track currentTrack = null;
+	
+	/// Decoded PCM data of the [#currentTrack], in its original audio format.
+	///
+	/// Null if this client should not be playing audio.
 	private static byte[] pcm = null;
-	/**
-	 * Timestamp used to keep track of the current playback position when playing.
-	 *
-	 * @see #getPosition()
-	 * @see #setPosition(long)
-	 * @see #seek(long)
-	 */
+
+	/// Timestamp used to keep track of the current playback position when playing.
+	///
+	/// @see #getPosition()
+	/// @see #setPosition(long)
+	/// @see #seek(long)
 	private static Instant playbackEpoch = null;
-	/**
-	 * Current playback position when paused.
-	 *
-	 * @see #getPosition()
-	 * @see #setPosition(long)
-	 * @see #seek(long)
-	 */
+
+	/// Current playback position when paused.
+	///
+	/// @see #getPosition()
+	/// @see #setPosition(long)
+	/// @see #seek(long)
 	private static long playbackPosition = 0;
 
+	/// Returns true if this device is the playback owner or not logged in
+	/// @return true if this device is the playback owner or not logged in
 	public static boolean isPlaybackOwner() {
 		return !Server.isLoggedIn() || Objects.equals(playbackOwner.get(), Server.deviceId);
 	}
 
+	/// Returns true if the user input should be forwarded to the playback owner through a [PlaybackControlMessage].
+	/// @return true if the user input should be forwarded to the playback owner through a [PlaybackControlMessage].
 	public static boolean shouldSendControl() {
 		return !DONT_SEND_UPDATES.orElse(false) && Server.isLoggedIn() && playbackOwner.get() != null
 				&& !playbackOwner.get().equals(Server.deviceId);
 	}
 
+	/// Returns true if this device should notify other devices of a playback update through a [PlaybackUpdateMessage].
+	/// @return true if this device should notify other devices of a playback update through a [PlaybackUpdateMessage].
 	public static boolean shouldSendUpdate() {
 		return !DONT_SEND_UPDATES.orElse(false) && Server.isLoggedIn() && Objects.equals(playbackOwner.get(),
 				Server.deviceId);
 	}
 
+
+	/// Claim ownership if there is no playback owner and the user requested action requires a playback owner.
 	public static void takeOwnershipIfNeeded() {
 		if(DONT_SEND_UPDATES.orElse(false)) {
 			return;
@@ -149,6 +196,7 @@ public class Player {
 		}
 	}
 
+	/// Claim ownership if logged in, overriding any previous owner.
 	public static void takeOwnership() {
 		if(Server.isLoggedIn()) {
 			setPlaybackOwner(Server.deviceId);
@@ -156,6 +204,9 @@ public class Player {
 		}
 	}
 
+	/// Start playing the current track.
+	///
+	/// This method may send a [PlaybackControlMessage] instead to perform this on the playback owning device.
 	public static void play() {
 		if(shouldSendControl()) {
 			PlaybackControlMessage msg = new PlaybackControlMessage();
@@ -178,6 +229,9 @@ public class Player {
 		EVENT_PLAY_PAUSE.call(false);
 	}
 
+	/// Pause playback.
+	///
+	/// This method may send a [PlaybackControlMessage] instead to perform this on the playback owning device.
 	public static void pause() {
 		if(shouldSendControl()) {
 			PlaybackControlMessage msg = new PlaybackControlMessage();
@@ -201,6 +255,7 @@ public class Player {
 		EVENT_PLAY_PAUSE.call(true);
 	}
 
+	/// Toggle between [#play]ing and [#pause]ing.
 	public static void playPause() {
 		if(paused.get()) {
 			play();
@@ -209,6 +264,9 @@ public class Player {
 		}
 	}
 
+	/// Load the specified track and start playing.
+	///
+	/// This method may send a [PlaybackControlMessage] instead to perform this on the playback owning device.
 	public static void play(Track track) {
 		if(shouldSendControl()) {
 			PlaybackControlMessage msg = new PlaybackControlMessage();
@@ -231,9 +289,8 @@ public class Player {
 		load(track, true, true);
 	}
 
-	/**
-	 * @return the current playback position in milliseconds
-	 */
+	/// Returns the current playback position in milliseconds
+	/// @return the current playback position in milliseconds
 	public static long getPosition() {
 		if(paused.get()) {
 			return playbackPosition;
@@ -243,6 +300,9 @@ public class Player {
 		return now.toEpochMilli() - playbackEpoch.toEpochMilli();
 	}
 
+	/// Sets the current playback position in milliseconds.
+	///
+	/// @see #seek
 	private static void setPosition(long ms) {
 		if(paused.get()) {
 			playbackPosition = ms;
@@ -253,15 +313,23 @@ public class Player {
 		playbackEpoch = now.minus(ms, ChronoUnit.MILLIS);
 	}
 
+	/// Get the relative playback epoch.
+	///
+	/// This is used to ensure a consistent passage of time and to allow different devices to see a correct
+	/// playback position regardless of latency to the server.
 	public static long getPlaybackEpoch() {
 		return playbackEpoch.toEpochMilli();
 	}
 
+	/// @see #getPlaybackEpoch()
 	public static void setPlaybackEpoch(long epoch) {
 		playbackEpoch = Instant.ofEpochMilli(epoch);
 		shouldSeek = true;
 	}
 
+	/// Seek to the specified position in the track.
+	///
+	/// This method may send a [PlaybackControlMessage] instead to perform this on the playback owning device.
 	public static void seek(long ms) {
 		if(shouldSendControl()) {
 			PlaybackControlMessage msg = new PlaybackControlMessage();
@@ -278,6 +346,9 @@ public class Player {
 		EVENT_SEEK.call(ms);
 	}
 
+	/// Start playing the next track, or pause playback if there is none.
+	///
+	/// This method may send a [PlaybackControlMessage] instead to perform this on the playback owning device.
 	public static void next() {
 		if(nextTrack != null) {
 			play(nextTrack);
@@ -286,6 +357,11 @@ public class Player {
 		}
 	}
 
+	/// Start playing the previous track, or pause playback if there is none.
+	///
+	/// This method may send a [PlaybackControlMessage] instead to perform this on the playback owning device.
+	///
+	/// @see #findPreviousTrack
 	public static void previous() {
 		Track prev = findPreviousTrack();
 		if(prev != null) {
@@ -299,6 +375,7 @@ public class Player {
 		return shuffle;
 	}
 
+	/// This method may send a [PlaybackControlMessage] instead to perform this on the playback owning device.
 	public static void setShuffle(ShuffleOption shuffle) {
 		LOGGER.info("Shuffle set to {}", shuffle);
 		if(shouldSendControl()) {
@@ -320,6 +397,7 @@ public class Player {
 		return repeat;
 	}
 
+	/// This method may send a [PlaybackControlMessage] instead to perform this on the playback owning device.
 	public static void setRepeat(RepeatOption repeat) {
 		LOGGER.info("Repeat set to {}", repeat);
 
@@ -346,6 +424,11 @@ public class Player {
 		return currentTrack;
 	}
 
+	/// Load a track from disk.
+	///
+	/// @param track the track to load
+	/// @param loadAudio whether audio data should be loaded
+	/// @param startPlaying whether playback should be started after loading the first bytes
 	public static void load(@Nonnull Track track, boolean loadAudio, boolean startPlaying) {
 		currentTrack = track;
 
@@ -364,7 +447,7 @@ public class Player {
 		Consumer<Integer> onPcmLoad = null;
 		if(loadAudio) {
 			onPcmLoad = bytes -> {
-				if(bytes >= 88200 && firstLoad.getAndSet(false)) {
+				if(bytes >= LOADING_BUFFER_SIZE && firstLoad.getAndSet(false)) {
 
 					try {
 						AudioBackend.backend.flush();
@@ -388,17 +471,15 @@ public class Player {
 		EVENT_TRACK_CHANGE.call(new TrackChangeEvent(track, albumArtFuture));
 	}
 
-	/**
-	 * Loads the specified track's album art and PCM data in the playback audio format.
-	 *
-	 * @param track The track to load
-	 * @param albumArtFuture A future which will get completed once the entirety of the album art is loaded. The album
-	 * art is returned as it is found in the track's metadata.
-	 * @param pcmDataFuture A future which will get completed as soon as the PCM data array is created. It will
-	 * immediately be empty. If this is null, PCM data won't be loaded at all.
-	 * @param onPcmLoad A consumer which will be called each time a chunk of the PCM data is loaded. It accepts the
-	 * amount of bytes of the pcm data read.
-	 */
+	/// Loads the specified track's album art and PCM data in the playback audio format.
+	/// 
+	/// @param track The track to load
+	/// @param albumArtFuture A future which will get completed once the entirety of the album art is loaded. The album
+	/// art is returned as it is found in the track's metadata.
+	/// @param pcmDataFuture A future which will get completed as soon as the PCM data array is created. It will
+	/// immediately be empty. If this is null, PCM data won't be loaded at all.
+	/// @param onPcmLoad A consumer which will be called each time a chunk of the PCM data is loaded. It accepts the
+	/// amount of bytes of the pcm data read.
 	private static void load(@Nonnull Track track, @Nullable CompletableFuture<byte[]> albumArtFuture,
 			@Nullable CompletableFuture<byte[]> pcmDataFuture, @Nullable Consumer<Integer> onPcmLoad) {
 
@@ -417,7 +498,6 @@ public class Player {
 			try {
 				FLACDecoder decoder = new FLACDecoder(new FileInputStream(track.getFile()));
 				decoder.addPCMProcessor(new PCMProcessor() {
-					int processed = 0;
 
 					@Override
 					public void processStreamInfo(StreamInfo streamInfo) {
@@ -544,10 +624,7 @@ public class Player {
 		}
 	}
 
-	private static boolean checkOwnershipForbidsToPlay() {
-		return Server.isLoggedIn() && !Objects.equals(playbackOwner.get(), Server.deviceId);
-	}
-
+	/// Initialize the state of the player and start necessary threads.
 	public static void init() {
 		if(audioThread != null) {
 			throw new IllegalStateException("Already initialized");
@@ -584,7 +661,7 @@ public class Player {
 						}
 
 						synchronized(playbackOwner) {
-							if(checkOwnershipForbidsToPlay()) {
+							if(!isPlaybackOwner()) {
 								playbackOwner.wait();
 								continue;
 							}
@@ -621,7 +698,7 @@ public class Player {
 						while(!paused.get() && !shouldSeek) {
 							if(shouldCheckOwnership) {
 								shouldCheckOwnership = false;
-								if(checkOwnershipForbidsToPlay()) {
+								if(!isPlaybackOwner()) {
 									continue mainLoop;
 								}
 							}
@@ -776,6 +853,9 @@ public class Player {
 		});
 	}
 
+	/// Restore the playback state from storage.
+	///
+	/// @see ClientStorage.PlaybackInfo
 	public static void loadPlaybackInfo(ClientStorage.PlaybackInfo pi) {
 		if(pi == null) {
 			return;
@@ -801,12 +881,21 @@ public class Player {
 		EVENT_PROGRESS.call(getPosition());
 	}
 
+	/// Choose the track which will be played after the current track.
+	///
+	/// @see #EVENT_NEXT_TRACK_CHANGED
+	/// @see ShuffleOption
+	/// @see RepeatOption
 	public static void selectNextTrack() {
 		nextTrack = findNextTrack();
 
 		EVENT_NEXT_TRACK_CHANGED.call(nextTrack);
 	}
 
+	/// Find and return the next track which will be played after the current track.
+	///
+	/// @see ShuffleOption
+	/// @see RepeatOption
 	private static Track findNextTrack() {
 		if(repeat == RepeatOption.TRACK) {
 			return currentTrack;
@@ -844,6 +933,10 @@ public class Player {
 		}
 	}
 
+	/// Find and return the previous track which would've been played before the current track.
+	///
+	/// @see ShuffleOption
+	/// @see RepeatOption
 	private static Track findPreviousTrack() {
 		if(repeat == RepeatOption.TRACK || shuffle == ShuffleOption.ON) {
 			return findNextTrack();
@@ -872,6 +965,7 @@ public class Player {
 		return playbackOwner.get();
 	}
 
+	/// @see #EVENT_PLAYBACK_OWNER_CHANGED
 	public static void setPlaybackOwner(Integer playbackOwner) {
 		if(pcm == null && (!Server.isLoggedIn() || Objects.equals(playbackOwner, Server.deviceId))
 				&& currentTrack != null) {
@@ -887,10 +981,13 @@ public class Player {
 		EVENT_PLAYBACK_OWNER_CHANGED.call(playbackOwner);
 	}
 
+	/// Data for [Player#EVENT_TRACK_CHANGE]
 	public record TrackChangeEvent(Track track, CompletableFuture<byte[]> picture) {}
 
+	/// Data for [Player#EVENT_CURRENT_TRACK_LOAD]
 	public record CurrentTrackLoadEvent(Integer loaded, Integer total) {}
 
+	/// Data for [Player#EVENT_PLAYBACK_DEBUG_INFO]
 	public record PlaybackDebugInfoEvent(int latency, int framePosition, int expectedPos, int trackLength,
 			int bufferSize, double expectedWriteTime, double totalOffset) {}
 }

@@ -12,4 +12,11 @@ task aggregatedJavadoc(type: Javadoc) {
     destinationDir = file("$buildDir/docs/javadoc")
     options.linkSource = true
     options.use = true
+
+    // Show private fields so they can be documented directly without also documenting their getters/setters
+    options.memberLevel = JavadocMemberLevel.PRIVATE
+
+    // remove missing javadoc, missing @param, missing @return etc.
+    options.addBooleanOption("Xdoclint:none", true)
+    options.addBooleanOption("quiet", true)
 }

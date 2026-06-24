@@ -29,11 +29,26 @@ import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.SourceDataLine;
 import java.io.IOException;
 
+/// An audio backend which uses [SourceDataLine] to interface with the OS.
+///
+/// On desktop it is the most compatible audio backend, but has sub-optimal performance on Linux.
+///
+/// Only plays audio in the following format for compatibility:
+/// - Sample rate: {@value #SAMPLE_RATE}
+/// - Channels: {@value #CHANNELS}
+/// - Bits per sample: {@value #BITS_PER_SAMPLE}
+/// - Big endian: {@value #BIG_ENDIAN}
+///
+/// @see PulseAudioBackend
 public class LineAudioBackend extends ConvertingAudioBackend {
 	private static final Logger LOGGER = LogManager.getLogger(LineAudioBackend.class);
-	private static final AudioFormat PLAYBACK_AUDIO_FORMAT = new AudioFormat(AudioFormat.Encoding.PCM_SIGNED, 44100,
-			16,
-			2, 4, 44100, false);
+
+	private static final int SAMPLE_RATE = 44100;
+	private static final int CHANNELS = 2;
+	private static final int BITS_PER_SAMPLE = 16;
+	private static final boolean BIG_ENDIAN = false;
+	private static final AudioFormat PLAYBACK_AUDIO_FORMAT = new AudioFormat(AudioFormat.Encoding.PCM_SIGNED,
+			SAMPLE_RATE, BITS_PER_SAMPLE, CHANNELS, CHANNELS * BITS_PER_SAMPLE / 8, SAMPLE_RATE, BIG_ENDIAN);
 
 	private SourceDataLine line;
 

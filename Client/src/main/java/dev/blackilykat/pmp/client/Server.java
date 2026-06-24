@@ -36,6 +36,7 @@ import dev.blackilykat.pmp.messages.GetActionsRequest;
 import dev.blackilykat.pmp.messages.GetActionsResponse;
 import dev.blackilykat.pmp.messages.LoginAsExistingDeviceRequest;
 import dev.blackilykat.pmp.messages.LoginAsNewDeviceRequest;
+import dev.blackilykat.pmp.messages.LoginSuccessResponse;
 import dev.blackilykat.pmp.messages.Message;
 import dev.blackilykat.pmp.util.Pair;
 import dev.blackilykat.pmp.util.ScopedValue;
@@ -66,20 +67,62 @@ import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 
+/// Handles the connection with the server.
+///
+/// @see PMPConnection
 public class Server {
+	/// Emitted when the connection to the server is confirmed by receiving the PMP signature.
+	///
+	/// @see PMPConnection#eventConnected
 	public static final EventSource<Void> EVENT_CONNECTED = new EventSource<>();
+
+	/// Emitted when this device is confirmed to be logged in and has proper access to all messages.
+	///
+	/// @see LoginSuccessResponse
 	public static final EventSource<Void> EVENT_LOGGED_IN = new EventSource<>();
+
+	/// Emitted when the connection to the server is terminated for any reason.
+	///
+	/// @see PMPConnection#EVENT_DISCONNECTED
 	public static final EventSource<Void> EVENT_DISCONNECTED = new EventSource<>();
+
+	/// Emitted when the client wants to log in but has no credentials to do so, either because it is
+	/// logging in for the first time or because a previous login attempt has failed.
+	///
+	/// Logic layer implementations are expected to ask the user to input the server's password
+	/// as soon as this event is emitted. If this is not done, the client will silently stay logged
+	/// out.
+	///
+	/// Once the UI layer gets an answer from the user, it is expected to call [#submitPassword].
+	///
+	/// @see dev.blackilykat.pmp.server.ServerStorage.Sensitive#password
 	public static final EventSource<Void> EVENT_SHOULD_ASK_PASSWORD = new EventSource<>();
+
+	/// Used to avoid echoing library actions back to the server
 	private static final ScopedValue<Boolean> HANDLING_ACTION = ScopedValue.newInstance();
+
 	private static final long RECONNECT_COOLDOWN_MS = 10_000;
 	private static final Logger LOGGER = LogManager.getLogger(Server.class);
 	private static final Timer RECONNECT_TIMER = new Timer("Server reconnect timer");
+
+	/// Used to prevent multiple threads opening a connection at the same time
 	private static final Object connectionLock = new Object();
+
+	/// This device's id
 	public static Integer deviceId = null;
+
+	/// The server's last action id, used to tell whether to ask for missing actions through a [GetActionsRequest].
+	///
+	/// Separate from [ClientStorage.Main#lastReceivedAction] because the storage value must not be updated if the
+	/// connection drops before the server can send a [GetActionsResponse].
 	public static int lastActionId = -1;
+
+	/// If true user has ordered to disconnect, do not automatically reconnect.
 	private static boolean shouldNotReconnect = false;
+
 	private static PMPConnection connection = null;
+
+	/// Shared SSL context object allows automatically reusing TCP connections in HTTP requests.
 	private static SSLContext sslContext = null;
 
 	private static ActionHandlingThread actionHandlingThread = null;
@@ -87,6 +130,7 @@ public class Server {
 	private static ActionThreadDispatcher actionThreadDispatcher = null;
 	private static List<TrackElement> serverTracks = null;
 
+	/// Connect to the server. Does not block.
 	public static void connect() {
 		if(sslContext == null) {
 			try {
@@ -178,6 +222,10 @@ public class Server {
 		}
 	}
 
+	/// Disconnect from the server and do not attempt to reconnect.
+	/// Usually due to user ordering a disconnect.
+	///
+	/// @see #EVENT_DISCONNECTED
 	public static void disconnectWithoutRetrying(String reason) {
 		if(connection != null) {
 			shouldNotReconnect = true;
@@ -185,6 +233,11 @@ public class Server {
 		}
 	}
 
+	/// Disconnect in the message sending thread from the server and do not attempt to reconnect.
+	/// Usually due to user ordering a disconnect.
+	///
+	/// @see PMPConnection#disconnectSoon
+	/// @see #EVENT_DISCONNECTED
 	public static void disconnectSoonWithoutRetrying(String reason) {
 		if(connection != null) {
 			shouldNotReconnect = true;
@@ -192,18 +245,27 @@ public class Server {
 		}
 	}
 
+	/// Disconnect from the server, but do not prevent attempts at automatically reconnecting.
+	///
+	/// @see #disconnectWithoutRetrying
+	/// @see #EVENT_DISCONNECTED
 	public static void disconnect(String reason) {
 		if(connection != null) {
 			connection.disconnect(reason);
 		}
 	}
 
+	/// Update the stored server address
 	public static void setAddress(String address, int port, int filePort) {
 		ClientStorage.MAIN.serverAddress.set(address);
 		ClientStorage.MAIN.serverPort.set(port);
 		ClientStorage.MAIN.serverFilePort.set(filePort);
 	}
 
+	/// Send a message to the server.
+	///
+	///@throws IllegalStateException if not connected
+	/// @see PMPConnection#send
 	public static void send(Message message) {
 		if(connection != null) {
 			connection.send(message);
@@ -212,6 +274,7 @@ public class Server {
 		}
 	}
 
+	/// Schedule an attempt at reconnecting in {@value #RECONNECT_COOLDOWN_MS} milliseconds.
 	private static void scheduleReconnect() {
 		RECONNECT_TIMER.schedule(new TimerTask() {
 			@Override
@@ -225,28 +288,26 @@ public class Server {
 		}, RECONNECT_COOLDOWN_MS);
 	}
 
-	/**
-	 * In most cases, you'll want to use {@link #isLoggedIn()} instead.
-	 *
-	 * @return Whether the client's socket is connected to the server's and the PMPConnection has been established.
-	 */
+	/// In most cases, you'll want to use {@link #isLoggedIn()} instead.
+	///
+	/// @return whether the client's socket is connected to the server's and the PMPConnection has been established.
+	/// @see PMPConnection#connected
+	/// @see #EVENT_CONNECTED
 	public static boolean isConnected() {
 		return connection != null && connection.connected;
 	}
 
-	/**
-	 * @return Whether the client is connected to the server and is confirmed to be logged in successfully
-	 */
+	/// Returns whether the client is connected to the server and is confirmed to be logged in successfully
+	/// @return whether the client is connected to the server and is confirmed to be logged in successfully
+	/// @see #EVENT_LOGGED_IN
 	public static boolean isLoggedIn() {
 		return isConnected() && deviceId != null;
 	}
 
-	/**
-	 * Creates an HTTP request to the server at its transfer port, filling required authentication headers.
-	 *
-	 * @param method HTTP method for the request
-	 * @param target URL path with or without the leading slash
-	 */
+	/// Creates an HTTP request to the server at its transfer port, filling required authentication headers.
+	///
+	/// @param method HTTP method for the request
+	/// @param target URL path with or without the leading slash
 	public static HttpsURLConnection startTransferRequest(String method, String target) throws IOException {
 		if(!target.startsWith("/")) {
 			target = '/' + target;
@@ -290,6 +351,13 @@ public class Server {
 		}
 	}
 
+	/// The thread responsible for handling incoming library actions.
+	///
+	/// - Performs all incomplete [ClientStorage.Main#actionsToHandle];
+	/// - compares the client's and the server's library and downloads any track the client is missing or of which the client has a different checksum;
+	/// - stays listening until disconnection for fresh [ClientStorage.Main#actionsToHandle].
+	///
+	/// @see ActionThreadDispatcher
 	private static class ActionHandlingThread extends Thread {
 		public ActionHandlingThread() {
 			super("Action handling thread");
@@ -396,6 +464,13 @@ public class Server {
 		}
 	}
 
+	/// The thread responsible for performing outgoing actions.
+	///
+	/// - Sends all incomplete [ClientStorage.Main#actionsToSend];
+	/// - compares the client's and the server's library and uploads any track the server is missing;
+	/// - stays listening until disconnection for fresh [ClientStorage.Main#actionsToSend].
+	///
+	/// @see ActionThreadDispatcher
 	private static class ActionSendingThread extends Thread {
 		public ActionSendingThread() {
 			super("Action sending thread");
@@ -553,6 +628,12 @@ public class Server {
 		}
 	}
 
+	/// Thread responsible for correctly starting [ActionHandlingThread] and [ActionSendingThread].
+	///
+	/// - Waits for library to be loaded;
+	/// - performs a [GetActionsRequest] if needed and handles its response;
+	/// - requests the server's entire library and stores it;
+	/// - starts the two threads allowing them to compare the server and client libraries.
 	private static class ActionThreadDispatcher extends Thread {
 		@Override
 		public void run() {
@@ -598,6 +679,7 @@ public class Server {
 		}
 	}
 
+	/// Used to deserialize the server's library
 	private static class TrackElement {
 		public String filename;
 		public long checksum;

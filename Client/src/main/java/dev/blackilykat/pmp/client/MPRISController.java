@@ -37,6 +37,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+/// Handles exposing playback state to [MPRIS](https://wiki.archlinux.org/title/MPRIS).
 public class MPRISController {
 	private static final Logger LOGGER = LogManager.getLogger(MPRISController.class);
 
@@ -44,6 +45,13 @@ public class MPRISController {
 	private static boolean initialized = false;
 	private static Path albumArtTempFile = null;
 
+	/// Initializes the MPRIS controller.
+	///
+	/// Creates and starts the necessary connections and registers required event listeners to update MPRIS state.
+	///
+	/// Safely fails if MPRIS is not supported by the OS (i.e. Windows) or if the library is not included in the UI subproject (i.e. Android)
+	///
+	/// @throws IllegalStateException if called twice
 	public static void init() {
 		if(initialized) {
 			throw new IllegalStateException("Already initialized");
@@ -52,31 +60,18 @@ public class MPRISController {
 
 		try {
 			mpris = new MPRISBuilder()
-
 					.setCanQuit(true).setOnQuit(() -> Shutdown.shutdown(true))
-
 					.setCanRaise(false)
-
 					.setIdentity("PMP")
-
 					.setCanControl(true)
-
 					.setCanSeek(true).setOnSeek(us -> Player.seek(us / 1000))
-
 					.setOnSetPosition(us -> Player.seek(us.getPosition() / 1000))
-
 					.setCanPlay(true).setOnPlay(() -> Player.play())
-
 					.setCanPause(true).setOnPause(() -> Player.pause())
-
 					.setOnPlayPause(() -> Player.playPause())
-
 					.setCanGoPrevious(true).setOnPrevious(() -> Player.previous())
-
 					.setCanGoNext(true).setOnNext(() -> Player.next())
-
 					.setOnShuffle(s -> Player.setShuffle(s ? ShuffleOption.ON : ShuffleOption.OFF))
-
 					.build("PMP");
 
 

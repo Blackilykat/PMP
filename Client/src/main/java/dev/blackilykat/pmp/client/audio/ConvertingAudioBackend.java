@@ -20,8 +20,6 @@ package dev.blackilykat.pmp.client.audio;
 import dev.blackilykat.pmp.client.Track;
 import dev.blackilykat.pmp.util.ConcatenatedInputStream;
 import dev.blackilykat.pmp.util.ExposedByteArrayOutputStream;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -39,24 +37,29 @@ import java.io.OutputStream;
 /// - 1 and 2 channels
 /// - little endian and big endian (though input is assumed to be little endian due to that being the format in FLAC)
 public abstract class ConvertingAudioBackend extends AudioBackend {
-	private static final Logger LOGGER = LogManager.getLogger(ConvertingAudioBackend.class);
+	/// The target sample rate to convert to.
 	public final int sampleRate;
+	/// The target channel amount to convert to.
 	public final int channels;
+	/// The target bits per sample to convert to.
 	public final int bitsPerSample;
+	/// The target endianness to convert to.
 	public final boolean littleEndian;
+
+	/// Audio format of the currently playing track.
 	protected Track.PlaybackInfo info;
+
 	private int lastLeftSample;
 	private int lastRightSample;
 	private int currentLeftSample;
 	private int currentRightSample;
-	/**
-	 * Value that represents how far from the last OG sample the next converted sample is in the time domain, measured
-	 * in OG samples.
-	 */
+
+	/// Value that represents how far from the last OG sample the next converted sample is in the time domain, measured
+	/// in OG samples.
 	private double position;
+
 	private ExposedByteArrayOutputStream convertedStream = new ExposedByteArrayOutputStream();
 	private InputStream lastStream = null;
-
 
 	public ConvertingAudioBackend(int sampleRate, int channels, int bitsPerSample, boolean littleEndian) {
 		if(channels < 1 || channels > 2) {
@@ -146,12 +149,10 @@ public abstract class ConvertingAudioBackend extends AudioBackend {
 		currentRightSample = 0;
 	}
 
-	/**
-	 * Write the converted PCM audio stream in the requested format. Data in the given array will be overridden soon
-	 * after this method returns, so you must either use the data immediately or copy it for later use. The data always
-	 * contains full frames, there is no situation where it may contain half a sample in one call and the other in the
-	 * call after. Different channels in the same frame are always grouped in the same method call.
-	 */
+	/// Write the converted PCM audio stream in the requested format. Data in the given array will be overridden soon
+	/// after this method returns, so you must either use the data immediately or copy it for later use. The data always
+	/// contains full frames, there is no situation where it may contain half a sample in one call and the other in the
+	/// call after. Different channels in the same frame are always grouped in the same method call.
 	public abstract void writeConverted(byte[] pcm, int offset, int length) throws IOException;
 
 	private void advanceOneFrame(InputStream is) throws IOException {

@@ -27,18 +27,31 @@ import org.apache.logging.log4j.Logger;
 import java.util.LinkedList;
 import java.util.List;
 
+/// A track header, used for sorting tracks and in some interfaces to display track data.
 public class Header {
 	private static final Logger LOGGER = LogManager.getLogger(Header.class);
 
+	/// Emitted when the user removes this header.
 	public final EventSource<Void> eventHeaderRemoved = new EventSource<>();
+	/// Emitted when the user updates this header's label.
 	public final EventSource<String> eventLabelChanged = new EventSource<>();
+	/// Emitted when the user updates this header's key.
 	public final EventSource<String> eventKeyChanged = new EventSource<>();
 
+	/// The ID of this header. Allows properly tracking the sorting header without having to rely on its index,
+	/// avoiding issues when adding, removing or reordering headers.
 	public final int id;
 
+	/// The data type of this header. Used in UI for alignment and in logic to decide how to sort metadata values.
+	///
+	/// @see #updateType()
 	@JsonIgnore
 	public Type type;
+
+	/// The label shown in UI for this header.
 	private String label;
+
+	/// The actual metadata key to sort by.
 	private String key;
 
 	public Header(int id, String label, String key) {
@@ -49,8 +62,9 @@ public class Header {
 		updateType();
 	}
 
-	// When storage is loaded, the library isn't and calling #updateType will raise an exception. This constructor
-	// allows the parser to create a "typeless" header, which will be updated when the library is loaded.
+	/// This constructor allows the parser to create a "typeless" header, which will be updated when the library
+	/// is loaded. When storage is being loaded, the library isn't loaded yet and calling [#updateType] will raise
+	/// an exception.
 	@JsonCreator
 	private Header(int id, String key) {
 		this.id = id;
@@ -58,6 +72,8 @@ public class Header {
 		this.type = Type.STRING;
 	}
 
+	/// Updates the [#type] of this header, either by looking at the [#key] (i.e. [Type#TITLE]) or by scanning all
+	/// known tracks for metadata and choosing an appropriate common denominator (i.e. [Type#INTEGER] or [Type#STRING]).
 	public void updateType() {
 		Type type = Type.INTEGER;
 		if(key.equalsIgnoreCase("duration")) {
@@ -104,6 +120,7 @@ public class Header {
 		return label;
 	}
 
+	/// @see #eventLabelChanged
 	public void setLabel(String label) {
 		this.label = label;
 		eventLabelChanged.call(label);
@@ -113,12 +130,15 @@ public class Header {
 		return key;
 	}
 
+	/// @see #eventKeyChanged
 	public void setKey(String key) {
 		this.key = key;
 		updateType();
 		eventKeyChanged.call(key);
 	}
 
+	// Get a displayable textual representation of this header's metadata key and type
+	// for a specific track.
 	@JsonIgnore
 	public String getStringValue(Track track) {
 		if(type == Type.TITLE) {
@@ -155,6 +175,7 @@ public class Header {
 		return "INVALID HEADER";
 	}
 
+	/// Compare two tracks based on this header's key and type for sorting.
 	public int compare(Track a, Track b) {
 		switch(type) {
 			case TITLE -> {
@@ -266,37 +287,30 @@ public class Header {
 		return "Header#" + id + "(" + key + "," + label + ")";
 	}
 
+	/// The data type of this header. Used in UI for alignment and in logic to decide how to sort metadata values.
 	public enum Type {
-		/**
-		 * Title of the track, as obtained in {@link Track#getTitle()}. Sorting happens alphabetically.
-		 * <p>This type is specific to the "title" metadata key.
-		 */
+		/// Title of the track, as obtained in {@link Track#getTitle()}. Sorting is performed alphabetically.
+		///
+		/// This type is specific to the "title" metadata key.
 		TITLE,
-		/**
-		 * One or multiple string values, separated by commas. Sorting happens alphabetically on the comma-separated
-		 * resulting string.
-		 */
+		/// One or multiple string values, separated by commas. Sorting is performed alphabetically on the
+		/// comma-separated resulting string.
 		STRING,
-		/**
-		 * One integer value. Sorting happens numerically, with empty values being "greater" than everything else.
-		 * Multiple values on one track means only one is taken into account.
-		 */
+		/// One integer value. Sorting is performed numerically, with empty values being "greater" than everything
+		/// else. Multiple values on one track means only one is taken into account.
 		INTEGER,
-		/**
-		 * One double value. Sorting happens numerically, with empty values being "greater" than everything else.
-		 * Multiple values on one track means only one is taken into account.
-		 */
+		/// One double value. Sorting is performed numerically, with empty values being "greater" than everything
+		/// else. Multiple values on one track means only one is taken into account.
 		DOUBLE,
-		/**
-		 * The duration of the track, formated as %d:%02d (m:ss). Obtained from the streaminfo header of the track.
-		 * <p>This type is specific to the "duration" metadata key.
-		 */
+		/// The duration of the track. Obtained from the streaminfo header of the track. Sorting is performed
+		/// numerically.
+		///
+		/// This type is specific to the "duration" metadata key.
 		DURATION,
-		/**
-		 * Like {@link #INTEGER}, but it then sorts alphabetically by the "album" metadata key. Multiple values on one
-		 * track means only one is taken into account (both for album and tracknumber).
-		 * <p>This type is specific to the "tracknumber" metadata key.
-		 */
+		/// Like {@link #INTEGER}, but it then sorts alphabetically by the "album" metadata key. Multiple values on one
+		/// track means only one is taken into account (both for album and tracknumber).
+		///
+		/// This type is specific to the "tracknumber" metadata key.
 		TRACKNUMBER
 	}
 }

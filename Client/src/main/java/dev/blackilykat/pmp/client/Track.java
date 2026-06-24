@@ -27,8 +27,6 @@ import java.util.zip.CRC32;
 import java.util.zip.CheckedInputStream;
 import java.util.zip.Checksum;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.kc7bfi.jflac.FLACDecoder;
 import org.kc7bfi.jflac.metadata.Metadata;
 import org.kc7bfi.jflac.metadata.StreamInfo;
@@ -39,33 +37,47 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import dev.blackilykat.pmp.util.FLACUtil;
 import dev.blackilykat.pmp.util.Pair;
 
+/// A track, containing all necessary information to identify, filter and sort without needing to parse the FLAC file.
 public class Track {
-	private static final Logger LOGGER = LogManager.getLogger(Track.class);
-	private static final byte[] checksumBuffer = new byte[1048576];
+	/// Buffer used to avoid reallocating unnecessary memory when calculating checksums.
+	private static final byte[] checksumBuffer = new byte[102400];
+
+	/// All FLAC metadata contained in this track.
+	///
+	/// It is a list because FLAC metadata is expected to contain duplicate keys.
 	public List<Pair<String, String>> metadata;
-	/// All "artist" metadata values in [#metadata]. Reduntant for performance in UI.
+
+	/// All "artist" metadata values in [#metadata]. Redundant for performance in UI.
 	@JsonIgnore
 	private List<String> artists = List.of();
-	/// "album" value in [#metadata]. Reduntant for performance in UI.
+
+	/// "album" value in [#metadata]. Redundant for performance in UI.
 	@JsonIgnore
 	private String album = "";
+
 	/// "title" value in [#metadata], or name based on file name if not present.
 	@JsonIgnore
 	private String title = "";
+
+	/// Audio format for this track
 	private PlaybackInfo playbackInfo;
+
+	/// The location of this track on the filesystem
 	private File file;
+
+	/// Last known modified date, used to keep caching up to date if contents change.
 	private long lastModified;
+
+	/// CRC32 checksum of the entire contents of this track. 
 	private long checksum;
+
+	/// Duration of this track in seconds.
 	private double durationSeconds;
 
-	/**
-	 * Creates a track based on a file. Reads the entirety of the file to derive its checksum and metadata.
-	 *
-	 * @param file the track's file
-	 *
-	 * @throws IOException if there is an IO exception when reading the file
-	 * @throws IllegalArgumentException if file doesn't exist or is a directory
-	 */
+	/// Creates a track based on a file. Reads the entirety of the file to derive its checksum and metadata.
+	///
+	/// @throws IOException if there is an IO exception when reading the file
+	/// @throws IllegalArgumentException if file doesn't exist or is a directory
 	public Track(File file) throws IOException {
 		this.file = file;
 		if(!file.exists()) {
@@ -106,6 +118,7 @@ public class Track {
 	private Track() {
 	}
 
+	/// Update [#artists], [#album] and [#title] for improved performance in UI.
 	private void updateMetadataRedundancies() {
 		this.artists = this.metadata.stream()
 				.filter(pair -> pair.key.equalsIgnoreCase("artist"))
@@ -226,6 +239,7 @@ public class Track {
 		return toReturn.toString();
 	}
 
+	/// Audio format contained in a track.
 	public static class PlaybackInfo {
 		private int minBlockSize;
 		private int maxBlockSize;

@@ -28,6 +28,15 @@ import org.apache.logging.log4j.Logger;
 import javax.naming.OperationNotSupportedException;
 import java.io.IOException;
 
+/// Audio backend using [PulseAudio](https://wiki.archlinux.org/title/PulseAudio).
+///
+/// It is not as compatible as [PulseAudioBackend], but offers better performance on Linux.
+///
+/// Currently only plays audio in the following format:
+/// - Sample rate: {@value #SAMPLE_RATE}
+/// - Channels: {@value #CHANNELS}
+/// - Bits per sample: {@value #BITS_PER_SAMPLE}
+/// - Little endian: {@value #LITTLE_ENDIAN}
 public class PulseAudioBackend extends ConvertingAudioBackend {
 	private static final int SAMPLE_RATE = 44100;
 	private static final int CHANNELS = 2;
@@ -53,7 +62,6 @@ public class PulseAudioBackend extends ConvertingAudioBackend {
 				throw new IOException(e);
 			}
 		}
-		Track.PlaybackInfo info = track.getPlaybackInfo();
 		try {
 			paSimple = new PASimple(null, "PMP", false, null, track.getTitle(),
 					new SampleSpec(SAMPLE_FORMAT, SAMPLE_RATE, (short) CHANNELS), null);

@@ -23,16 +23,21 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 
+/// The entry point of the client's logic layer.
+///
+/// The UI layer should call this [#main] to actually start the player.
 public class Main {
 	public static final Logger LOGGER = LogManager.getLogger(Main.class);
 
-
+	/// The entry point of the client's logic layer.
+	///
+	/// Returns soon after loading [ClientStorage]. Performs all potentially expensive operations
+	/// in a separate thread, so it is appropriate to run this before spawning a window.
 	public static void main(String[] args) {
 		logDebugSystemInfo();
 		LOGGER.info("Starting client");
 
 		LoggingProxy.setUpProxies();
-
 
 		try {
 			ClientStorage.load();
@@ -52,7 +57,7 @@ public class Main {
 		MPRISController.init();
 	}
 
-
+	/// Log debug information about the system the program is running in.
 	private static void logDebugSystemInfo() {
 		LOGGER.debug("java.vm.vendor: {}", System.getProperty("java.vm.vendor"));
 		LOGGER.debug("java.vendor.url: {}", System.getProperty("java.vendor.url"));

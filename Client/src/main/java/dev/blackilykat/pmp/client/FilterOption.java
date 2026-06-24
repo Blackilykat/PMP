@@ -20,10 +20,23 @@ package dev.blackilykat.pmp.client;
 
 import dev.blackilykat.pmp.event.EventSource;
 
+/// An option in a filter, represents a unique metadata value for the filter's key.
 public class FilterOption {
+	/// The metadata value of this option.
+	///
+	/// Will match all tracks which contain this exact metadata value with the [#parent]'s [Filter#key].
+	///
+	/// Case-insensitive.
 	public final String value;
+
+	/// Emitted when this filter option has changed its selected state. For updating UI.
+	///
+	/// @see Filter#EVENT_OPTION_CHANGED_STATE
 	public final EventSource<Filter.OptionChangedStateEvent> eventChangedState = new EventSource<>();
+
+	/// The filter this option is in.
 	protected Filter parent = null;
+
 	private State state = State.NONE;
 
 	public FilterOption(String value) {
@@ -38,6 +51,8 @@ public class FilterOption {
 		return state;
 	}
 
+	/// @see Filter#EVENT_OPTION_CHANGED_STATE
+	/// @see #eventChangedState
 	public void setState(State state) {
 		State oldState = this.state;
 		this.state = state;
@@ -47,7 +62,15 @@ public class FilterOption {
 		eventChangedState.call(evt);
 	}
 
+	/// Possible selection states of an option.
 	public enum State {
-		NONE, POSITIVE, NEGATIVE
+		/// This option will not cause any track to match, but will not prevent any track from matching either.
+		NONE,
+		/// All tracks with a metadata entry which matches the [#parent]'s [Filter#key] and [#value] (both case-insensitive)
+		/// will match, unless they also match an option with [#NEGATIVE] state.
+		POSITIVE,
+		/// All tracks with a metadata entry which matches the [#parent]'s [Filter#key] and [#value] (both case-insensitive)
+		/// will **not** match, even if they match another option with [#POSITIVE] state.
+		NEGATIVE
 	}
 }
