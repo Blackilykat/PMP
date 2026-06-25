@@ -19,4 +19,5 @@ task aggregatedJavadoc(type: Javadoc) {
     // remove missing javadoc, missing @param, missing @return etc.
     options.addBooleanOption("Xdoclint:none", true)
     options.addBooleanOption("quiet", true)
+    options.addStringOption("-add-stylesheet", "docs/javadoc-theme.css")
 }

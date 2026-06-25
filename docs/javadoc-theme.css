@@ -1,0 +1,92 @@
+
+:root {
+	/* Extended PMP Desktop colors */
+
+	--panel-background: #343434;
+	--panel-background-highlight: #404040;
+	--text: #c8c8c8;
+	--disabled-text: #909090;
+	--tracklist-background: #252525;
+
+	--button-background: #151515;
+	--disabled-button-background: #202020;
+	--filter-panel-background: #1d1d1d;
+
+	--filter-option-background: #262626;
+
+	--playbar-loading: #707070;
+
+	--menu-bar-background: #2f2f2f;
+
+	--accent: #35455A;
+	--selected: #456A45;
+
+	--accent-text: #8595DA;
+	--selected-text: #95DA95;
+
+	/* Actual javadoc stuff */
+
+	--body-text-color: var(--text);
+	--block-text-color: var(--text);
+	--body-background-color: var(--panel-background);
+	--section-background-color: var(--panel-background);
+	--detail-background-color: var(--tracklist-background);
+	--selected-background-color: var(--selected);
+	--selected-text-color: var(--text);
+	--selected-link-color: var(--text);
+	--title-color: var(--text);
+
+	--link-color: var(--accent-text);
+	--link-color-active: var(--selected-text);
+
+	--snippet-background-color: var(--tracklist-background);
+	--snippet-text-color: var(--block-text-color);
+	--snippet-highlight-color: var(--accent);
+	--border-color: transparent;
+	--search-input-background-color: var(--tracklist-background);
+	--search-input-text-color: var(--text);
+	--search-input-placeholder-color: #909090;
+	--search-tag-highlight-color: var(--accent-text);
+	--copy-icon-brightness: 250%;
+	--copy-button-background-color-active: rgba(168, 168, 176, 0.3);
+	--invalid-tag-background-color: #ffe6e6;
+	--invalid-tag-text-color: #000000;
+
+	--code-background-color: var(--tracklist-background);
+
+	--subnav-background-color: var(--panel-background-highlight);
+	--subnav-link-color: var(--accent-text);
+
+	--toc-background-color: var(--panel-background);
+	--toc-hover-color: var(--accent);
+
+	--table-header-color: var(--accent);
+	--even-row-color: var(--tracklist-background);
+	--odd-row-color: var(--filter-panel-background);
+
+	--navbar-background-color: var(--accent);
+	--navbar-text-color: var(--text);
+}
+
+table {
+	border-collapse: collapse;
+}
+table td, table th {
+	border: 1px solid #909090;
+	padding: 0.5rem;
+}
+
+.inherited-list > h3 {
+	width: unset;
+	max-width: unset;
+}
+
+/* win the specificity battle */
+#result-container div.result-table > a.search-result-link span.search-result-desc {
+	color: var(--text);
+}
+
+kbd {
+	background-color: var(--tracklist-background);
+	border: none;
+}
