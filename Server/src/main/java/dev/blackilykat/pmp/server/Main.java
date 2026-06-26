@@ -17,6 +17,7 @@
 
 package dev.blackilykat.pmp.server;
 
+import dev.blackilykat.pmp.MessageHandler;
 import dev.blackilykat.pmp.PMPConnection;
 import dev.blackilykat.pmp.event.EventSource;
 import dev.blackilykat.pmp.messages.LoginAsExistingDeviceRequest;
@@ -40,6 +41,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
+/// The entry point.
 public class Main {
 	public static final EventSource<Void> EVENT_SHUTDOWN = new EventSource<>();
 	private static final Logger LOGGER = LogManager.getLogger(Main.class);
@@ -120,7 +122,7 @@ public class Main {
 		//noinspection InfiniteLoopStatement
 		while(true) {
 			try {
-				ClientConnection conn = new ClientConnection(serverSocket.accept());
+				var _ = new ClientConnection(serverSocket.accept());
 			} catch(Exception e) {
 				LOGGER.warn("Failed to connect to a client", e);
 			} catch(Throwable t) {
@@ -130,6 +132,8 @@ public class Main {
 		}
 	}
 
+	/// Register [MessageHandler]s to handle incoming messages by clients and an event listener
+	/// to block all non-login messages from non logged in clients.
 	private static void registerHandlers() {
 		new LoginAsNewDeviceRequestHandler().register();
 		new LoginAsExistingDeviceRequestHandler().register();

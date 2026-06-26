@@ -17,6 +17,7 @@
 
 package dev.blackilykat.pmp.client.audio;
 
+import dev.blackilykat.pmp.client.Main;
 import dev.blackilykat.pmp.client.Track;
 
 import java.io.IOException;
@@ -27,6 +28,11 @@ import java.io.IOException;
 ///
 /// UI layers, if appropriate, are free to implement a custom audio backend.
 public abstract class AudioBackend {
+	/// The selected audio backend object. This is set during startup and never overridden.
+	///
+	/// If a UI layer wants to use a custom audio backend, it should initialize it and set this variable
+	/// before calling [Main#main]. If this is not done, the logic layer will choose a compatible desktop
+	/// audio backend and initialize it.
 	public static AudioBackend backend = null;
 
 	/// Do any needed setup for a track with the given stream info. Will be called for every new track loaded. May do

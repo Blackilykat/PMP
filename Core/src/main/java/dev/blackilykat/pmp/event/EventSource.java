@@ -32,7 +32,8 @@ import java.util.List;
 /// Static event names should be prefixed with `EVENT_`, i.e. `EVENT_PLAY_PAUSE`, `EVENT_TRACK_ADDED`.
 /// Non static event names should be prefixed with `event`, i.e. `eventDisconnected`, `eventSent`.
 ///
-/// Listeners can and should unregister themselves if they were designed to work up to a certain point.
+/// Listeners can and should unregister themselves if they were designed to work up to a certain point (see
+/// [Listener#registerOneTime]).
 ///
 /// @param <T> The type of the event. Creating a static inner class (or record) with the data needed for the listeners is
 /// encouraged if you need to have more values or if it isn't immediately clear what a value may represent. For simple

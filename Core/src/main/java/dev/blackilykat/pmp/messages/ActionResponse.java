@@ -53,8 +53,9 @@ public class ActionResponse extends Response {
 		/// which previously received an APPROVED response and is now done transferring data.
 		COMPLETED,
 
-		/// This action requires data to be uploaded and the client has 30 seconds to start the HTTP request to upload
-		/// the data.
+		/// This action requires data to be uploaded and the client has
+		/// {@value dev.blackilykat.pmp.server.Library.PendingAction#CONNECTION_TIMEOUT_SECONDS} seconds to start the
+		/// HTTP request to upload the data.
 		APPROVED,
 
 		/// This action is not valid (i.e. REMOVE on a non-existent track).

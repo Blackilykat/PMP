@@ -43,14 +43,26 @@ import java.security.Security;
 import java.security.cert.X509Certificate;
 import java.util.Date;
 
+/// Utility class to manage a shared [#sslContext].
+///
+/// When the server starts for the first time, it generates a pair of private and public keys.
+/// It stores these keys in `./keystore.jks` and will use them for all future startups.
+///
+/// Clients expect the server to always have the same public key as they had when they connected for
+/// the first time. This is the same mechanism used in SSH.
 public class Encryption {
 	private static final Logger LOGGER = LogManager.getLogger(Encryption.class);
+
+	/// The SSL context which uses the server's private and public key.
 	private static SSLContext sslContext = null;
 
 	public static SSLContext getSslContext() {
 		return sslContext;
 	}
 
+	/// Loads the key pair from `./keystore.jks` if it exists, else generates one and writes it to that file.
+	///
+	/// Creates, sets and initializes the [#sslContext].
 	public static void init() {
 		LOGGER.info("Initializing SSL...");
 		try {

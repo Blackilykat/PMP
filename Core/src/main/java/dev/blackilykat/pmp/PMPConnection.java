@@ -64,8 +64,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /// This is equivalent to an empty line and will be treated as a keepalive.
 /// If a keepalive is not received within {@value #KEEPALIVE_MAX_MS} milliseconds,
 /// any side can assume the connection has silently dropped and terminate it.
+///
+/// @see dev.blackilykat.pmp.server.Encryption
 public class PMPConnection {
-	/// TODO: try to replace this with listeners
+	/// Emitted when any message is received on any client and allows to cancel it before it gets handled.
+	///
+	/// @see MessageListener
 	public static final EventSource<ReceivingMessageEvent> EVENT_RECEIVING_MESSAGE = new EventSource<>();
 	/// Event emitted when any connection has disconnected. Contains the terminated connection as its data.
 	public static final EventSource<PMPConnection> EVENT_DISCONNECTED = new EventSource<>();
@@ -73,6 +77,8 @@ public class PMPConnection {
 	/// The default port used for transferring messages.
 	public static final int DEFAULT_MESSAGE_PORT = 6803;
 	/// The default port used for transferring files through HTTP.
+	///
+	/// @see dev.blackilykat.pmp.server.TransferHandler
 	public static final int DEFAULT_FILE_PORT = 6804;
 
 	/// The amount of milliseconds between sending keepalives.
@@ -433,7 +439,7 @@ public class PMPConnection {
 		}
 	}
 
-	/// TODO: try to replace with listeners
+	/// Data for [PMPConnection#EVENT_RECEIVING_MESSAGE]
 	public static class ReceivingMessageEvent {
 		public final PMPConnection connection;
 		public final Message message;

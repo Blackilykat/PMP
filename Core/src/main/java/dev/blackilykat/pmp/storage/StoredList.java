@@ -73,7 +73,6 @@ public class StoredList<T> extends Stored<List<T>> {
 	}
 
 	/// Returns the amount of elements in the list.
-	/// @return the amount of elements in the list.
 	public int size() {
 		synchronized(storage) {
 			return value.size();
@@ -81,13 +80,11 @@ public class StoredList<T> extends Stored<List<T>> {
 	}
 
 	/// Returns true if the list is empty.
-	/// @return true if the list is empty.
 	public boolean empty() {
 		return size() == 0;
 	}
 
 	/// Returns the element at the specified position the list.
-	/// @return the element at the specified position the list.
 	/// @param i index of the element to return
 	/// @throws IndexOutOfBoundsException if the index is out of range
 	public T get(int i) {
@@ -100,7 +97,6 @@ public class StoredList<T> extends Stored<List<T>> {
 	///
 	/// Equivalent to [#get]`(0)`.
 	///
-	/// @return the first element of the list.
 	/// @throws IndexOutOfBoundsException if the list is empty
 	public T getFirst() {
 		return get(0);
@@ -110,14 +106,12 @@ public class StoredList<T> extends Stored<List<T>> {
 	///
 	/// Equivalent to [#get]`(`[#size]`() - 1)`.
 	///
-	/// @return the last element of the list.
 	/// @throws IndexOutOfBoundsException if the list is empty
 	public T getLast() {
 		return get(size() - 1);
 	}
 
 	/// Returns true if the list contains the specified object.
-	/// @return true if the list contains the specified object.
 	public boolean contains(T object) {
 		synchronized(storage) {
 			return value.contains(object);
@@ -125,7 +119,6 @@ public class StoredList<T> extends Stored<List<T>> {
 	}
 
 	/// Returns the index of the specified object in the list, or -1 if the list does not contain it.
-	/// @return the index of the specified object in the list, or -1 if the list does not contain it.
 	public int indexOf(T object) {
 		synchronized(storage) {
 			return value.indexOf(object);

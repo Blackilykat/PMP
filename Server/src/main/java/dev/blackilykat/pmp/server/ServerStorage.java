@@ -29,17 +29,15 @@ import dev.blackilykat.pmp.storage.StoredList;
 import dev.blackilykat.pmp.storage.StoredMap;
 import dev.blackilykat.pmp.util.Pair;
 import dev.blackilykat.pmp.util.ParType;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
 
+/// All storage used in the server.
+///
+/// @see Main
+/// @see Sensitive
 public class ServerStorage {
-	private static final Logger LOGGER = LogManager.getLogger(ServerStorage.class);
 	public static Main MAIN;
 	public static Sensitive SENSITIVE;
 
@@ -48,23 +46,44 @@ public class ServerStorage {
 		SENSITIVE = Storage.load(Sensitive.NAME, Sensitive.class);
 	}
 
+	/// Main storage used in the server. Contains general information, mostly related to playback and filters.
 	public static class Main extends Storage {
 		private static final String NAME = "server";
 
+		/// Incremental counter used to assign [Device] [Device#id]s.
 		public final StoredInt currentDeviceID = new StoredInt(this, 0);
+
+		/// All tracks in the server's library. Acts as a cache while initializing.
 		public final StoredMap<String, Track> tracks = new StoredMap<>(String.class, Track.class, this);
 
-		// index = action ID
+		/// All actions ever performed on the library. Their index is equivalent to the action ID.
 		public final StoredList<Action> actions = new StoredList<>(Action.class, this);
 
+		/// The currently playing track's filename.
 		public final Stored<String> track = new Stored<>(String.class, this, null);
+
+		/// All filter options selected [dev.blackilykat.pmp.client.FilterOption.State#POSITIVE]ly.
+		///
+		/// The pair contains filter [dev.blackilykat.pmp.client.Filter#id] and option
+		/// [dev.blackilykat.pmp.client.FilterOption#value].
 		public final StoredList<Pair<Integer, String>> positiveFilterOptions = new StoredList<>(
 				new ParType(Pair.class, new Type[]{Integer.class, String.class}), this);
+
+		/// All filter options selected [dev.blackilykat.pmp.client.FilterOption.State#NEGATIVE]ly.
+		///
+		/// The pair contains filter [dev.blackilykat.pmp.client.Filter#id] and option
+		/// [dev.blackilykat.pmp.client.FilterOption#value].
 		public final StoredList<Pair<Integer, String>> negativeFilterOptions = new StoredList<>(
 				new ParType(Pair.class, new Type[]{Integer.class, String.class}), this);
+
+		/// State of playback repeat.
 		public final Stored<RepeatOption> repeat = new Stored<>(RepeatOption.class, this, RepeatOption.ALL);
+		/// State of playback shuffle.
 		public final Stored<ShuffleOption> shuffle = new Stored<>(ShuffleOption.class, this, ShuffleOption.OFF);
+		/// Position in the playing track in milliseconds. Only updated when saving.
 		public final Stored<Long> position = new Stored<>(Long.class, this, 0L);
+
+		// Basic information on filters.
 		public final StoredList<FilterInfo> filters = new StoredList<>(FilterInfo.class, this);
 
 		public Main() {
@@ -72,27 +91,17 @@ public class ServerStorage {
 		}
 	}
 
+	/// Sensitive server storage, contains private values and values which must be stored as quickly as possible.
 	public static class Sensitive extends SensitiveStorage {
 		private static final String NAME = ".sensitive_server";
+		/// All known devices. Sensitive because this must be saved immediately upon update, and
+		/// because it contains tokens.
 		public final StoredList<Device> devices = new StoredList<>(Device.class, this);
+		/// The password the user must enter to log in with a new device.
 		public final Stored<String> password = new Stored<>(String.class, this, null);
 
 		public Sensitive() {
 			super(NAME);
-		}
-	}
-
-	public record PlaybackState(String track, Long position, ShuffleOption shuffle, RepeatOption repeat,
-			List<Pair<Integer, String>> positiveOptions, List<Pair<Integer, String>> negativeOptions) {
-
-		public PlaybackState(String track, Long position, ShuffleOption shuffle, RepeatOption repeat,
-				List<Pair<Integer, String>> positiveOptions, List<Pair<Integer, String>> negativeOptions) {
-			this.track = track;
-			this.position = position;
-			this.shuffle = shuffle;
-			this.repeat = repeat;
-			this.positiveOptions = Collections.unmodifiableList(new LinkedList<>(positiveOptions));
-			this.negativeOptions = Collections.unmodifiableList(new LinkedList<>(negativeOptions));
 		}
 	}
 }

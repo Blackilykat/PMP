@@ -68,7 +68,6 @@ public class StoredMap<K, V> extends Stored<Map<K, V>> {
 	}
 
 	/// Returns `true` if the map contains a mapping for the specified key.
-	/// @return `true` if the map contains a mapping for the specified key.
 	public boolean containsKey(K key) {
 		synchronized(storage) {
 			return value.containsKey(key);
@@ -76,7 +75,6 @@ public class StoredMap<K, V> extends Stored<Map<K, V>> {
 	}
 
 	/// Returns `true` if the map contains a mapping with the specified value.
-	/// @return `true` if the map contains a mapping with the specified value.
 	public boolean containsValue(V value) {
 		synchronized(storage) {
 			return this.value.containsValue(value);
@@ -84,7 +82,6 @@ public class StoredMap<K, V> extends Stored<Map<K, V>> {
 	}
 
 	/// Returns a view of all values in the map.
-	/// @return a view of all values in the map.
 	public Collection<V> values() {
 		synchronized(storage) {
 			return value.values();

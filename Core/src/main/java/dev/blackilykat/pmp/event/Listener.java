@@ -17,7 +17,20 @@
 
 package dev.blackilykat.pmp.event;
 
+import java.util.concurrent.atomic.AtomicReference;
+
 /// Event listeners used to listen to [EventSource]s.
 public interface Listener<T> {
 	void run(T event);
+
+
+	/// Creates a listener which unregisters itself after being called once
+	public static <T> void registerOneTime(EventSource<T> source, Listener<T> listener) {
+		AtomicReference<Listener<T>> ref = new AtomicReference<>();
+		ref.set(t -> {
+			listener.run(t);
+			source.unregister(ref.get());
+		});
+		source.register(ref.get());
+	}
 }

@@ -19,6 +19,7 @@ package dev.blackilykat.pmp.server.handlers;
 
 import dev.blackilykat.pmp.MessageHandler;
 import dev.blackilykat.pmp.PMPConnection;
+import dev.blackilykat.pmp.event.Listener;
 import dev.blackilykat.pmp.messages.ActionMessage;
 import dev.blackilykat.pmp.messages.ActionRequest;
 import dev.blackilykat.pmp.messages.ActionResponse;
@@ -109,7 +110,8 @@ public class ActionRequestHandler extends MessageHandler<ActionRequest> {
 			Library.waitForFreePendingAction();
 		}
 		connection.send(new ActionResponse(request.requestId, ActionResponse.Type.APPROVED, null));
-		Library.onSuccessfulAction(() -> {
+
+		Listener.registerOneTime(Library.EVENT_SUCCESSFUL_ACTION, _ -> {
 			int id = ServerStorage.MAIN.actions.size();
 			connection.send(new ActionResponse(request.requestId, ActionResponse.Type.COMPLETED, id));
 			Device.broadcastExcept(new ActionMessage(request.action, id), connection.device);
@@ -126,7 +128,6 @@ public class ActionRequestHandler extends MessageHandler<ActionRequest> {
 			return;
 		} catch(IOException e) {
 			LOGGER.error("Failed to remove track {}, were file permissions messed with?", request.action.filename);
-			// make the client move on without pretending the action is completed
 			connection.send(new ActionResponse(request.requestId, ActionResponse.Type.INVALID, null));
 			return;
 		}

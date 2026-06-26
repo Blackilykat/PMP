@@ -18,6 +18,9 @@
 package dev.blackilykat.pmp.server;
 
 import dev.blackilykat.pmp.Action;
+import dev.blackilykat.pmp.event.EventSource;
+import dev.blackilykat.pmp.messages.ActionResponse;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -30,13 +33,20 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.concurrent.atomic.AtomicReference;
 
+/// Server-side library management.
 public class Library {
+	/// Emitted when an action has been completed successfully.
+	public static final EventSource<Void> EVENT_SUCCESSFUL_ACTION = new EventSource<>();
+	/// The directory containing the tracks.
 	public static final File LIBRARY = new File("library");
 	private static final Logger LOGGER = LogManager.getLogger(Library.class);
+	/// The library action which has been [ActionResponse.Type#APPROVED] but which the server is still
+	/// waiting for the client to [ActionResponse.Type#COMPLETED].
 	private static final AtomicReference<PendingAction> PENDING_ACTION = new AtomicReference<>(null);
-	private static Runnable onSuccessfulAction = null;
-	private static boolean changesSinceLastSave = false;
 
+	/// Initializes the library:
+	/// - Creates the [#LIBRARY] directory if it does not exist;
+	/// - Checks that cache matches the files in the library and, if not, updates it.
 	public static void init() {
 		LOGGER.info("Initializing library...");
 		if(LIBRARY.exists() && !LIBRARY.isDirectory()) {
@@ -70,17 +80,14 @@ public class Library {
 		}
 	}
 
-	/**
-	 * Adds a track to the library. Overrides any previous track with the same filename.
-	 *
-	 * @param filename the file name for the new track
-	 * @param is InputStream with the file contents
-	 *
-	 * @throws IOException if there is an unexpected I/O error while saving the file
-	 * @throws IllegalArgumentException if the track is not a valid FLAC file
-	 */
+	/// Adds a track to the library. Overrides any previous track with the same filename.
+	///
+	/// @param filename the file name for the new track
+	/// @param is InputStream with the file contents
+	///
+	/// @throws IOException if there is an unexpected I/O error while saving the file
+	/// @throws IllegalArgumentException if the track is not a valid FLAC file
 	public static void add(String filename, InputStream is) throws IOException, IllegalArgumentException {
-		//TODO deal with existing file... maybe...
 		File tmpFile = LIBRARY.toPath().resolve(filename + ".tmp").toFile();
 
 		Files.copy(is, tmpFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
@@ -107,6 +114,10 @@ public class Library {
 		}
 	}
 
+	/// Remove the track with the given filename from the library.
+	///
+	/// @throws FileNotFoundException if such track does not exist.
+	/// @throws IOException if there was an IO error while deleting the file.
 	public static void remove(String filename) throws IOException {
 		Track target = ServerStorage.MAIN.tracks.get(filename);
 
@@ -120,11 +131,9 @@ public class Library {
 		ServerStorage.MAIN.tracks.remove(filename);
 	}
 
-	/**
-	 * If the pending action can be updated, sets it to the new value
-	 *
-	 * @return whether it was possible to update the pending action
-	 */
+	/// If the pending action can be updated, sets it to the new value
+	///
+	/// @return whether it was possible to update the pending action
 	public static boolean setPendingActionIfPossible(Action action, Device device) {
 		synchronized(PENDING_ACTION) {
 			if(!isPendingActionOverrideable()) {
@@ -136,9 +145,11 @@ public class Library {
 		}
 	}
 
+	/// Returns true if it is possible to update the pending action.
+	///
+	/// @return true if there is no pending action or the pending action is expired and has not started.
 	private static boolean isPendingActionOverrideable() {
 		PendingAction action = PENDING_ACTION.get();
-		// !null && (!expired || started)
 		synchronized(PENDING_ACTION) {
 			return action == null || (
 					System.currentTimeMillis() - action.creationTime > PendingAction.CONNECTION_TIMEOUT_SECONDS * 1000
@@ -146,11 +157,9 @@ public class Library {
 		}
 	}
 
-	/**
-	 * Checks whether the pending action matches the given details and if it may be started, then marks it as started.
-	 *
-	 * @return Whether the action matched and was marked as started.
-	 */
+	/// Checks whether the pending action matches the given details and if it may be started, then marks it as started.
+	///
+	/// @return Whether the action matched and was marked as started.
 	public static boolean startPendingAction(Device device, String filename) {
 		synchronized(PENDING_ACTION) {
 			PendingAction action = PENDING_ACTION.get();
@@ -175,24 +184,18 @@ public class Library {
 		}
 	}
 
-	/**
-	 * Marks the pending action as finished, allowing others to take its place.
-	 */
+	/// Marks the pending action as finished, allowing others to take its place.
 	public static void finishPendingAction(boolean successful) {
 		synchronized(PENDING_ACTION) {
 			PENDING_ACTION.set(null);
 			PENDING_ACTION.notify();
 		}
-		if(successful && onSuccessfulAction != null) {
-			onSuccessfulAction.run();
-			onSuccessfulAction = null;
+		if(successful) {
+			EVENT_SUCCESSFUL_ACTION.call(null);
 		}
 	}
 
-	public static void onSuccessfulAction(Runnable runnable) {
-		onSuccessfulAction = runnable;
-	}
-
+	/// Blocks until it is possible to update the pending action (until [#isPendingActionOverrideable] is true)
 	public static void waitForFreePendingAction() throws InterruptedException {
 		synchronized(PENDING_ACTION) {
 			while(!isPendingActionOverrideable()) {
@@ -203,14 +206,23 @@ public class Library {
 		}
 	}
 
+	/// A library action which has been [ActionResponse.Type#APPROVED] but which the server is still
+	/// waiting for the client to [ActionResponse.Type#COMPLETED].
 	public static class PendingAction {
-		// Update documentation in ActionResponse$Type#APPROVED if this is modified
+		/// How much time, in seconds, the client has to **start** the HTTP request to complete this
+		/// action
 		public static final double CONNECTION_TIMEOUT_SECONDS = 30;
+		/// When this action was [ActionResponse.Type#APPROVED], and when the [#CONNECTION_TIMEOUT_SECONDS]
+		/// started
 		public long creationTime;
+		/// Which device has started this action
 		public Device device;
+		/// The not-yet-completed action details
 		public Action action;
+		/// Whether the HTTP request to complete this action has begun
 		public boolean started;
 
+		/// Create a pending action that starts now
 		public PendingAction(Action action, Device device) {
 			this(action, device, System.currentTimeMillis());
 		}

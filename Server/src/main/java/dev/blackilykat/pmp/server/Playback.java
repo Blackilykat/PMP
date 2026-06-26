@@ -19,21 +19,32 @@ package dev.blackilykat.pmp.server;
 
 import dev.blackilykat.pmp.PMPConnection;
 import dev.blackilykat.pmp.messages.LoginSuccessResponse;
+import dev.blackilykat.pmp.messages.PlaybackControlMessage;
 import dev.blackilykat.pmp.messages.PlaybackOwnershipMessage;
 import dev.blackilykat.pmp.messages.PlaybackUpdateMessage;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.time.Instant;
 
+/// Management of the state of playback.
 public class Playback {
-	private static final Logger LOGGER = LogManager.getLogger(Playback.class);
-
+	/// The device which currently owns playback.
+	///
+	/// This is the device which is meant to be playing audio.
+	///
+	/// The playback owner has the final say on any playback update. Devices which do not own playback
+	/// are allowed to send [PlaybackControlMessage]s but cannot directly call updates. Only the playback
+	/// owner can send [PlaybackUpdateMessage]s which get broadcasted to all connected devices.
 	public static Device owner = null;
+
+	/// True if playing, false if paused. Does not get stored.
 	public static boolean playing = false;
+
+	/// If [#playing], the epoch of when playback started.
+	///
+	/// Else, the position in milliseconds in the track.
 	public static long positionOrEpoch;
 
-
+	/// Initializes saving and storing state to storage and register events related to the playback [#owner].
 	public static void init() {
 		positionOrEpoch = ServerStorage.MAIN.position.get();
 
@@ -76,6 +87,7 @@ public class Playback {
 		});
 	}
 
+	/// Fill fields of a [LoginSuccessResponse] with information related to playback.
 	public static void fillLoginSuccessResponse(LoginSuccessResponse response) {
 		response.playbackOwner = owner == null ? null : owner.id;
 		response.playing = playing;

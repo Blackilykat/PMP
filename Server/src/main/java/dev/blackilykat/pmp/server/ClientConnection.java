@@ -22,9 +22,13 @@ import dev.blackilykat.pmp.PMPConnection;
 import java.io.IOException;
 import java.net.Socket;
 
+/// PMP Connection with a client.
 public class ClientConnection extends PMPConnection {
 
+	/// Counter used to assign a unique name to each connection for logging.
 	private static int clientID = 1;
+
+	/// The device this client has logged in as, or null if it has not logged in (yet).
 	public Device device = null;
 
 	public ClientConnection(Socket socket) throws IOException {
