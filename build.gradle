@@ -1,4 +1,4 @@
-subprojects {
+configure([project(":Core"), project(":Client"), project(":Server")]) {
     afterEvaluate {
         if (plugins.hasPlugin('java')) {
             rootProject.tasks.aggregatedJavadoc.source += sourceSets.main.allJava
