@@ -320,9 +320,7 @@ public class TracksPanel extends JPanel {
 		return item;
 	}
 
-	/**
-	 * @return false if the user has cancelled the prompt (closed the window or pressed cancel)
-	 */
+	/// Returns false if the user has cancelled the prompt (closed the window or pressed cancel)
 	private static boolean promptEditHeaderValues(String title, AtomicReference<String> key,
 			AtomicReference<String> label) {
 		JPanel panel = new JPanel();

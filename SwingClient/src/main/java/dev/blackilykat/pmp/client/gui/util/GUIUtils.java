@@ -56,11 +56,9 @@ public class GUIUtils {
 		ON_SWING_THREAD.set(true);
 	}
 
-	/**
-	 * Runs the given runnable on the swing event thread. If this thread is the swing event thread, it runs it
-	 * immediately and does not return until it's done. Else, it uses {@link SwingUtilities#invokeLater(Runnable)} and
-	 * returns immediately.
-	 */
+	/// Runs the given runnable on the swing event thread. If this thread is the swing event thread, it runs it
+	/// immediately and does not return until it's done. Else, it uses {@link SwingUtilities#invokeLater(Runnable)} and
+	/// returns immediately.
 	public static void runOnSwingThread(Runnable runnable) {
 		// can be null
 		if(Boolean.TRUE.equals(ON_SWING_THREAD.get())) {
