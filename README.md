@@ -13,6 +13,19 @@ The project is divided using Gradle subprojects across 3 layers:
 
 ![Structure diagram](docs/structure.svg)
 
+# Documentation
+
+Technical documentation is written directly in the code through javadocs and is publicly available [here](https://blackilykat.dev/projects/pmp/javadoc/index.html).
+
+The UI layer is currently not included in documentation as it would mostly be irrelevant clutter.
+
+Here's a few highlights to get started:
+- [PMPConnection](https://blackilykat.dev/projects/pmp/javadoc/dev/blackilykat/pmp/PMPConnection.html) and [TransferHandler](https://blackilykat.dev/projects/pmp/javadoc/dev/blackilykat/pmp/server/TransferHandler.html): The network protocol
+- [the messages package](https://blackilykat.dev/projects/pmp/javadoc/dev/blackilykat/pmp/messages/package-summary.html): Actual messages sent in PMPConnection
+- [EventSource](https://blackilykat.dev/projects/pmp/javadoc/dev/blackilykat/pmp/event/EventSource.html): Event system used throughout the project
+- [Storage](https://blackilykat.dev/projects/pmp/javadoc/dev/blackilykat/pmp/storage/Storage.html): How data is stored on disk
+- [Filter](https://blackilykat.dev/projects/pmp/javadoc/dev/blackilykat/pmp/client/Filter.html): How filtering the library works
+
 # Running
 
 ## Desktop client and server
