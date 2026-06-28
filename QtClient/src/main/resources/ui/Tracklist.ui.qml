@@ -21,7 +21,6 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Shapes
 import QtQuick.Dialogs
-
 Rectangle {
 	id: tracklist
 	color: Style.tracklistBackground
@@ -64,7 +63,7 @@ Rectangle {
 						color: headerMouseArea.dragging ? "#00000000" : headerMouseArea.pressed ? Style.clicked : headerMouseArea.containsMouse ? Style.hover : "#00000000"
 						Text {
 							elide: Text.ElideRight
-							text: name
+							text: label
 							color: Style.text
 							font.pixelSize: 22
 							horizontalAlignment: rightAligned ? Text.AlignRight : Text.AlignLeft
@@ -184,6 +183,28 @@ Rectangle {
 								PathLine { x: descendingTriangle.width / 2; y: descendingTriangle.height }
 							}
 						}
+
+						ContextMenu.menu: Menu {
+							MenuItem {
+								text: "Add header..."
+								onTriggered: {
+									addHeaderDialog.show()
+								}
+							}
+							MenuItem {
+								text: "Edit " + label + "..."
+								onTriggered: {
+									addHeaderDialog.showEdit(headerId, key, label)
+								}
+							}
+							MenuItem {
+								text: "Remove " + label
+								onTriggered: {
+									Interaction.removeHeader(headerId)
+								}
+							}
+						}
+
 					}
 					Rectangle {
 						height: parent.height
@@ -218,7 +239,15 @@ Rectangle {
 							}
 						}
 					}
+				}
+			}
+		}
 
+		ContextMenu.menu: Menu {
+			MenuItem {
+				text: "Add header..."
+				onTriggered: {
+					addHeaderDialog.show()
 				}
 			}
 		}
@@ -326,6 +355,139 @@ Rectangle {
 							Interaction.removeTrack(filename)
 						}
 					}
+				}
+			}
+		}
+	}
+
+	ApplicationWindow {
+		id: addHeaderDialog
+		visible: false
+		title: editing ? "Edit a header" : "Add a header"
+
+		height: inputs.height + buttons.height + 30
+		maximumHeight: height
+		minimumHeight: height
+		width: inputs.width + 50
+		maximumWidth: width
+		minimumWidth: width
+
+		property var knownKeys: {
+			"date": "Date",
+			"album": "Album",
+			"albumartist": "Album Artist",
+			"duration": "Duration",
+			"title": "Title",
+			"tracknumber": "N°",
+			"artist": "Artist"
+		}
+
+		property bool editing: false
+		property int editId: -1
+
+		function show() {
+			keyInput.editText = keyInput.model[0];
+			customLabelBox.checked = false;
+			inputs.updateLabel();
+
+			editing = false;
+			visible = true;
+		}
+
+		function showEdit(id, key, label) {
+			keyInput.editText = key;
+			customLabelBox.checked = false;
+			inputs.updateLabel();
+			if(labelInput.text !== label) {
+				customLabelBox.checked = true;
+				labelInput.text = label;
+			}
+
+			editing = true;
+			editId = id;
+
+			visible = true;
+		}
+		Column {
+			id: inputs
+			anchors {
+				top: parent.top
+				topMargin: 10
+				left: parent.left
+				leftMargin: 10
+			}
+
+			function updateLabel() {
+				if(customLabelBox.checked) return;
+				let key = keyInput.editText;
+				let label = addHeaderDialog.knownKeys[key];
+
+				if(label === undefined) {
+					label = ""
+					let caps = true;
+					for(let i = 0; i < key.length; i++) {
+						if(caps) label += key[i].toUpperCase();
+						else     label += key[i].toLowerCase();
+						caps = key[i] == ' '
+					}
+				}
+
+				labelInput.text = label;
+			}
+
+			Row {
+				Label { text: "Key: " }
+				ComboBox {
+					id: keyInput
+					model: Object.keys(addHeaderDialog.knownKeys)
+					editable: true
+					onAccepted:      { inputs.updateLabel() }
+					onActivated:     { inputs.updateLabel() }
+					Keys.onReleased: { inputs.updateLabel() }
+				}
+			}
+			CheckBox {
+				id: customLabelBox
+				checked: false
+				text: "Apply custom label"
+				onToggled: { inputs.updateLabel() }
+			}
+			Row {
+				Label { text: "Label: " }
+				TextField {
+					id: labelInput
+					text: ""
+					enabled: customLabelBox.checked
+				}
+			}
+		}
+
+		Row {
+			id: buttons
+			anchors {
+				bottom: parent.bottom
+				bottomMargin: 10
+				right: parent.right
+				rightMargin: 10
+			}
+
+			Button {
+				text: "Ok"
+				onClicked: {
+					if(addHeaderDialog.editing) {
+						Interaction.editHeader(addHeaderDialog.editId, keyInput.editText, labelInput.text)
+					} else {
+						Interaction.addHeader(keyInput.editText, labelInput.text)
+					}
+
+					addHeaderDialog.visible = false;
+				}
+			}
+
+			Button {
+				text: "Cancel"
+				onClicked: {
+					addHeaderDialog.visible = false;
 				}
 			}
 		}

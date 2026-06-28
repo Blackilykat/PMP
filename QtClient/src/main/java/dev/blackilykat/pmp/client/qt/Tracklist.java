@@ -119,11 +119,12 @@ class Tracklist {
 	}
 
 	public static class TrackHeaderListModel extends ReplaceableListModel<TrackHeaderObject> {
-		public static final int ROLE_NAME = 0x0101;
+		public static final int ROLE_LABEL = 0x0101;
 		public static final int ROLE_RIGHT_ALIGNED = 0x0102;
 		public static final int ROLE_WIDTH = 0x0103;
 		public static final int ROLE_ID = 0x0104;
 		public static final int ROLE_SORTING = 0x0105;
+		public static final int ROLE_KEY = 0x0106;
 
 		public TrackHeaderListModel(QObject parent) {
 			super(parent);
@@ -162,8 +163,13 @@ class Tracklist {
 					header.getLabel(),
 					width,
 					Tracklist.RIGHT_ALIGNED_TYPES.contains(header.type),
-					header == sortingHeader ? sortingOrder : null
+					header == sortingHeader ? sortingOrder : null,
+					header.getKey()
 				);
+
+				header.eventLabelChanged.register(newLabel -> {
+					obj.setLabel(newLabel);
+				});
 
 				return obj;
 			}).toList());
@@ -174,6 +180,10 @@ class Tracklist {
 				final int j = i;
 
 				obj.widthChanged.connect(() -> {
+					dataChanged.emit(index(j, 0), index(j, 0));
+				});
+
+				obj.labelChanged.connect(() -> {
 					dataChanged.emit(index(j, 0), index(j, 0));
 				});
 
@@ -193,29 +203,35 @@ class Tracklist {
 					}
 				}
 			});
+
+			// Allow tracks to grab the correct header widths after everything is updated
+			// (removing headers does not work correctly without this)
+			dataChanged.emit(index(0, 0), index(items.size() - 1, 0));
 		}
 
 		@Override
 		public Object data(@NonNull QModelIndex arg0, int arg1) {
 			var row = items.get(arg0.row());
 			return switch(arg1) {
-				case ROLE_NAME -> row.name;
+				case ROLE_LABEL -> row.label;
 				case ROLE_RIGHT_ALIGNED -> row.rightAligned;
 				case ROLE_WIDTH -> row.width;
 				case ROLE_ID -> row.id;
 				case ROLE_SORTING -> Objects.toString(row.sorting);
 				default -> new QVariant();
+				case ROLE_KEY -> row.key;
 			};
 		}
 
 		@Override
 		public Map<Integer, QByteArray> roleNames() {
 			return Map.of(
-				ROLE_NAME, new QByteArray("name"),
+				ROLE_LABEL, new QByteArray("label"),
 				ROLE_RIGHT_ALIGNED, new QByteArray("rightAligned"),
 				ROLE_WIDTH, new QByteArray("headerWidth"),
 				ROLE_ID, new QByteArray("headerId"),
-				ROLE_SORTING, new QByteArray("sorting")
+				ROLE_SORTING, new QByteArray("sorting"),
+				ROLE_KEY, new QByteArray("key")
 			);
 		}
 	}
@@ -274,19 +290,22 @@ class Tracklist {
 	public static class TrackHeaderObject extends QObject {
 		public final Signal0 widthChanged = new Signal0();
 		public final Signal0 sortingChanged = new Signal0();
+		public final Signal0 labelChanged = new Signal0();
 
 		public int id;
-		public String name;
+		public String label;
 		public int width;
 		public boolean rightAligned;
 		public Order sorting;
+		public String key;
 
-		public TrackHeaderObject(int id, String name, int width, boolean rightAligned, Order sorting) {
+		public TrackHeaderObject(int id, String label, int width, boolean rightAligned, Order sorting, String key) {
 			this.id = id;
-			this.name = name;
+			this.label = label;
 			this.width = width;
 			this.rightAligned = rightAligned;
 			this.sorting = sorting;
+			this.key = key;
 		}
 
 		public void setSorting(Order sorting) {
@@ -299,5 +318,9 @@ class Tracklist {
 			widthChanged.emit();
 		}
 
+		public void setLabel(String label) {
+			this.label = label;
+			labelChanged.emit();
+		}
 	}
 }

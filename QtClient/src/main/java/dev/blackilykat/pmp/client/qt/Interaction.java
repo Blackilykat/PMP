@@ -228,4 +228,49 @@ class Interaction extends QObject {
 
 		LOGGER.warn("QML tried to move nonexistent header {}", id);
 	}
+
+	public void addHeader(String key, String label) {
+		if(key == null || key.isBlank()) {
+			LOGGER.warn("QML tried to add header with no key");
+			return;
+		}
+		if(label == null || label.isBlank()) {
+			LOGGER.warn("QML tried to add header with no label");
+			return;
+		}
+		Header header = new Header(ClientStorage.MAIN.currentHeaderID.getAndIncrement(), label, key);
+		Library.addHeader(header);
+	}
+
+	public void editHeader(int id, String key, String label) {
+		if(key == null || key.isBlank()) {
+			LOGGER.warn("QML tried to edit header with no key");
+			return;
+		}
+		if(label == null || label.isBlank()) {
+			LOGGER.warn("QML tried to edit header with no label");
+			return;
+		}
+
+		for (Header header : ClientStorage.MAIN.headers.get()) {
+			if(header.id != id) continue;
+
+			header.setKey(key);
+			header.setLabel(label);
+
+			return;
+		}
+		LOGGER.warn("QML tried to edit nonexistent header {}", id);
+	}
+
+	public void removeHeader(int id) {
+		for (Header header : ClientStorage.MAIN.headers.get()) {
+			if(header.id != id) continue;
+
+			Library.removeHeader(header);
+
+			return;
+		}
+		LOGGER.warn("QML tried to remove nonexistent header {}", id);
+	}
 }
