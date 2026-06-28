@@ -29,6 +29,7 @@ import dev.blackilykat.pmp.client.handlers.PlaybackControlMessageHandler;
 import dev.blackilykat.pmp.client.handlers.PlaybackOwnershipMessageHandler;
 import dev.blackilykat.pmp.client.handlers.PlaybackUpdateMessageHandler;
 import dev.blackilykat.pmp.event.EventSource;
+import dev.blackilykat.pmp.event.RetroactiveEventSource;
 import dev.blackilykat.pmp.messages.ActionRequest;
 import dev.blackilykat.pmp.messages.ActionResponse;
 import dev.blackilykat.pmp.messages.ErrorMessage;
@@ -70,7 +71,7 @@ public class Server {
 	public static final EventSource<Void> EVENT_CONNECTED = new EventSource<>();
 	public static final EventSource<Void> EVENT_LOGGED_IN = new EventSource<>();
 	public static final EventSource<Void> EVENT_DISCONNECTED = new EventSource<>();
-	public static final EventSource<Void> EVENT_SHOULD_ASK_PASSWORD = new EventSource<>();
+	public static final EventSource<Void> EVENT_SHOULD_ASK_PASSWORD = new RetroactiveEventSource<>();
 	private static final ScopedValue<Boolean> HANDLING_ACTION = ScopedValue.newInstance();
 	private static final long RECONNECT_COOLDOWN_MS = 10_000;
 	private static final Logger LOGGER = LogManager.getLogger(Server.class);

@@ -18,7 +18,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import Qt5Compat.GraphicalEffects
+import QtQuick.Effects
 import "."
 
 Rectangle {
@@ -164,21 +164,29 @@ Rectangle {
 			topMargin: 20
 			bottomMargin: 20
 		}
+		visible: false
 
-		layer {
-			enabled: true
-			effect: OpacityMask {
-				maskSource: Item {
-					width: albumArt.width
-					height: albumArt.height
-					Rectangle {
-						anchors.centerIn: parent
-						width: albumArt.width
-						height: albumArt.height
-						radius: 10
-					}
-				}
-			}
+	}
+	MultiEffect {
+		source: albumArt
+		anchors.fill: albumArt
+		maskEnabled: true
+		maskSource: albumArtMask
+		maskThresholdMin: 0.5
+		maskSpreadAtMin: 1.0
+	}
+	Item {
+		id: albumArtMask
+		width: albumArt.width
+		height: albumArt.height
+		visible: false
+		layer.enabled: true
+		layer.smooth: true
+		Rectangle {
+			anchors.centerIn: parent
+			width: albumArt.width
+			height: albumArt.height
+			radius: 10
 		}
 	}
 
