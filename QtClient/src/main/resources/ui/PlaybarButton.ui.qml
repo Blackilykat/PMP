@@ -17,9 +17,8 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Basic
 
-Button {
+Button { 
 	id: button
 	icon {
 		color: Style.text
