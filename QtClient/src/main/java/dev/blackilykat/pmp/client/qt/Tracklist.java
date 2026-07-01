@@ -54,7 +54,6 @@ class Tracklist {
 	public static TrackHeaderListModel headerListModel = null;
 
 	public static void initialize(QQmlContext context) {
-
 		TrackListModel trackListModel = new TrackListModel(QGuiApplication.instance());
 		context.setContextProperty("tracklistModel", new QVariant(trackListModel));
 
@@ -139,12 +138,17 @@ class Tracklist {
 
 			Library.EVENT_HEADER_MOVED.register(event -> {
 				handledMove.set(true);
-				move(event.oldPosition(), event.newPosition());
+
+				QMetaObject.invokeMethod(this, () -> {
+					move(event.oldPosition(), event.newPosition());
+				});
 			});
 
 			Library.EVENT_HEADERS_UPDATED.register(_ -> {
 				if(!handledMove.getAndSet(false)) {
-					update();
+					QMetaObject.invokeMethod(this, () -> {
+						update();
+					});
 				}
 			});
 		}
@@ -171,7 +175,9 @@ class Tracklist {
 				);
 
 				header.eventLabelChanged.register(newLabel -> {
-					obj.setLabel(newLabel);
+					QMetaObject.invokeMethod(obj, () -> {
+						obj.setLabel(newLabel);
+					});
 				});
 
 				return obj;
@@ -198,11 +204,15 @@ class Tracklist {
 			Library.EVENT_SORTING_HEADER_UPDATED.register(event -> {
 				for(var item : items) {
 					if(item.sorting != null && item.id != event.header().id) {
-						item.setSorting(null);
+						QMetaObject.invokeMethod(item, () -> {
+							item.setSorting(null);
+						});
 					}
 
 					if(item.id == event.header().id) {
-						item.setSorting(event.order());
+						QMetaObject.invokeMethod(item, () -> {
+							item.setSorting(event.order());
+						});
 					}
 				}
 			});
@@ -251,12 +261,14 @@ class Tracklist {
 		}
 
 		public void update() {
-			replace(ClientStorage.MAIN.headers.get().stream().map(header -> {
-				return new TrackMetadataObject(
-					header.getStringValue(track),
-					Tracklist.RIGHT_ALIGNED_TYPES.contains(header.type)
-				);
-			}).toList());
+			QMetaObject.invokeMethod(this, () -> {
+				replace(ClientStorage.MAIN.headers.get().stream().map(header -> {
+					return new TrackMetadataObject(
+						header.getStringValue(track),
+						Tracklist.RIGHT_ALIGNED_TYPES.contains(header.type)
+					);
+				}).toList());
+			});
 		}
 
 		@Override

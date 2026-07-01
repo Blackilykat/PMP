@@ -22,6 +22,7 @@ import dev.blackilykat.pmp.client.Player;
 import dev.blackilykat.pmp.client.Server;
 import dev.blackilykat.pmp.util.Shutdown;
 import io.qt.core.QCoreApplication;
+import io.qt.core.QMetaObject;
 import io.qt.core.QObject;
 import io.qt.core.QUrl;
 import io.qt.qml.QQmlApplicationEngine;
@@ -90,30 +91,43 @@ public class MainWindow {
 				if(event.track() == null) {
 					return;
 				}
-				playbar.setProperty("title", event.track().getTitle());
-				playbar.setProperty("artists", event.track().getArtists().stream().collect(Collectors.joining(", ")));
 
-				playbar.setProperty("length", event.track().getDurationSeconds());
+				QMetaObject.invokeMethod(playbar, () -> {
+					playbar.setProperty("title", event.track().getTitle());
+					playbar.setProperty("artists", event.track().getArtists().stream().collect(Collectors.joining(", ")));
+
+					playbar.setProperty("length", event.track().getDurationSeconds());
+				});
 
 				event.picture().thenAccept(data -> {
-					if(data == null) {
-						playbar.setProperty("albumArt", "");
-					} else {
-						playbar.setProperty("albumArt", "image://albumArt/" + event.track().getFile().getName());
-					}
+					QMetaObject.invokeMethod(playbar, () -> {
+						if(data == null) {
+							playbar.setProperty("albumArt", "");
+						} else {
+							playbar.setProperty("albumArt", "image://albumArt/" + event.track().getFile().getName());
+						}
+					});
 				});
 			});
 			Player.EVENT_PROGRESS.register(milliseconds -> {
-				playbar.setProperty("position", milliseconds / 1000.0);
+				QMetaObject.invokeMethod(playbar, () -> {
+					playbar.setProperty("position", milliseconds / 1000.0);
+				});
 			});
 			Player.EVENT_PLAY_PAUSE.register(paused -> {
-				playbar.setProperty("playing", !paused);
+				QMetaObject.invokeMethod(playbar, () -> {
+					playbar.setProperty("playing", !paused);
+				});
 			});
 			Player.EVENT_SHUFFLE_CHANGED.register(shuffle -> {
-				playbar.setProperty("shuffle", shuffle.toString());
+				QMetaObject.invokeMethod(playbar, () -> {
+					playbar.setProperty("shuffle", shuffle.toString());
+				});
 			});
 			Player.EVENT_REPEAT_CHANGED.register(repeat -> {
-				playbar.setProperty("repeat", repeat.toString());
+				QMetaObject.invokeMethod(playbar, () -> {
+					playbar.setProperty("repeat", repeat.toString());
+				});
 			});
 		}
 	}

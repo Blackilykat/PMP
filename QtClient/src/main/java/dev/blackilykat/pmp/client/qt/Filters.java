@@ -27,6 +27,7 @@ import dev.blackilykat.pmp.client.Library;
 import io.qt.NonNull;
 import io.qt.QtPrimitiveType;
 import io.qt.core.QByteArray;
+import io.qt.core.QMetaObject;
 import io.qt.core.QModelIndex;
 import io.qt.core.QObject;
 import io.qt.core.QVariant;
@@ -50,7 +51,11 @@ class Filters {
 			super(parent);
 
 			replace(ClientStorage.MAIN.filters.get());
-			Library.EVENT_FILTERS_UPDATED.register(this::replace);
+			Library.EVENT_FILTERS_UPDATED.register(data -> {
+				QMetaObject.invokeMethod(this, () -> {
+					replace(data);
+				});
+			});
 		}
 
 		@Override
@@ -108,8 +113,10 @@ class Filters {
 			});
 
 			filter.eventOptionRemoved.register(event -> {
-				remove(items.indexOf(event.option()), 1);
-				// listener will get garbage collected, no need to clean up
+				QMetaObject.invokeMethod(this, () -> {
+					remove(items.indexOf(event.option()), 1);
+					// listener will get garbage collected, no need to clean up
+				});
 			});
 		}
 
