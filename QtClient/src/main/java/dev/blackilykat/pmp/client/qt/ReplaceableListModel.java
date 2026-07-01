@@ -62,7 +62,7 @@ abstract class ReplaceableListModel<T> extends QAbstractListModel {
 	}
 
 	public void addMany(List<T> newItems, int dest, int src, int count) {
-		beginInsertRows(new QModelIndex(), dest, dest + count);
+		beginInsertRows(new QModelIndex(), dest, dest + count - 1);
 		for(int i = 0; i < count; i++) {
 			items.add(dest + i, newItems.get(src + i));
 		}
@@ -99,10 +99,9 @@ abstract class ReplaceableListModel<T> extends QAbstractListModel {
 			}
 
 			T newItem = newItems.get(j);
-			if(items.contains(newItem)) {
-				while(i < items.size() && items.get(i) != newItem) {
-					remove(i, 1);
-				}
+			int foundIndex = items.indexOf(newItem);
+			if(foundIndex != -1) {
+				remove(i, foundIndex - i);
 				continue;
 			}
 

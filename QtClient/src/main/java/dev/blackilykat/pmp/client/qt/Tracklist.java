@@ -31,6 +31,7 @@ import dev.blackilykat.pmp.client.Player;
 import dev.blackilykat.pmp.client.Track;
 import io.qt.NonNull;
 import io.qt.core.QByteArray;
+import io.qt.core.QMetaObject;
 import io.qt.core.QModelIndex;
 import io.qt.core.QObject;
 import io.qt.core.QVariant;
@@ -62,7 +63,9 @@ class Tracklist {
 
 		trackListModel.replace(Library.getSelectedTracks());
 		Library.EVENT_SELECTED_TRACKS_UPDATED.register(event -> {
-			trackListModel.replace(event.newSelection());
+			QMetaObject.invokeMethod(trackListModel, () -> {
+				trackListModel.replace(event.newSelection());
+			});
 		});
 	}
 
