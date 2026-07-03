@@ -20,13 +20,40 @@ import QtQuick
 import QtQuick.Controls.Fusion
 import "."
 
-Window {
+ApplicationWindow {
 	id: root
 
 	color: Style.tracklistBackground
 
 	visible: true
 	title: "PMP"
+
+	menuBar: MenuBar {
+		Menu {
+			title: "&Connection"
+			Action {
+				text: "&Connect"
+				enabled: !globalState.connected
+				onTriggered: Interaction.connectServer();
+			}
+			Action {
+				text: "&Disconnect"
+				enabled: globalState.connected
+				onTriggered: Interaction.disconnectServer();
+			}
+		}
+		Menu {
+			title: "&Debug"
+			Action {
+				text: "Enter Debug &Log..."
+				onTriggered: debugLogDialog.show();
+			}
+			Action {
+				text: "Open &Playback Debug Window"
+				onTriggered: playbackDebugWindow.visible = true;
+			}
+		}
+	}
 
 	Tracklist {
 		id: tracklist
@@ -70,6 +97,107 @@ Window {
 	Shortcut {
 		sequence: "Right"
 		onActivated: Interaction.seekForward()
+	}
+
+	ApplicationWindow {
+		id: debugLogDialog
+		visible: false
+		title: "Enter a debug log"
+
+		height: inputs.height + buttons.height + 50
+		maximumHeight: height
+		minimumHeight: height
+		width: inputs.width + 100
+		maximumWidth: width
+		minimumWidth: width
+
+		function show() {
+			messageInput.text = "Something happened";
+
+			visible = true;
+		}
+
+		function submit() {
+			// send the message to the Java side to log through Log4j
+			// JS logs go straight to stdout without passing through LoggingProxy
+			Interaction.debugLog(messageInput.text)
+
+			debugLogDialog.visible = false;
+		}
+
+		Column {
+			id: inputs
+			anchors {
+				top: parent.top
+				topMargin: 10
+				left: parent.left
+				leftMargin: 10
+			}
+
+			Row {
+				Label { text: "Message: " }
+				TextField {
+					id: messageInput
+					width: 500
+					onAccepted: debugLogDialog.submit()
+				}
+			}
+		}
+
+		Row {
+			id: buttons
+			anchors {
+				bottom: parent.bottom
+				bottomMargin: 10
+				right: parent.right
+				rightMargin: 10
+			}
+
+			Button {
+				text: "Ok"
+				onClicked: debugLogDialog.submit()
+			}
+
+			Button {
+				text: "Cancel"
+				onClicked: {
+					debugLogDialog.visible = false;
+				}
+			}
+		}
+	}
+
+	ApplicationWindow {
+		id: playbackDebugWindow
+		visible: false
+
+		Column {
+			Label { text: `Backend: ${globalState.audioBackend}` }
+			Label { text: `Frame position: ${globalState.debugFramePosition}` }
+			Label { text: `Latency: ${globalState.debugLatency}` }
+			Label { text: `Expected pos: ${globalState.debugExpectedPos}` }
+			Label { text: `Buffer size: ${globalState.debugBufferSize}` }
+			Label { text: `Track length: ${globalState.debugTrackLength}` }
+			Label { text: `Expected write time: ${globalState.debugExpectedWriteTime}ms` }
+			Label { text: `Offset: ${globalState.debugTotalOffset}ms` }
+
+			Rectangle {
+				height: 20
+				width: 400
+				color: globalState.debugTotalOffset < 0 ? "red" : "black"
+
+				Rectangle {
+					height: parent.height
+					width: 1
+					color: "white"
+					anchors {
+						top: parent.top
+						left: parent.left
+						leftMargin: (globalState.debugTotalOffset / 1000) * parent.width
+					}
+				}
+			}
+		}
 	}
 }
 

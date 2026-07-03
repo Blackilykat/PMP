@@ -52,8 +52,10 @@ public class MainWindow {
 
 		QQmlApplicationEngine engine = new QQmlApplicationEngine();
 
-		Tracklist.initialize(engine.rootContext());
-		Filters.initialize(engine.rootContext());
+		QQmlContext rootContext = engine.rootContext();
+		Tracklist.initialize(rootContext);
+		Filters.initialize(rootContext);
+		State.initialize(rootContext);
 
 		engine.addImageProvider("albumArt", new AlbumArtProvider());
 
@@ -65,7 +67,7 @@ public class MainWindow {
 
 		QObject root = engine.rootObjects().getFirst();
 
-		registerPropertyUpdates(root, engine.rootContext());
+		registerPropertyUpdates(root, rootContext);
 
 		Server.EVENT_SHOULD_ASK_PASSWORD.register(_ -> {
 			Server.submitPassword("mypassword");

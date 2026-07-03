@@ -36,6 +36,7 @@ import dev.blackilykat.pmp.client.FilterOption;
 import dev.blackilykat.pmp.client.Header;
 import dev.blackilykat.pmp.client.Library;
 import dev.blackilykat.pmp.client.Player;
+import dev.blackilykat.pmp.client.Server;
 import dev.blackilykat.pmp.client.Track;
 import io.qt.core.QObject;
 import io.qt.core.QStandardPaths;
@@ -305,5 +306,17 @@ class Interaction extends QObject {
 			return;
 		}
 		LOGGER.warn("QML tried to move nonexistent filter {}", id);
+	}
+
+	public void connectServer() {
+		Server.connect();
+	}
+
+	public void disconnectServer() {
+		Server.disconnectSoonWithoutRetrying("User ordered dsiconnect");
+	}
+
+	public void debugLog(String message) {
+		LOGGER.warn("User entered log: {}", message);
 	}
 }
