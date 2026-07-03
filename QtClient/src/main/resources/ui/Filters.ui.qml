@@ -144,6 +144,108 @@ Rectangle {
 						}
 					}
 				}
+
+				ContextMenu.menu: Menu {
+					MenuItem {
+						text: "Add filter..."
+						onTriggered: {
+							addFilterDialog.show();
+						}
+					}
+					MenuItem {
+						text: "Remove " + key
+						onTriggered: {
+							Interaction.removeFilter(id);
+						}
+					}
+					MenuItem {
+						text: "Move " + key + " up"
+						enabled: !first
+						onTriggered: {
+							Interaction.moveFilter(id, true);
+						}
+					}
+					MenuItem {
+						text: "Move " + key + " down"
+						enabled: !last
+						onTriggered: {
+							Interaction.moveFilter(id, false);
+						}
+					}
+				}
+			}
+		}
+	}
+
+	ContextMenu.menu: Menu {
+		MenuItem {
+			text: "Add filter..."
+			onTriggered: {
+				addFilterDialog.show();
+			}
+		}
+	}
+
+	ApplicationWindow {
+		id: addFilterDialog
+		visible: false
+		title: "Add a filter"
+
+		height: inputs.height + buttons.height + 50
+		maximumHeight: height
+		minimumHeight: height
+		width: inputs.width + 100
+		maximumWidth: width
+		minimumWidth: width
+
+		function show() {
+			keyInput.editText = keyInput.model[0];
+
+			visible = true;
+		}
+
+		Column {
+			id: inputs
+			anchors {
+				top: parent.top
+				topMargin: 10
+				left: parent.left
+				leftMargin: 10
+			}
+
+			Row {
+				Label { text: "Key: " }
+				ComboBox {
+					id: keyInput
+					model: Object.keys(Globals.metadataKeys)
+					editable: true
+				}
+			}
+		}
+
+		Row {
+			id: buttons
+			anchors {
+				bottom: parent.bottom
+				bottomMargin: 10
+				right: parent.right
+				rightMargin: 10
+			}
+
+			Button {
+				text: "Ok"
+				onClicked: {
+					Interaction.addFilter(keyInput.editText)
+
+					addFilterDialog.visible = false;
+				}
+			}
+
+			Button {
+				text: "Cancel"
+				onClicked: {
+					addFilterDialog.visible = false;
+				}
 			}
 		}
 	}

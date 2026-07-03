@@ -31,6 +31,7 @@ import dev.blackilykat.pmp.Order;
 import dev.blackilykat.pmp.RepeatOption;
 import dev.blackilykat.pmp.ShuffleOption;
 import dev.blackilykat.pmp.client.ClientStorage;
+import dev.blackilykat.pmp.client.Filter;
 import dev.blackilykat.pmp.client.FilterOption;
 import dev.blackilykat.pmp.client.Header;
 import dev.blackilykat.pmp.client.Library;
@@ -272,5 +273,37 @@ class Interaction extends QObject {
 			return;
 		}
 		LOGGER.warn("QML tried to remove nonexistent header {}", id);
+	}
+
+	public void addFilter(String key) {
+		if(key == null || key.isBlank()) {
+			LOGGER.warn("QML tried to add filter with empty key");
+			return;
+		}
+		Filter filter = new Filter(key.trim());
+		Library.addFilter(filter);
+	}
+
+	public void removeFilter(int id) {
+		for (Filter filter : ClientStorage.MAIN.filters.get()) {
+			if(filter.id != id) continue;
+
+			Library.removeFilter(filter);
+
+			return;
+		}
+		LOGGER.warn("QML tried to remove nonexistent filter {}", id);
+	}
+
+	public void moveFilter(int id, boolean up) {
+		for (int i = 0; i < ClientStorage.MAIN.filters.size(); i++) {
+			Filter filter = ClientStorage.MAIN.filters.get(i);
+			if(filter.id != id) continue;
+
+			Library.moveFilter(filter, i + (up ? -1 : 1));
+
+			return;
+		}
+		LOGGER.warn("QML tried to move nonexistent filter {}", id);
 	}
 }

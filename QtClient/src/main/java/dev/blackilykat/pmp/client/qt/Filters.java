@@ -44,6 +44,10 @@ class Filters {
 		public static final int ROLE_KEY = 0x0101;
 		public static final int ROLE_ID = 0x0102;
 		public static final int ROLE_OPTIONS = 0x0103;
+		// Cannot use `index` in QML because it does not bind to it and will not
+		// update when filters are moved
+		public static final int ROLE_FIRST = 0x0104;
+		public static final int ROLE_LAST = 0x0105;
 
 		private Map<Filter, FilterOptionListModel> options = new HashMap<>();
 
@@ -51,9 +55,13 @@ class Filters {
 			super(parent);
 
 			replace(ClientStorage.MAIN.filters.get());
+
 			Library.EVENT_FILTERS_UPDATED.register(data -> {
 				QMetaObject.invokeMethod(this, () -> {
 					replace(data);
+
+					// forcefully update `first` and `last`
+					dataChanged.emit(index(0, 0), index(items.size() - 1, 0));
 				});
 			});
 		}
@@ -63,7 +71,9 @@ class Filters {
 			return Map.of(
 				ROLE_KEY, new QByteArray("key"),
 				ROLE_ID, new QByteArray("id"),
-				ROLE_OPTIONS, new QByteArray("options")
+				ROLE_OPTIONS, new QByteArray("options"),
+				ROLE_FIRST, new QByteArray("first"),
+				ROLE_LAST, new QByteArray("last")
 			);
 		}
 
@@ -81,6 +91,8 @@ class Filters {
 					}
 					yield ret;
 				}
+				case ROLE_FIRST -> arg0.row() == 0;
+				case ROLE_LAST -> arg0.row() == rowCount() - 1;
 				default -> new QVariant();
 			};
 		}

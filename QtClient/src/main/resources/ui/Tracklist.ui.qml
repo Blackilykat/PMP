@@ -372,16 +372,6 @@ Rectangle {
 		maximumWidth: width
 		minimumWidth: width
 
-		property var knownKeys: {
-			"date": "Date",
-			"album": "Album",
-			"albumartist": "Album Artist",
-			"duration": "Duration",
-			"title": "Title",
-			"tracknumber": "N°",
-			"artist": "Artist"
-		}
-
 		property bool editing: false
 		property int editId: -1
 
@@ -420,7 +410,7 @@ Rectangle {
 			function updateLabel() {
 				if(customLabelBox.checked) return;
 				let key = keyInput.editText;
-				let label = addHeaderDialog.knownKeys[key];
+				let label = Globals.metadataKeys[key];
 
 				if(label === undefined) {
 					label = ""
@@ -439,7 +429,7 @@ Rectangle {
 				Label { text: "Key: " }
 				ComboBox {
 					id: keyInput
-					model: Object.keys(addHeaderDialog.knownKeys)
+					model: Object.keys(Globals.metadataKeys)
 					editable: true
 					onAccepted:      { inputs.updateLabel() }
 					onActivated:     { inputs.updateLabel() }

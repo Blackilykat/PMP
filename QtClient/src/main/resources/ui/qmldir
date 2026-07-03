@@ -1,1 +1,2 @@
 singleton Style Style.qml
+singleton Globals Globals.qml
