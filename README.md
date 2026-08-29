@@ -1,3 +1,9 @@
+# Archived
+
+Sorry. Rewriting again. I hope this is the last time, but no promises. You'll see the new repository [here](https://github.com/Blackilykat/Shanect) when it's ready.
+
+No, I am not rewriting in Java this time. Java's memory usage and lack of good UI libraries is what caused the rewrite.
+
 # Personal Music Platform
 
 A platform and music player to synchronize libraries and control playback across devices.
